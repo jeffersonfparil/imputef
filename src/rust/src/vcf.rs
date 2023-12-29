@@ -363,7 +363,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
                 .join(".");
             out = bname.to_owned() + "-" + &time.to_string() + ".sync";
         }
-        // Instatiate output file
+        // Instantiate output file
         let error_writing_file = "Unable to create file: ".to_owned() + &out;
         // let mut file_out = File::create(&out).expect(&error_writing_file);
         let mut file_out = OpenOptions::new()
@@ -397,7 +397,8 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         };
         // Find the positions where to split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
-        let outname_ndigits = chunks[*n_threads].to_string().len();
+        let n_threads = chunks.len() - 1;
+        let outname_ndigits = chunks[n_threads].to_string().len();
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of vcf2sync_chunks
         // Instantiate thread object for parallel execution
@@ -406,7 +407,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         let thread_ouputs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         // Mutated within each thread worker
         // Making four separate threads calling the `search_for_word` function
-        for i in 0..*n_threads {
+        for i in 0..n_threads {
             // Clone vcf2sync_chunk parameters
             let self_clone = self.clone();
             let start = chunks[i];

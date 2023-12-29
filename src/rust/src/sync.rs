@@ -694,6 +694,7 @@ impl LoadAll for FileSyncPhen {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).unwrap();
+        let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
         // Instantiate thread object for parallel execution
@@ -701,9 +702,9 @@ impl LoadAll for FileSyncPhen {
         // Vector holding all returns from pileup2sync_chunk()
         let thread_ouputs_freq: Arc<Mutex<Vec<LocusFrequencies>>> =
             Arc::new(Mutex::new(Vec::new())); // Mutated within each thread worker
-        let thread_ouputs_cnts: Arc<Mutex<Vec<LocusCounts>>> = Arc::new(Mutex::new(Vec::new())); // Mutated within each thread worker
-                                                                                                 // Making four separate threads calling the `search_for_word` function
-        for i in 0..*n_threads {
+        // Mutated within each thread worker
+        let thread_ouputs_cnts: Arc<Mutex<Vec<LocusCounts>>> = Arc::new(Mutex::new(Vec::new()));
+        for i in 0..n_threads {
             // Clone pileup2sync_chunk parameters
             let self_clone = self.clone();
             let start = chunks[i];
