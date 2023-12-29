@@ -407,7 +407,7 @@ impl GenotypesAndPhenotypes {
     }
 }
 
-// Impute using adaptive linkage disequillibrium (estimated using correlations within a window) k-nearest neighbour weighted allele frequencies imputation
+// Impute using adaptive linkage disequilibrium (estimated using correlations within a window) k-nearest neighbour weighted allele frequencies imputation
 pub fn impute_aldknni(
     mut genotypes_and_phenotypes: GenotypesAndPhenotypes,
     filter_stats: &FilterStats,
