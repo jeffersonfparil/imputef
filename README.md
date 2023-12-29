@@ -1,10 +1,10 @@
-# imputepolypools
+# imputef
 
 Reduce genotype data sparsity through imputation of genotype classes or allele frequencies of individual polyploids or pools of individuals or populations.
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|
-| <a href="https://github.com/jeffersonfparil/imputepolypools/actions"><img src="https://github.com/jeffersonfparil/imputepolypools/actions/workflows/r.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
+| <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/r.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
 
 ## Manual installation and development tools
 
@@ -13,9 +13,9 @@ Reduce genotype data sparsity through imputation of genotype classes or allele f
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh ./Miniconda3-latest-Linux-x86_64.sh
 # Download the repo
-git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputepolypools.git some_branch
+git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git some_branch
 # Create the development environment
-conda env create -n rustenv --file imputepolypools/tests/rustenv.yml
+conda env create -n rustenv --file imputef/tests/rustenv.yml
 conda activate compare_genomes
 ```
 
@@ -24,16 +24,16 @@ conda activate compare_genomes
 ```R
 usethis::use_git_config(user.name="USERNAME", user.email="EMAIL@EMAIL.COM")
 credentials::set_github_pat() ### Enter access token
-remotes::install_github("jeffersonfparil/imputepolypools")
+remotes::install_github("jeffersonfparil/imputef")
 ```
 
 ## Usage
 
 ```R
-?imputepolypools::mvi
-?imputepolypools::aldknni
-imputepolypools::mvi(fname="tests/test.vcf")
-imputepolypools::aldknni(fname="tests/test.vcf")
+?imputef::mvi
+?imputef::aldknni
+imputef::mvi(fname="tests/test.vcf")
+imputef::aldknni(fname="tests/test.vcf")
 ```
 
 ### Functions
@@ -168,23 +168,23 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ### Autotetraploid (Lucerne) mean absolute error
 
-![mae_barplots](./res/eval/lucerne-Mean_absolute_error.svg)
+![mae_barplots](./res/lucerne-Mean_absolute_error.svg)
 
 ### Pool (Soybean pools) mean absolute error
 
-![mae_barplots](./res/eval/soybean-Mean_absolute_error.svg)
+![mae_barplots](./res/soybean-Mean_absolute_error.svg)
 
 ### Diploid (Zucchini) mean absolute error
 
-![mae_barplots](./res/eval/zucchini-Mean_absolute_error.svg)
+![mae_barplots](./res/zucchini-Mean_absolute_error.svg)
 
 ### Diploid (Apple) mean absolute error
 
-![mae_barplots](./res/eval/apple-Mean_absolute_error.svg)
+![mae_barplots](./res/apple-Mean_absolute_error.svg)
 
 ### Diploid (Grape) mean absolute error
 
-![mae_barplots](./res/eval/grape-Mean_absolute_error.svg)
+![mae_barplots](./res/grape-Mean_absolute_error.svg)
 
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
@@ -192,23 +192,23 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ### Autotetraploid (Lucerne) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/eval/lucerne-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/lucerne-Concordance.svg)
 
 ### Pool (Soybean pools) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/eval/soybean-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/soybean-Concordance.svg)
 
 ### Diploid (Zucchini) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/eval/zucchini-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/zucchini-Concordance.svg)
 
 ### Diploid (Apple) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/eval/apple-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/apple-Concordance.svg)
 
 ### Diploid (Grape) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/eval/grape-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/grape-Concordance.svg)
 
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
@@ -216,23 +216,23 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ### Autotetraploid (Lucerne) coefficient of determination
 
-![r2_barplots](./res/eval/lucerne-Coefficient_of_determination.svg)
+![r2_barplots](./res/lucerne-Coefficient_of_determination.svg)
 
 ### Pool (Soybean pools) coefficient of determination
 
-![r2_barplots](./res/eval/soybean-Coefficient_of_determination.svg)
+![r2_barplots](./res/soybean-Coefficient_of_determination.svg)
 
 ### Diploid (Zucchini) coefficient of determination
 
-![r2_barplots](./res/eval/zucchini-Coefficient_of_determination.svg)
+![r2_barplots](./res/zucchini-Coefficient_of_determination.svg)
 
 ### Diploid (Apple) coefficient of determination
 
-![r2_barplots](./res/eval/apple-Coefficient_of_determination.svg)
+![r2_barplots](./res/apple-Coefficient_of_determination.svg)
 
 ### Diploid (Grape) coefficient of determination
 
-![r2_barplots](./res/eval/grape-Coefficient_of_determination.svg)
+![r2_barplots](./res/grape-Coefficient_of_determination.svg)
 
 
 
