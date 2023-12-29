@@ -68,11 +68,11 @@ time Rscript \
     zucchini.vcf
 mv LinkImpute.data.grape.num.raw.txt.vcf grape.vcf
 ### (5) diploid grape single chromosome
-head -n1 grape.vcf > grape_S2.vcf
-grep "^##S2" grape.vcf >> grape_S2.vcf
-grep "^##Extracted" grape.vcf >> grape_S2.vcf
-grep "^#CHROM" grape.vcf >> grape_S2.vcf
-grep "^S2" grape.vcf >> grape_S2.vcf
+head -n1 grape.vcf > grapeS2.vcf
+grep "^##S2" grape.vcf >> grapeS2.vcf
+grep "^##Extracted" grape.vcf >> grapeS2.vcf
+grep "^#CHROM" grape.vcf >> grapeS2.vcf
+grep "^S2" grape.vcf >> grapeS2.vcf
 ```
 
 *ssv2vcf.R* - convert space-delimited genotype data from LinkImpute paper

@@ -16,8 +16,8 @@ cd $DIR
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 echo ${SLURM_ARRAY_TASK_ID}
 DIR_DATA='/group/pasture/Jeff/imputef/misc'
-echo "2,${DIR_DATA}/grape_S2.vcf" > ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp   ###   0.1 Mb
-echo "2,${DIR_DATA}/grape.vcf" > ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp      ###   2.9 Mb
+echo "2,${DIR_DATA}/grapeS2.vcf" > ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp   ###   0.1 Mb
+echo "2,${DIR_DATA}/grape.vcf" >> ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp      ###   2.9 Mb
 echo "2,${DIR_DATA}/apple.vcf" >> ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp     ###  24.0 Mb
 echo "84,${DIR_DATA}/soybean.vcf" >> ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp  ###  36.0 Mb
 echo "2,${DIR_DATA}/zucchini.vcf" >> ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp  ### 135.0 Mb

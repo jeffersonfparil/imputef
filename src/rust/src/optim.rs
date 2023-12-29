@@ -258,7 +258,11 @@ pub fn optimise_params_and_estimate_accuracy(
             (vec_min_corr, vec_max_dist)
         } else {
             println!("Optimising for the optimum number of loci to include in genetic distance estimation and number of nearest neighbours to include in weighted mean allele frequency calculation.");
-            let n: usize = genotypes_and_phenotypes.coverages.nrows();
+            let n: usize = if genotypes_and_phenotypes.coverages.nrows() < genotypes_and_phenotypes.coverages.ncols() {
+                genotypes_and_phenotypes.coverages.nrows()
+            } else {
+                genotypes_and_phenotypes.coverages.ncols()
+            };
             let step_size_l = if (n - 1) < *optimise_n_steps_corr {
                 1
             } else {
