@@ -172,7 +172,8 @@ impl GenotypesAndPhenotypes {
         min_loci_per_window: &u64,
         min_loci_corr: &f64,
         max_pool_dist: &f64,
-        show_mvi_revert_stats: bool
+        show_mvi_revert_stats: bool,
+        do_linkimpute_weighted_mode: bool
     ) -> io::Result<&mut Self> {
         self.check().unwrap();
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
@@ -291,21 +292,52 @@ impl GenotypesAndPhenotypes {
                                                 .unwrap();
                                         *n_mvi = *n_mvi + 1.0;
                                     } else {
-                                        let weights = 1.00 - &dist_k_neighbours;
-                                        let weights_sum = weights.iter().fold(0.0, |sum, x| sum + x);
-                                        let weights = if weights_sum==0.0 {
-                                            weights
+                                        if do_linkimpute_weighted_mode {
+                                            // Perform weighted modal imputation as in linkimpute for biallelic diploids - the only 2 differences are that we are performing this per chromosome and the distance metric is MAE rather than Manhattan distance
+                                            let vec_geno = vec![0.0, 0.5, 1.0];
+                                            let mut vec_score = vec![0.0; 3];
+                                            for idx_a in 0..vec_geno.len() {
+                                                let a = vec_geno[idx_a];
+                                                for idx_i in 0..freqs_k_neighbours.len() {
+                                                    let f = 1.00 / (&dist_k_neighbours[idx_i] + f64::EPSILON);
+                                                    let ig = if freqs_k_neighbours[idx_i] == a {
+                                                        1.0
+                                                    } else {
+                                                        0.0
+                                                    };
+                                                    vec_score[idx_a] += f * ig;
+                                                }
+                                            }
+                                            // println!("vec_score={:?}", vec_score);
+                                            let mut weighted_mode = vec_geno[0];
+                                            let mut score = vec_score[0];
+                                            for idx_a in 1..vec_geno.len() {
+                                                (weighted_mode, score) = if vec_score[idx_a] > score {
+                                                    (vec_geno[idx_a], vec_score[idx_a])
+                                                } else {
+                                                    (weighted_mode, score)
+                                                };
+                                            }
+                                            // println!("weighted_mode={:?}", weighted_mode);
+                                            window_freqs[(i, j)] = weighted_mode;
                                         } else {
-                                            weights / weights_sum
-                                        };
-                                        window_freqs[(i, j)] = (&freqs_k_neighbours * &weights).sum();
+                                            // Perform weighted mean allele frequencies
+                                            let weights = 1.00 - &dist_k_neighbours;
+                                            let weights_sum = weights.iter().fold(0.0, |sum, x| sum + x);
+                                            let weights = if weights_sum==0.0 {
+                                                weights
+                                            } else {
+                                                weights / weights_sum
+                                            };
+                                            window_freqs[(i, j)] = (&freqs_k_neighbours * &weights).sum();
+                                            if window_freqs[(i, j)].is_nan() {
+                                                println!("corr.column(j).select(Axis(0), &idx_linked_alleles)={:?}", corr.column(j).select(Axis(0), &idx_linked_alleles));
+                                                println!("dist_k_neighbours={:?}", dist_k_neighbours);
+                                                println!("weights={:?}", weights);
+                                                println!("freqs_k_neighbours={:?}", freqs_k_neighbours);
+                                            }
+                                        }
                                         *n_aldknni = *n_aldknni + 1.0;
-                                        // if window_freqs[(i, j)].is_nan() {
-                                        //     println!("corr.column(j).select(Axis(0), &idx_linked_alleles)={:?}", corr.column(j).select(Axis(0), &idx_linked_alleles));
-                                        //     println!("dist_k_neighbours={:?}", dist_k_neighbours);
-                                        //     println!("weights={:?}", weights);
-                                        //     println!("freqs_k_neighbours={:?}", freqs_k_neighbours);
-                                        // }
                                     };
                                 }
                                 // Need to correct for when the imputed allele frequencies do not add up to one!
@@ -427,6 +459,7 @@ pub fn impute_aldknni(
     optimise_n_steps_corr: &usize,
     optimise_n_steps_dist: &usize,
     optimise_n_reps: &usize,
+    do_linkimpute_weighted_mode: bool,
     n_threads: &usize,
     out: &String,
 ) -> io::Result<String> {
@@ -441,6 +474,7 @@ pub fn impute_aldknni(
         window_size_bp,
         window_slide_size_bp,
         min_loci_per_window,
+        do_linkimpute_weighted_mode
     )
     .unwrap();
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -473,7 +507,8 @@ pub fn impute_aldknni(
             min_loci_per_window,
             &min_loci_corr,
             &max_pool_dist,
-            true
+            true,
+            do_linkimpute_weighted_mode
         )
         .unwrap();
     let end = std::time::SystemTime::now();
@@ -575,7 +610,8 @@ mod tests {
                 &min_loci_per_window,
                 &min_loci_corr,
                 &max_pool_dist,
-                true
+                true,
+                false
             )
             .unwrap();
         println!(

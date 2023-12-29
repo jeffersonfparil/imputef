@@ -126,6 +126,7 @@ impl GenotypesAndPhenotypes {
         loci_idx: &Vec<usize>,
         vec_masked_loci_idx: &Vec<usize>,
         vec_vec_masked_alleles_freqs: &Vec<Vec<f64>>,
+        do_linkimpute_weighted_mode: bool
     ) -> io::Result<f64> {
         // println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         // let q = genotype_data_for_optimisation.intercept_and_allele_frequencies.fold_axis(Axis(0), 0, |&sum, &x| if x.is_nan() {sum + 1} else {sum})
@@ -142,7 +143,8 @@ impl GenotypesAndPhenotypes {
             min_loci_per_window,
             min_loci_corr,
             max_pool_dist,
-            false
+            false,
+            do_linkimpute_weighted_mode
         )
         .unwrap();
         // Extract imputed frequencies
@@ -239,6 +241,7 @@ pub fn optimise_params_and_estimate_accuracy(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
+    do_linkimpute_weighted_mode: bool
 ) -> io::Result<(f64, f64, f64)> {
     let (min_loci_corr, max_pool_dist, mae) = if (*min_loci_corr == 0.0) | (*max_pool_dist == 0.0) {
         // If we are optimising for l or corr and k or dist
@@ -344,6 +347,7 @@ pub fn optimise_params_and_estimate_accuracy(
                             &loci_idx,
                             &vec_masked_loci_idx,
                             &vec_vec_masked_alleles_freqs,
+                            do_linkimpute_weighted_mode,
                         )
                         .unwrap();
                     array3_mae[(r, i, j)] = mae;
@@ -441,6 +445,7 @@ pub fn optimise_params_and_estimate_accuracy(
                 &loci_idx,
                 &vec_masked_loci_idx,
                 &vec_vec_masked_alleles_freqs,
+                do_linkimpute_weighted_mode
             )
             .unwrap();
         (*min_loci_corr, *max_pool_dist, mae)

@@ -282,7 +282,28 @@ fn impute(
         genotypes_and_phenotypes.missing_rate().unwrap(),
         duration.as_secs()
     );
-
+    // Determine if the input data is diploid biallelic then we use LinkImpute's weighted modal imputation
+    let mut do_linkimpute_weighted_mode = true;
+    for x in genotypes_and_phenotypes.intercept_and_allele_frequencies.iter() {
+        if !(*x).is_nan() {
+            if (*x!=0.0) & (*x!=0.5) & (*x!=1.0) {
+                do_linkimpute_weighted_mode = false;
+                break;
+            } else {
+                continue
+            }
+        } else {
+            continue;
+        }
+    }
+    if do_linkimpute_weighted_mode {
+        println!("The input genotype data is biallelic diploid and will be using weighted modal imputation.");
+    } else {
+        println!("The input genotype data is not biallelic diploid and will be using weighted mean imputation.");
+    }
+    // println!("genotypes_and_phenotypes.intercept_and_allele_frequencies={:?}", genotypes_and_phenotypes.intercept_and_allele_frequencies);
+    // println!("do_linkimpute_weighted_mode={:?}", do_linkimpute_weighted_mode);
+    // Prepare output file name
     let fname_out = if fname_out_prefix == *"" {
         fname.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
     } else {
@@ -319,6 +340,7 @@ fn impute(
             &(optimise_n_steps_corr as usize),
             &(optimise_n_steps_dist as usize),
             &(optimise_n_reps as usize),
+            do_linkimpute_weighted_mode,
             &(n_threads as usize),
             &fname_out,
         )

@@ -244,7 +244,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ### Diploid (Grape; S2 chromosome only) coefficient of determination
 
-![r2_barplots](./res/S2grape-Coefficient_of_determination.svg)
+![r2_barplots](./res/grapeS2-Coefficient_of_determination.svg)
 
 
 
