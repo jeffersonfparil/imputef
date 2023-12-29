@@ -1,0 +1,16 @@
+/src/rust/target/
+/src/rust/tests/test-*
+/tests/test.vcf-*
+/tests/perf.slurm
+/tests/slurm-*
+/tests/apple.vcf
+/tests/soybean.vcf
+/misc/
+/res/eval/*.csv
+/res/eval/*.rds
+/res/eval/*.sync
+/res/eval/*.out
+/res/eval/*.tmp
+/res/eval/*.vcf
+/res/eval/*BK*
+/.vscode/
