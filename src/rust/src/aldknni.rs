@@ -145,11 +145,14 @@ fn correct_allele_frequencies_per_locus<'w>(
             let j_ini = loci_start_indexes_within_the_current_window[j_ - 1] - idx_ini;
             let freqs_sum = window_freqs
                 .slice(s![i, j_ini..(j + 1)])
-                .fold(0.0, |sum, &x| if !x.is_nan() { sum + x } else { sum })
-                + f64::EPSILON;
+                .fold(0.0, |sum, &x| if !x.is_nan() { sum + x } else { sum });
             if freqs_sum != 1.0 {
                 for j_ in j_ini..(j + 1) {
-                    window_freqs[(i, j_)] /= freqs_sum;
+                    window_freqs[(i, j_)] = if freqs_sum == 0.0 {
+                        window_freqs[(i, j_)]
+                    } else {
+                        window_freqs[(i, j_)] / freqs_sum
+                    };
                 }
             }
             break;
@@ -288,17 +291,21 @@ impl GenotypesAndPhenotypes {
                                                 .unwrap();
                                         *n_mvi = *n_mvi + 1.0;
                                     } else {
-                                        let mut weights = 1.00 - &dist_k_neighbours;
-                                        weights = weights.clone() / (weights.clone().sum() + f64::EPSILON);
+                                        let weights = 1.00 - &dist_k_neighbours;
+                                        let weights_sum = weights.iter().fold(0.0, |sum, x| sum + x);
+                                        let weights = if weights_sum==0.0 {
+                                            weights
+                                        } else {
+                                            weights / weights_sum
+                                        };
                                         window_freqs[(i, j)] = (&freqs_k_neighbours * &weights).sum();
                                         *n_aldknni = *n_aldknni + 1.0;
-                                        if window_freqs[(i, j)].is_nan() {
-                                            println!("corr.column(j).select(Axis(0), &idx_linked_alleles)={:?}", corr.column(j).select(Axis(0), &idx_linked_alleles));
-                                            println!("dist_k_neighbours={:?}", dist_k_neighbours);
-                                            println!("weights={:?}", weights);
-                                            println!("freqs_k_neighbours={:?}", freqs_k_neighbours);
-
-                                        }
+                                        // if window_freqs[(i, j)].is_nan() {
+                                        //     println!("corr.column(j).select(Axis(0), &idx_linked_alleles)={:?}", corr.column(j).select(Axis(0), &idx_linked_alleles));
+                                        //     println!("dist_k_neighbours={:?}", dist_k_neighbours);
+                                        //     println!("weights={:?}", weights);
+                                        //     println!("freqs_k_neighbours={:?}", freqs_k_neighbours);
+                                        // }
                                     };
                                 }
                                 // Need to correct for when the imputed allele frequencies do not add up to one!
