@@ -171,8 +171,7 @@ impl GenotypesAndPhenotypes {
                         continue;
                     } else {
                         sum_abs +=
-                            // (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).abs();
-                            (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).powf(2.0);
+                            (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).abs();
                         a += 1.00;
                     }
                 }
@@ -180,8 +179,7 @@ impl GenotypesAndPhenotypes {
             if a == 0.0 {
                 1.00
             } else {
-                // sum_abs / a
-                (sum_abs / a).sqrt()
+                sum_abs / a
             }
         };
         // println!("mean_absolute_error={:?}", mean_absolute_error);
@@ -219,13 +217,12 @@ impl GenotypesAndPhenotypes {
             for i in 0..m {
                 let w = vec_vec_masked_alleles_freqs[i].len();
                 for j in 0..w {
-                    // sum_abs += (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).abs();
-                    sum_abs += (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).powf(2.0);
+                    sum_abs +=
+                        (vec_vec_masked_alleles_freqs[i][j] - vec_vec_imputed_mask[i][j]).abs();
                     a += 1.00;
                 }
             }
-            // sum_abs / a
-            (sum_abs / a).sqrt()
+            sum_abs / a
         };
         Ok(mean_absolute_error)
     }
