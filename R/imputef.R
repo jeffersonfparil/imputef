@@ -115,7 +115,7 @@ mvi = function(fname,
 #'         optimise_for_thresholds=TRUE,
 #'         optimise_n_steps_corr=10,
 #'         optimise_n_steps_dist=10,
-#'         optimise_n_reps=3,
+#'         optimise_n_reps=1,
 #'         n_threads=2,
 #'         fname_out_prefix="")
 #' @param fname
@@ -151,7 +151,7 @@ mvi = function(fname,
 #' @param optimise_n_steps_dist
 #' number levels for the optimisation of the maximum pool distance or number of nearest neighbours. [Default=10]
 #' @param optimise_n_reps
-#' number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=3]
+#' number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
@@ -207,7 +207,7 @@ aldknni = function(fname,
                     optimise_for_thresholds=TRUE,
                     optimise_n_steps_corr=10,
                     optimise_n_steps_dist=10,
-                    optimise_n_reps=3,
+                    optimise_n_reps=1,
                     n_threads=2,
                     fname_out_prefix="") {
     out = impute(fname=fname,
