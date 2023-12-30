@@ -186,10 +186,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ![mae_barplots](./res/grape-Mean_absolute_error.svg)
 
-### Diploid (Grape; S2 chromosome only) mean absolute error
-
-![mae_barplots](./res/grapeS2-Mean_absolute_error.svg)
-
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
@@ -214,10 +210,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ![concordance_genotype_classes_barplots](./res/grape-Concordance.svg)
 
-### Diploid (Grape; S2 chromosome only) concordance of observed and imputed genotype classes
-
-![concordance_genotype_classes_barplots](./res/grapeS2-Concordance.svg)
-
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
@@ -241,10 +233,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Diploid (Grape) coefficient of determination
 
 ![r2_barplots](./res/grape-Coefficient_of_determination.svg)
-
-### Diploid (Grape; S2 chromosome only) coefficient of determination
-
-![r2_barplots](./res/grapeS2-Coefficient_of_determination.svg)
 
 
 
