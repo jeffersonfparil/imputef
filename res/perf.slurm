@@ -40,4 +40,4 @@ done
 rm ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp
 
 ### Execute:
-# sbatch --array=1-24%12 perf.slurm
+# sbatch --array=1-44 perf.slurm

@@ -181,6 +181,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Diploid (Apple) mean absolute error
 
 ![mae_barplots](./res/apple-Mean_absolute_error.svg)
+![mae_barplots](./res/applechr_2-Mean_absolute_error.svg)
 
 ### Diploid (Grape) mean absolute error
 
@@ -205,6 +206,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Diploid (Apple) concordance of observed and imputed genotype classes
 
 ![concordance_genotype_classes_barplots](./res/apple-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/applechr_2-Concordance.svg)
 
 ### Diploid (Grape) concordance of observed and imputed genotype classes
 
@@ -229,6 +231,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Diploid (Apple) coefficient of determination
 
 ![r2_barplots](./res/apple-Coefficient_of_determination.svg)
+![r2_barplots](./res/applechr_2-Coefficient_of_determination.svg)
 
 ### Diploid (Grape) coefficient of determination
 

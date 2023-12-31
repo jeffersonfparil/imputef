@@ -73,6 +73,12 @@ mv LinkImpute.data.grape.num.raw.txt.vcf grape.vcf
 # grep "^##Extracted" grape.vcf >> grapeS2.vcf
 # grep "^#CHROM" grape.vcf >> grapeS2.vcf
 # grep "^S2" grape.vcf >> grapeS2.vcf
+### (6) diploid apple single chromosome
+head -n1 apple.vcf > applechr_2.vcf
+grep "^##chr_2" apple.vcf >> applechr_2.vcf
+grep "^##Extracted" apple.vcf >> applechr_2.vcf
+grep "^#CHROM" apple.vcf >> applechr_2.vcf
+grep "^chr_2" apple.vcf >> applechr_2.vcf
 ```
 
 *ssv2vcf.R* - convert space-delimited genotype data from LinkImpute paper
