@@ -228,11 +228,75 @@ print(paste0("Output: ", out_fname))
 ```
 
 
+## Assess the genetic relationships between samples per dataset
+
+```R
+dir_data = "/group/pasture/Jeff/imputef/misc"
+vec_fnames = c("grape.vcf", "lucerne.vcf", "soybean.vcf", "apple.vcf", "zucchini.vcf")
+setwd(dir_data)
+### Allele frequency extraction
+fn_extract_allele_frequencies = function(vcf) {
+    vec_loci_names = paste(vcfR::getCHROM(vcf), vcfR::getPOS(vcf), vcfR::getREF(vcf), sep="_")
+    vec_pool_names = colnames(vcf@gt)[-1]
+    mat_allele_counts = vcfR::extract.gt(vcf, element="AD")
+    ### Extract biallelic diploid allele frequencies if the AD field is missing
+    if (sum(is.na(mat_allele_counts)) == prod(dim(mat_allele_counts))) {
+        GT = vcfR::extract.gt(vcf, element="GT")
+        mat_genotypes = matrix(NA, nrow=nrow(mat_allele_counts), ncol=ncol(mat_allele_counts))
+        mat_genotypes[(GT == "0/0") | (GT == "0|0")] = 1.0
+        mat_genotypes[(GT == "1/1") | (GT == "1|1")] = 0.0
+        mat_genotypes[(GT == "0/1") | (GT == "0|1") | (GT == "1|0")] = 0.5        
+    } else {
+        mat_ref_counts = vcfR::masplit(mat_allele_counts, delim=',', record=1, sort=0)
+        mat_alt_counts = vcfR::masplit(mat_allele_counts, delim=',', record=2, sort=0)
+        ### Set missing allele counts to 0, if the other allele is non-missing and non-zero
+        idx_for_ref = which(!is.na(mat_alt_counts) & (mat_alt_counts != 0) & is.na(mat_ref_counts))
+        idx_for_alt = which(!is.na(mat_ref_counts) & (mat_ref_counts != 0) & is.na(mat_alt_counts))
+        mat_ref_counts[idx_for_ref] = 0
+        mat_alt_counts[idx_for_alt] = 0
+        ### Calculate reference allele frequencies
+        mat_genotypes = mat_ref_counts / (mat_ref_counts + mat_alt_counts)
+    }
+    ### Label the loci and pools
+    rownames(mat_genotypes) = vec_loci_names
+    colnames(mat_genotypes) = vec_pool_names
+    ### Output
+    return(mat_genotypes)
+}
+### Assess genotype relationships per dataset
+for (i in 1:length(vec_fnames)) {
+    # i = 1
+    fname = vec_fnames[i]
+    fname_png = gsub(".vcf", ".png", fname)
+    print("=====================================")
+    print(fname)
+    vcf = vcfR::read.vcfR(fname, verbose=FALSE)
+    # print(vcf)
+    mat_geno = fn_extract_allele_frequencies(vcf)
+    # str(mat_geno)
+    C = cor(mat_geno)
+    png(fname_png, width=2000, height=2000)
+    heatmap(C, scale="none", main=gsub(".vcf", "", fname))
+    dev.off()
+}
+```
+
+![estimated relationships between samples](../misc/lucerne.png)
+
+![estimated relationships between samples](../misc/soybean.png)
+
+![estimated relationships between samples](../misc/grape.png)
+
+![estimated relationships between samples](../misc/apple.png)
+
+![estimated relationships between samples](../misc/zucchini.png)
+
+
 ## Prepare LinkImpute for testing against diploid imputation
 
 *prepare_linkimpute.sh*
 
-```shell
+```shells
 #!/bin/bash
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
