@@ -68,6 +68,9 @@ Exclusive to `aldknni`:
 - **optimise_n_steps_corr**: number levels for the optimisation of the minimum loci correlation or number of linked loci. [Default=10]
 - **optimise_n_steps_dist**: number levels for the optimisation of the maximum pool distance or number of nearest neighbours. [Default=10]
 - **optimise_n_reps**: number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
+- **misc_min_l**: minimum number of linked loci to be included in imputation if using minimum loci correlation threshold [Default=0].
+- **misc_min_k**: minimum number of nearest neighbours to be included in imputation if using maximum distance threshold [Default=0].
+
 
 ## Output
 
@@ -174,15 +177,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ![mae_barplots](./res/soybean-Mean_absolute_error.svg)
 
-### Diploid (Zucchini) mean absolute error
-
-![mae_barplots](./res/zucchini-Mean_absolute_error.svg)
-
-### Diploid (Apple) mean absolute error
-
-![mae_barplots](./res/apple-Mean_absolute_error.svg)
-![mae_barplots](./res/applechr_2-Mean_absolute_error.svg)
-
 ### Diploid (Grape) mean absolute error
 
 ![mae_barplots](./res/grape-Mean_absolute_error.svg)
@@ -199,15 +193,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ![concordance_genotype_classes_barplots](./res/soybean-Concordance.svg)
 
-### Diploid (Zucchini) concordance of observed and imputed genotype classes
-
-![concordance_genotype_classes_barplots](./res/zucchini-Concordance.svg)
-
-### Diploid (Apple) concordance of observed and imputed genotype classes
-
-![concordance_genotype_classes_barplots](./res/apple-Concordance.svg)
-![concordance_genotype_classes_barplots](./res/applechr_2-Concordance.svg)
-
 ### Diploid (Grape) concordance of observed and imputed genotype classes
 
 ![concordance_genotype_classes_barplots](./res/grape-Concordance.svg)
@@ -223,15 +208,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Pool (Soybean pools) coefficient of determination
 
 ![r2_barplots](./res/soybean-Coefficient_of_determination.svg)
-
-### Diploid (Zucchini) coefficient of determination
-
-![r2_barplots](./res/zucchini-Coefficient_of_determination.svg)
-
-### Diploid (Apple) coefficient of determination
-
-![r2_barplots](./res/apple-Coefficient_of_determination.svg)
-![r2_barplots](./res/applechr_2-Coefficient_of_determination.svg)
 
 ### Diploid (Grape) coefficient of determination
 
