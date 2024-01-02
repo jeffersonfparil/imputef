@@ -21,6 +21,8 @@ aldknni(fname,
         optimise_n_steps_corr=10,
         optimise_n_steps_dist=10,
         optimise_n_reps=1,
+        misc_min_l=0,
+        misc_min_k=0,
         n_threads=2,
         fname_out_prefix="")
 }
@@ -58,6 +60,10 @@ aldknni(fname,
 \item{optimise_n_steps_dist}{number levels for the optimisation of the maximum pool distance or number of nearest neighbours. \link{Default=10}}
 
 \item{optimise_n_reps}{number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. \link{Default=1}}
+
+\item{misc_min_l}{Minimum number of linked loci to be included in imputation if using minimum loci correlation threshold \link{Default=0}.}
+
+\item{misc_min_k}{Minimum number of nearest neighbours to be included in imputation if using maximum distance threshold \link{Default=0}.}
 
 \item{n_threads}{number of computing threads or processor cores to use in the computations. \link{Default=2}}
 

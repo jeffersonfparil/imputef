@@ -12,49 +12,74 @@ fn calculate_mean_absolute_distances(
     window_freqs: ArrayView2<f64>,
     corr: ArrayView1<f64>,
     min_loci_corr: &f64,
+    misc_min_l: &u64,
 ) -> io::Result<(Array2<f64>, Vec<usize>)> {
     let (n, p) = window_freqs.dim();
     assert!(p == corr.len());
     assert!(*min_loci_corr >= 0.0);
-    // If the correlation between the locus requiring imputation and other loci in the window is less than the minimum loci correlation or number of requested loci,
-    // then we include all the loci to estimate genetic distance.
-    let idx_linked_alleles = if corr
-        .iter()
-        .filter(|&x| !x.is_nan())
-        .collect::<Vec<&f64>>()
-        .len()
-        > *min_loci_corr as usize
-    {
-        // If min_loci_corr > 1.0, then we assume this specifies the number of loci to include and not the minimum correlation
-        let min_loci_corr = if *min_loci_corr > 1.0 {
-            let mut vec_corr = corr
-                .to_owned()
-                .into_iter()
-                .filter(|&x| !x.is_nan())
-                .collect::<Vec<f64>>();
-            // println!("vec_corr={:?}", vec_corr);
-            // println!("min_loci_corr={:?}", min_loci_corr);
-            vec_corr.sort_by(|a, b| b.partial_cmp(a).unwrap());
-            let m = if *min_loci_corr as usize > vec_corr.len() {
-                vec_corr.len()
-            } else {
-                *min_loci_corr as usize
-            };
-            vec_corr[m - 1]
+    // If min_loci_corr > 1.0, then we assume this specifies the number of loci to include and not the minimum correlation
+    let min_loci_corr = if *min_loci_corr > 1.0 {
+        let mut vec_corr = corr
+            .to_owned()
+            .into_iter()
+            .filter(|&x| !x.is_nan())
+            .collect::<Vec<f64>>();
+        // println!("vec_corr={:?}", vec_corr);
+        // println!("min_loci_corr={:?}", min_loci_corr);
+        vec_corr.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        let m = if *min_loci_corr as usize > vec_corr.len() {
+            vec_corr.len()
         } else {
-            *min_loci_corr
+            *min_loci_corr as usize
         };
-        // Identify loci to be used for distance estimation, i.e. with correlations at least min_loci_corr
-        let mut idx_linked_alleles: Vec<usize> = vec![];
+        // If we have no non-missing correlations then we set minimum loci correlation to zero
+        if vec_corr.len() == 0 {
+            0.0
+        } else {
+            vec_corr[m - 1]
+        }
+    } else {
+        *min_loci_corr
+    };
+    // Identify loci to be used for distance estimation, i.e. with correlations at least min_loci_corr
+    let mut idx_linked_alleles: Vec<usize> = vec![];
+    if min_loci_corr == 0.0 {
+        idx_linked_alleles = (0..p).collect()
+    } else {
         for i in 0..p {
             if corr[i] >= min_loci_corr {
                 idx_linked_alleles.push(i);
             }
         }
-        idx_linked_alleles
-    } else {
-        (0..p).collect::<Vec<usize>>()
-    };
+    }
+    // Miscellaneous functionality: adjust the number of k-neighbours if when using thresholds we fail to get the minimum number of loci/neighbours (default=0 for both)
+    if idx_linked_alleles.len() < *misc_min_l as usize {
+        let min_loci_corr = {
+            let mut vec_corr = corr
+                .to_owned()
+                .into_iter()
+                .filter(|&x| !x.is_nan())
+                .collect::<Vec<f64>>();
+            vec_corr.sort_by(|a, b| b.partial_cmp(a).unwrap());
+            let m = if min_loci_corr as usize > vec_corr.len() {
+                vec_corr.len()
+            } else {
+                min_loci_corr as usize
+            };
+            // If we have no non-missing correlations then we set minimum loci correlation to zero
+            if vec_corr.len() == 0 {
+                0.0
+            } else {
+                vec_corr[m - 1]
+            }
+        };
+        idx_linked_alleles = vec![];
+        for i in 0..p {
+            if corr[i] >= min_loci_corr {
+                idx_linked_alleles.push(i);
+            }
+        }
+    }
     // Estimate pairwise distances between pools using mean absolute differences
     let mut dist: Array2<f64> = Array2::from_elem((n, n), 1.0); // Start with equally farthest distances across all pool pairs
     let window_freqs_linked_alleles = window_freqs.select(Axis(1), &idx_linked_alleles);
@@ -81,14 +106,15 @@ fn find_k_nearest_neighbours(
     window_freqs_col: ArrayView1<f64>,
     dist: ArrayView1<f64>,
     max_pool_dist: &f64,
+    misc_min_k: &u64,
 ) -> io::Result<(Array1<f64>, Array1<f64>)> {
     let n = window_freqs_col.len();
     assert!(n == dist.len());
     // if max_pool_dist > 1.0, then we assume this specifies the number of pools to include and not the minimum distance
     let max_pool_dist = if *max_pool_dist > 1.0 {
         // The distance matrix do not have missing values, if the distance cannot be calculated then the default distance is set to the maximum which is 1.00.
-        // let mut vec_dist = dist.to_owned().into_iter().filter(|&x| !x.is_nan()).collect::<Vec<f64>>();
-        let mut vec_dist = dist.to_vec();
+        let mut vec_dist = dist.to_owned().into_iter().filter(|&x| !x.is_nan()).collect::<Vec<f64>>();
+        // let mut vec_dist = dist.to_vec();
         // println!("dist={:?}", dist);
         // println!("0.0/0.0={:?}", 0.0/0.0);
         vec_dist.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -97,16 +123,17 @@ fn find_k_nearest_neighbours(
         } else {
             *max_pool_dist as usize
         };
-        // println!("dist={:?}", dist);
-        // println!("vec_dist={:?}", vec_dist);
-        // println!("m={:?}", m);
-        // println!("vec_dist[m - 1]={:?}", vec_dist[m - 1]);
-        vec_dist[m - 1]
+        // If we have no non-missing distance, then we set minimum loci correlation to zero
+        if vec_dist.len() == 0 {
+            0.0
+        } else {
+            vec_dist[m - 1]
+        }
     } else {
         *max_pool_dist
     };
     // println!("max_pool_dist={:?}", max_pool_dist);
-    // Identiy the k-nearest neighbours, i.e. with distance at most max_pool_dist
+    // Identify the k-nearest neighbours, i.e. with distance at most max_pool_dist
     let mut freqs_k_neighbours: Vec<f64> = vec![];
     let mut dist_k_neighbours: Vec<f64> = vec![];
     for i in 0..n {
@@ -114,6 +141,29 @@ fn find_k_nearest_neighbours(
             if !window_freqs_col[i].is_nan() {
                 freqs_k_neighbours.push(window_freqs_col[i]);
                 dist_k_neighbours.push(dist[i]);
+            }
+        }
+    }
+    // Miscellaneous functionality: adjust the number of k-neighbours if when using thresholds we fail to get the minimum number of loci/neighbours (default=0 for both)
+    if freqs_k_neighbours.len() < *misc_min_k as usize {
+        let max_pool_dist = {
+            let mut vec_dist = dist.to_vec();
+            vec_dist.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let m = if max_pool_dist as usize > vec_dist.len() {
+                vec_dist.len()
+            } else {
+                max_pool_dist as usize
+            };
+            vec_dist[m - 1]
+        };
+        freqs_k_neighbours = vec![];
+        dist_k_neighbours = vec![];
+        for i in 0..n {
+            if dist[i] <= max_pool_dist {
+                if !window_freqs_col[i].is_nan() {
+                    freqs_k_neighbours.push(window_freqs_col[i]);
+                    dist_k_neighbours.push(dist[i]);
+                }
             }
         }
     }
@@ -173,7 +223,9 @@ impl GenotypesAndPhenotypes {
         min_loci_corr: &f64,
         max_pool_dist: &f64,
         show_mvi_revert_stats: bool,
-        do_linkimpute_weighted_mode: bool
+        do_linkimpute_weighted_mode: bool,
+        misc_min_l: &u64,
+        misc_min_k: &u64,
     ) -> io::Result<&mut Self> {
         self.check().unwrap();
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
@@ -225,7 +277,7 @@ impl GenotypesAndPhenotypes {
                         .to_owned();
                     // Vector of loci and neighbour parameters
                     *params = vec![];
-                    // Calculate correlations between alleles across all loci within the window (calculate only for the upper tringular and just mirror the results into the lower tringular for efficiency)
+                    // Calculate correlations between alleles across all loci within the window (calculate only for the upper triangular and just mirror the results into the lower tringular for efficiency)
                     let mut corr: Array2<f64> = Array2::from_elem((p, p), f64::NAN);
                     for j0 in 0..p {
                         for j1 in j0..p {
@@ -255,6 +307,7 @@ impl GenotypesAndPhenotypes {
                                 window_freqs.view(),
                                 corr.column(j),
                                 min_loci_corr,
+                                misc_min_l
                             )
                             .unwrap();
                             // Now, let's find the pools needing imputation and impute them using the k-nearest neighbours
@@ -267,6 +320,7 @@ impl GenotypesAndPhenotypes {
                                             window_freqs.column(j),
                                             dist.column(i),
                                             max_pool_dist,
+                                            misc_min_k
                                         )
                                         .unwrap();
                                     // Impute
@@ -460,6 +514,8 @@ pub fn impute_aldknni(
     optimise_n_steps_dist: &usize,
     optimise_n_reps: &usize,
     do_linkimpute_weighted_mode: bool,
+    misc_min_l: &u64,
+    misc_min_k: &u64,
     n_threads: &usize,
     out: &String,
 ) -> io::Result<String> {
@@ -474,7 +530,9 @@ pub fn impute_aldknni(
         window_size_bp,
         window_slide_size_bp,
         min_loci_per_window,
-        do_linkimpute_weighted_mode
+        do_linkimpute_weighted_mode,
+        misc_min_l,
+        misc_min_k,
     )
     .unwrap();
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -508,7 +566,9 @@ pub fn impute_aldknni(
             &min_loci_corr,
             &max_pool_dist,
             true,
-            do_linkimpute_weighted_mode
+            do_linkimpute_weighted_mode,
+            misc_min_l,
+            misc_min_k,
         )
         .unwrap();
     let end = std::time::SystemTime::now();
@@ -603,6 +663,9 @@ mod tests {
         let optimise_n_steps_corr = 10;
         let optimise_n_steps_dist = 10;
         let optimise_n_reps = 3;
+        let do_linkimpute_weighted_mode = false;
+        let misc_min_l = 0;
+        let misc_min_k = 0;
         let _ = frequencies_and_phenotypes
             .adaptive_ld_knn_imputation(
                 &window_size_bp,
@@ -611,7 +674,9 @@ mod tests {
                 &min_loci_corr,
                 &max_pool_dist,
                 true,
-                false
+                false,
+                &misc_min_l,
+                &misc_min_k,
             )
             .unwrap();
         println!(
@@ -636,6 +701,9 @@ mod tests {
             &optimise_n_steps_corr,
             &optimise_n_steps_dist,
             &optimise_n_reps,
+            do_linkimpute_weighted_mode,
+            &misc_min_l,
+            &misc_min_k,
             &n_threads,
             &"test-impute_aldknni.csv".to_owned(),
         )

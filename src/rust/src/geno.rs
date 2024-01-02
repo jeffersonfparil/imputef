@@ -233,7 +233,7 @@ impl LoadAll for FileGeno {
         let mut loci_chr: Vec<String> = vec![];
         let mut loci_pos: Vec<u64> = vec![];
         for j in 1..p {
-            let f = &freqs[j-1];
+            let f = &freqs[j - 1];
             chromosome.push(f.chromosome.clone());
             position.push(f.position);
             allele.push(f.alleles_vector[0].clone());
@@ -258,8 +258,8 @@ impl LoadAll for FileGeno {
         // println!("p={}", p);
         for j in 0..l {
             let idx_ini = loci_idx[j];
-            let idx_fin = loci_idx[j+1];
-            let n_alleles = idx_fin-idx_ini;
+            let idx_fin = loci_idx[j + 1];
+            let n_alleles = idx_fin - idx_ini;
             let mut freq_sum_less_than_one = false;
             for i in 0..n {
                 if mat.slice(s![i, idx_ini..idx_fin]).sum() < 1.0 {
@@ -267,7 +267,7 @@ impl LoadAll for FileGeno {
                     break;
                 }
             }
-            if (n_alleles==1) | freq_sum_less_than_one {
+            if (n_alleles == 1) | freq_sum_less_than_one {
                 p += 1;
             }
         }
@@ -282,8 +282,8 @@ impl LoadAll for FileGeno {
         let mut j = 1;
         for j_orig in 0..l {
             let idx_ini = loci_idx[j_orig];
-            let idx_fin = loci_idx[j_orig+1];
-            let n_alleles = idx_fin-idx_ini;
+            let idx_fin = loci_idx[j_orig + 1];
+            let n_alleles = idx_fin - idx_ini;
             // println!("j={}; j_orig={}; idx_ini={}; idx_fin={}; n_alleles={}", j, j_orig, idx_ini, idx_fin, n_alleles);
             for a in idx_ini..idx_fin {
                 chromosome_new.push(chromosome[a].to_owned());
@@ -301,7 +301,7 @@ impl LoadAll for FileGeno {
                     break;
                 }
             }
-            if (n_alleles==1) | freq_sum_less_than_one {
+            if (n_alleles == 1) | freq_sum_less_than_one {
                 chromosome_new.push(chromosome[idx_ini].to_owned());
                 position_new.push(position[idx_ini]);
                 allele_new.push("U".to_owned()); // unknown alternative allele

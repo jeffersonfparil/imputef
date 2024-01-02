@@ -42,6 +42,8 @@ fn impute(
     optimise_n_steps_corr: u64,
     optimise_n_steps_dist: u64,
     optimise_n_reps: u64,
+    misc_min_l: u64,
+    misc_min_k: u64,
     n_threads: u64,
     fname_out_prefix: String,
     // ) -> String {
@@ -284,13 +286,16 @@ fn impute(
     );
     // Determine if the input data is diploid biallelic then we use LinkImpute's weighted modal imputation
     let mut do_linkimpute_weighted_mode = true;
-    for x in genotypes_and_phenotypes.intercept_and_allele_frequencies.iter() {
+    for x in genotypes_and_phenotypes
+        .intercept_and_allele_frequencies
+        .iter()
+    {
         if !(*x).is_nan() {
-            if (*x!=0.0) & (*x!=0.5) & (*x!=1.0) {
+            if (*x != 0.0) & (*x != 0.5) & (*x != 1.0) {
                 do_linkimpute_weighted_mode = false;
                 break;
             } else {
-                continue
+                continue;
             }
         } else {
             continue;
@@ -341,6 +346,8 @@ fn impute(
             &(optimise_n_steps_dist as usize),
             &(optimise_n_reps as usize),
             do_linkimpute_weighted_mode,
+            &misc_min_l,
+            &misc_min_k,
             &(n_threads as usize),
             &fname_out,
         )

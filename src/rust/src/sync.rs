@@ -702,7 +702,7 @@ impl LoadAll for FileSyncPhen {
         // Vector holding all returns from pileup2sync_chunk()
         let thread_ouputs_freq: Arc<Mutex<Vec<LocusFrequencies>>> =
             Arc::new(Mutex::new(Vec::new())); // Mutated within each thread worker
-        // Mutated within each thread worker
+                                              // Mutated within each thread worker
         let thread_ouputs_cnts: Arc<Mutex<Vec<LocusCounts>>> = Arc::new(Mutex::new(Vec::new()));
         for i in 0..n_threads {
             // Clone pileup2sync_chunk parameters

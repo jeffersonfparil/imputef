@@ -126,7 +126,9 @@ impl GenotypesAndPhenotypes {
         loci_idx: &Vec<usize>,
         vec_masked_loci_idx: &Vec<usize>,
         vec_vec_masked_alleles_freqs: &Vec<Vec<f64>>,
-        do_linkimpute_weighted_mode: bool
+        do_linkimpute_weighted_mode: bool,
+        misc_min_l: &u64,
+        misc_min_k: &u64,
     ) -> io::Result<f64> {
         // println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         // let q = genotype_data_for_optimisation.intercept_and_allele_frequencies.fold_axis(Axis(0), 0, |&sum, &x| if x.is_nan() {sum + 1} else {sum})
@@ -144,7 +146,9 @@ impl GenotypesAndPhenotypes {
             min_loci_corr,
             max_pool_dist,
             false,
-            do_linkimpute_weighted_mode
+            do_linkimpute_weighted_mode,
+            misc_min_l,
+            misc_min_k,
         )
         .unwrap();
         // Extract imputed frequencies
@@ -241,27 +245,42 @@ pub fn optimise_params_and_estimate_accuracy(
     window_size_bp: &u64,
     window_slide_size_bp: &u64,
     min_loci_per_window: &u64,
-    do_linkimpute_weighted_mode: bool
+    do_linkimpute_weighted_mode: bool,
+    misc_min_l: &u64,
+    misc_min_k: &u64,
 ) -> io::Result<(f64, f64, f64)> {
     let (min_loci_corr, max_pool_dist, mae) = if (*min_loci_corr == 0.0) | (*max_pool_dist == 0.0) {
         // If we are optimising for l or corr and k or dist
         let (vec_min_corr, vec_max_dist): (Vec<f64>, Vec<f64>) = if *optimise_for_thresholds {
             println!("Optimising for the optimum minimum loci correlation and maximum genetic distance to identify the loci in LD to be used in genetic distance estimation and the nearest neighbours for weighted mean allele frequency calculation.");
             let vec_min_corr: Vec<f64> = if *min_loci_corr == 0.0 {
-                (10..=100).step_by(*optimise_n_steps_corr).map(|x| x as f64 / 100.0).collect()
+                (10..=100)
+                    .step_by(*optimise_n_steps_corr)
+                    .map(|x| x as f64 / 100.0)
+                    .collect()
             } else {
                 vec![*min_loci_corr]
             };
             let vec_max_dist: Vec<f64> = if *max_pool_dist == 0.0 {
-                (10..=100).step_by(*optimise_n_steps_dist).map(|x| x as f64 / 100.0).collect()
+                (10..=100)
+                    .step_by(*optimise_n_steps_dist)
+                    .map(|x| x as f64 / 100.0)
+                    .collect()
             } else {
                 vec![*max_pool_dist]
             };
-            println!("Number of parameter levels to test | min_cor={} | max_dist={} | reps={}", vec_min_corr.len(), vec_max_dist.len(), *optimise_n_reps);
+            println!(
+                "Number of parameter levels to test | min_cor={} | max_dist={} | reps={}",
+                vec_min_corr.len(),
+                vec_max_dist.len(),
+                *optimise_n_reps
+            );
             (vec_min_corr, vec_max_dist)
         } else {
             println!("Optimising for the optimum number of loci to include in genetic distance estimation and number of nearest neighbours to include in weighted mean allele frequency calculation.");
-            let n: usize = if genotypes_and_phenotypes.coverages.nrows() < genotypes_and_phenotypes.coverages.ncols() {
+            let n: usize = if genotypes_and_phenotypes.coverages.nrows()
+                < genotypes_and_phenotypes.coverages.ncols()
+            {
                 genotypes_and_phenotypes.coverages.nrows()
             } else {
                 genotypes_and_phenotypes.coverages.ncols()
@@ -277,22 +296,21 @@ pub fn optimise_params_and_estimate_accuracy(
                 ((n as f64) / *optimise_n_steps_dist as f64).ceil() as usize
             };
             let vec_l: Vec<f64> = if *min_loci_corr == 0.0 {
-                (1..=n)
-                    .step_by(step_size_l)
-                    .map(|x| x as f64)
-                    .collect()
+                (1..=n).step_by(step_size_l).map(|x| x as f64).collect()
             } else {
                 vec![*min_loci_corr]
             };
             let vec_k: Vec<f64> = if *max_pool_dist == 0.0 {
-                (1..=n)
-                    .step_by(step_size_k)
-                    .map(|x| x as f64)
-                    .collect()
+                (1..=n).step_by(step_size_k).map(|x| x as f64).collect()
             } else {
                 vec![*max_pool_dist]
             };
-            println!("Number of parameter levels to test | l-loci={} | k-neighbours={} | reps={}", vec_l.len(), vec_k.len(), *optimise_n_reps);
+            println!(
+                "Number of parameter levels to test | l-loci={} | k-neighbours={} | reps={}",
+                vec_l.len(),
+                vec_k.len(),
+                *optimise_n_reps
+            );
             (vec_l, vec_k)
         };
         // println!("vec_min_corr={:?}", vec_min_corr);
@@ -348,6 +366,8 @@ pub fn optimise_params_and_estimate_accuracy(
                             &vec_masked_loci_idx,
                             &vec_vec_masked_alleles_freqs,
                             do_linkimpute_weighted_mode,
+                            misc_min_l,
+                            misc_min_k,
                         )
                         .unwrap();
                     array3_mae[(r, i, j)] = mae;
@@ -445,7 +465,9 @@ pub fn optimise_params_and_estimate_accuracy(
                 &loci_idx,
                 &vec_masked_loci_idx,
                 &vec_vec_masked_alleles_freqs,
-                do_linkimpute_weighted_mode
+                do_linkimpute_weighted_mode,
+                misc_min_l,
+                misc_min_k,
             )
             .unwrap();
         (*min_loci_corr, *max_pool_dist, mae)
