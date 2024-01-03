@@ -15,7 +15,8 @@ sh ./Miniconda3-latest-Linux-x86_64.sh
 # Download the repo
 git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git some_branch
 # Create the development environment
-conda env create -n rustenv --file imputef/tests/rustenv.yml
+cd imputef/
+conda env create --file res/rustenv.yml
 conda activate compare_genomes
 ```
 
