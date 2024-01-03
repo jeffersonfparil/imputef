@@ -17,7 +17,7 @@ git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.g
 # Create the development environment
 cd imputef/
 conda env create --file res/rustenv.yml
-conda activate compare_genomes
+conda activate rustenv
 ```
 
 ## Installation
