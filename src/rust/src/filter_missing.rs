@@ -243,7 +243,7 @@ mod tests {
             test: "load".to_owned(),
         };
         let file_phen = FilePhen {
-            filename: "./tests/test.csv".to_owned(),
+            filename: "./tests/test_pheno.csv".to_owned(),
             delim: ",".to_owned(),
             names_column_id: 0,
             sizes_column_id: 1,
