@@ -33,7 +33,6 @@ fn_extract_allele_frequencies = function(vcf) {
     return(mat_genotypes)
 }
 ### Identity genotypes and generate a genotype (allele frequency or genotype class) matrix
-### Define the genotype classification function assuming biallelic loci
 ### This uses the ploidy level of the species to define these genotype classes, 
 ### e.g. for diploids we expect 3 genotype classes - AA, AB/BA, and BB, while for tetraploids we expect 5 genotype classes - AAAA, AAAB, AABB, ABBB, and BBBB.
 ### The default behaviour is to define strict boundaries for the extreme genotypes, i.e. we only consider genotypes to be homozygotes if the allele depth is fixed for one allele.
