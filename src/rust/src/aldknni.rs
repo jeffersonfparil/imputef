@@ -67,7 +67,7 @@ fn calculate_mean_absolute_distances(
                 min_loci_corr as usize
             };
             // If we have no non-missing correlations then we set minimum loci correlation to zero
-            if vec_corr.len() == 0 {
+            if m == 0 {
                 0.0
             } else {
                 vec_corr[m - 1]

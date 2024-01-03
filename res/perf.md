@@ -309,6 +309,8 @@ tail slurm-*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript summary_plot.R ${DIR}
+# scancel -u jp3h
+# rm slurm-* soybean-* lucerne-* zucchini-* apple-* grape*-* LINKIMPUTE* ALDKNNI*-maf0.* MVI-maf0.* LUKES_LDKNNI_INPUT-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
 
 ### After all jobs have finished, move the output and plot:
 mkdir output
