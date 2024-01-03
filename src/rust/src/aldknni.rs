@@ -33,7 +33,7 @@ fn calculate_mean_absolute_distances(
             *min_loci_corr as usize
         };
         // If we have no non-missing correlations then we set minimum loci correlation to zero
-        if vec_corr.len() == 0 {
+        if m == 0 {
             0.0
         } else {
             vec_corr[m - 1]
@@ -124,7 +124,7 @@ fn find_k_nearest_neighbours(
             *max_pool_dist as usize
         };
         // If we have no non-missing distance, then we set minimum loci correlation to zero
-        if vec_dist.len() == 0 {
+        if m == 0 {
             0.0
         } else {
             vec_dist[m - 1]
@@ -154,7 +154,12 @@ fn find_k_nearest_neighbours(
             } else {
                 max_pool_dist as usize
             };
-            vec_dist[m - 1]
+            // If we have no non-missing distance, then we set minimum loci correlation to zero
+            if m == 0 {
+                0.0
+            } else {
+                vec_dist[m - 1]
+            }
         };
         freqs_k_neighbours = vec![];
         dist_k_neighbours = vec![];
