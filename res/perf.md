@@ -78,16 +78,16 @@ idx_col_without_missing = apply(G, MARGIN=2, FUN=function(x){sum(is.na(x))==0})
 sum(idx_row_without_missing)
 sum(idx_col_without_missing)
 sum(is.na(G)) / prod(dim(G))
-### Fill missing with mean
-ploidy = 2
-pb = txtProgressBar(min=0, max=p, style=3)
-for (j in 1:p) {
-    # j = 1
-    idx_missing = which(is.na(G[, j]))
-    G[idx_missing, j] = round(mean(G[, j], na.rm=TRUE) * ploidy)
-    setTxtProgressBar(pb, j)
-}
-close(pb)
+# ### Fill missing with mean
+# ploidy = 2
+# pb = txtProgressBar(min=0, max=p, style=3)
+# for (j in 1:p) {
+#     # j = 1
+#     idx_missing = which(is.na(G[, j]))
+#     G[idx_missing, j] = round(mean(G[, j], na.rm=TRUE) * ploidy)
+#     setTxtProgressBar(pb, j)
+# }
+# close(pb)
 ### Create meta, fit and gt fields of the vcfR object
 mat_loci_ids = matrix(gsub("^X", "chr_", unlist(strsplit(unlist(strsplit(vec_loci_names, "[.]")), "_"))), ncol=3, byrow=TRUE)
 ### Randomly choose the alternative alleles as the genotype data (*.raw file) do not have that information.

@@ -234,6 +234,8 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     time_ini = Sys.time()
     fname_out_aldknni = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("ALDKNNI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        misc_min_l=10,
+        misc_min_k=10,
         n_threads=n_threads)
     duration_aldknni = difftime(Sys.time(), time_ini, units="mins")
     ### Adaptive LD-kNN imputation: optimise for thresholds
@@ -360,7 +362,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_thresholds)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_counts)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
-    system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_linkimpute)))
+    # system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_linkimpute)))
     # system(paste0("rm ", fname_lukes_ldknni_input_rds))
     # system(paste0("rm ", fname_out_lukes))
     ### Output
