@@ -193,8 +193,8 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     ### Metrics using allele frequencies
     metrics_allele_frequencies = fn_metrics(y_predicted=vec_imputed, y_expected=list_sim_missing$expected_allele_frequencies)
     ### Metrics using genotype classes
-    vec_expected_classes = fn_classify_allele_frequencies(mat_genotypes=list_sim_missing$expected_allele_frequencies, ploidy=ploidy, strict_boundaries=TRUE)
-    vec_imputed_classes = fn_classify_allele_frequencies(mat_genotypes=vec_imputed, ploidy=ploidy, strict_boundaries=TRUE)
+    vec_expected_classes = fn_classify_allele_frequencies(mat_genotypes=list_sim_missing$expected_allele_frequencies, ploidy=ploidy, strict_boundaries=strict_boundaries)
+    vec_imputed_classes = fn_classify_allele_frequencies(mat_genotypes=vec_imputed, ploidy=ploidy, strict_boundaries=strict_boundaries)
     metrics_genotype_classes = fn_metrics(y_predicted=vec_imputed_classes, y_expected=vec_expected_classes)
     return(list(
         frac_imputed = n_imputed / n_missing,
