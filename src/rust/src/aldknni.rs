@@ -113,7 +113,11 @@ fn find_k_nearest_neighbours(
     // if max_pool_dist > 1.0, then we assume this specifies the number of pools to include and not the minimum distance
     let max_pool_dist = if *max_pool_dist > 1.0 {
         // The distance matrix do not have missing values, if the distance cannot be calculated then the default distance is set to the maximum which is 1.00.
-        let mut vec_dist = dist.to_owned().into_iter().filter(|&x| !x.is_nan()).collect::<Vec<f64>>();
+        let mut vec_dist = dist
+            .to_owned()
+            .into_iter()
+            .filter(|&x| !x.is_nan())
+            .collect::<Vec<f64>>();
         // let mut vec_dist = dist.to_vec();
         // println!("dist={:?}", dist);
         // println!("0.0/0.0={:?}", 0.0/0.0);
@@ -617,7 +621,7 @@ mod tests {
             test: "load".to_owned(),
         };
         let file_phen = FilePhen {
-            filename: "./tests/test.csv".to_owned(),
+            filename: "./tests/test_pheno.csv".to_owned(),
             delim: ",".to_owned(),
             names_column_id: 0,
             sizes_column_id: 1,
