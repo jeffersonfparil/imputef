@@ -205,9 +205,9 @@ print(paste0("Output: ", out_fname))
 ## Assess the genetic relationships between samples per dataset
 
 ```R
-dir_data = "/group/pasture/Jeff/imputef/misc"
-vec_fnames = c("grape.vcf", "lucerne.vcf", "soybean.vcf")
-setwd(dir_data)
+dir = "/group/pasture/Jeff/imputef/res/"
+vec_fnames = paste0("/group/pasture/Jeff/imputef/misc/", c("grape.vcf", "lucerne.vcf", "soybean.vcf"))
+setwd(dir)
 ### Allele frequency extraction
 fn_extract_allele_frequencies = function(vcf) {
     vec_loci_names = paste(vcfR::getCHROM(vcf), vcfR::getPOS(vcf), vcfR::getREF(vcf), sep="_")
@@ -255,11 +255,11 @@ for (i in 1:length(vec_fnames)) {
 }
 ```
 
-![estimated relationships between samples](../misc/lucerne.png)
+![estimated relationships between samples](../res/lucerne.png)
 
-![estimated relationships between samples](../misc/soybean.png)
+![estimated relationships between samples](../res/soybean.png)
 
-![estimated relationships between samples](../misc/grape.png)
+![estimated relationships between samples](../res/grape.png)
 
 
 ## Prepare LinkImpute for testing against diploid imputation
