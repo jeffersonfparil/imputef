@@ -69,8 +69,8 @@ Exclusive to `aldknni`:
 - **optimise_n_steps_corr**: number levels for the optimisation of the minimum loci correlation or number of linked loci. [Default=10]
 - **optimise_n_steps_dist**: number levels for the optimisation of the maximum pool distance or number of nearest neighbours. [Default=10]
 - **optimise_n_reps**: number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
-- **misc_min_l**: minimum number of linked loci to be included in imputation if using minimum loci correlation threshold [Default=0].
-- **misc_min_k**: minimum number of nearest neighbours to be included in imputation if using maximum distance threshold [Default=0].
+- **misc_min_l**: minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=0].
+- **misc_min_k**: minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=0].
 
 
 ## Output
@@ -169,6 +169,9 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 - Mean absolute error: $mae = {{1 \over n} \Sigma_{i=1}^{n}|\hat q - q_{true}|}$.
 - Coefficient of determination: $R^2 = { 1 - {{\Sigma_{}^{}(\hat q - q_{true})^2} \over {\Sigma_{}^{}(\hat q_{true} - \bar q_{true})^2}} }$
 
+------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 
 ### Autotetraploid (Lucerne) mean absolute error
 
@@ -201,19 +204,6 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
-
-### Autotetraploid (Lucerne) coefficient of determination
-
-![r2_barplots](./res/lucerne-Coefficient_of_determination.svg)
-
-### Pool (Soybean pools) coefficient of determination
-
-![r2_barplots](./res/soybean-Coefficient_of_determination.svg)
-
-### Diploid (Grape) coefficient of determination
-
-![r2_barplots](./res/grape-Coefficient_of_determination.svg)
-
 
 
 ## References
