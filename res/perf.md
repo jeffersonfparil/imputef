@@ -241,7 +241,7 @@ fn_extract_allele_frequencies = function(vcf) {
 for (i in 1:length(vec_fnames)) {
     # i = 1
     fname = vec_fnames[i]
-    fname_png = gsub(".vcf", ".png", fname)
+    fname_png = gsub(".vcf", ".png", basename(fname))
     print("=====================================")
     print(fname)
     vcf = vcfR::read.vcfR(fname, verbose=FALSE)
@@ -250,7 +250,7 @@ for (i in 1:length(vec_fnames)) {
     # str(mat_geno)
     C = cor(mat_geno)
     png(fname_png, width=2000, height=2000)
-    heatmap(C, scale="none", main=gsub(".vcf", "", fname))
+    heatmap(C, scale="none", main=gsub(".vcf", "", basename(fname)))
     dev.off()
 }
 ```
