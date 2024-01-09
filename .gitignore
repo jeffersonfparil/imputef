@@ -1,3 +1,4 @@
+/src/rust/Cargo.lock
 /src/rust/target/
 /src/rust/tests/test-*
 /tests/test.vcf-*
