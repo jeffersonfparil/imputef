@@ -16,9 +16,9 @@ impl GenotypesAndPhenotypes {
         Vec<f64>,
         Vec<Vec<f64>>,
     )> {
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         let (n, l) = self.coverages.dim();
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().unwrap();
+        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         // Limit max_sparsity to 90%
         let max_sparsity = if *max_sparsity > 0.9 {
             0.9
@@ -71,7 +71,7 @@ impl GenotypesAndPhenotypes {
         // println!("vec_masked_loci_idx.len()={:?}", vec_masked_loci_idx.len());
         // println!("vec_masked_coverages.len()={:?}", vec_masked_coverages.len());
         // println!("vec_vec_masked_alleles_freqs.len()={:?}", vec_vec_masked_alleles_freqs.len());
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         Ok((
             self,
             max_sparsity,
@@ -150,11 +150,11 @@ impl GenotypesAndPhenotypes {
             misc_min_l,
             misc_min_k,
         )
-        .unwrap();
+        .expect("Error calling adaptive_ld_knn_imputation() within estimate_expected_mae_in_aldknni() method for GenotypesAndPhenotypes struct.");
         // Extract imputed frequencies
         let vec_vec_imputed_mask = self
             .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx)
-            .unwrap();
+            .expect("Error calling extract_imputed_mask() within estimate_expected_mae_in_aldknni() method for GenotypesAndPhenotypes struct.");
         let m = vec_vec_masked_alleles_freqs.len(); // total number of loci
         let mean_absolute_error = if m == 0 {
             // If no loci were simulated to be missing
@@ -203,15 +203,15 @@ impl GenotypesAndPhenotypes {
             vec_vec_masked_alleles_freqs,
         ) = genotype_data_for_optimisation
             .simulate_missing(&0.1)
-            .unwrap();
+            .expect("Error calling simulate_missing() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
         assert_eq!(
             max_sparsity, 0.1,
             "Ooops! Missing unexpected simulated sparsity!"
         );
-        let _ = genotype_data_for_optimisation.mean_imputation().unwrap();
+        let _ = genotype_data_for_optimisation.mean_imputation().expect("Error calling mean_imputation() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
         let vec_vec_imputed_mask = genotype_data_for_optimisation
             .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx)
-            .unwrap();
+            .expect("Error calling extract_imputed_mask() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
         // Compare imputed and expected frequencies
         let m = vec_vec_masked_alleles_freqs.len(); // total number of loci
         let mean_absolute_error = if m == 0 {
@@ -347,7 +347,7 @@ pub fn optimise_params_and_estimate_accuracy(
                 vec_vec_masked_alleles_freqs,
             ) = genotype_data_for_optimisation
                 .simulate_missing(&0.1)
-                .unwrap();
+                .expect("Error calling simulate_missing() method within optimise_params_and_estimate_accuracy().");
             assert_eq!(
                 max_sparsity, 0.1,
                 "Ooops! Missing unexpected simulated sparsity!"
@@ -369,7 +369,7 @@ pub fn optimise_params_and_estimate_accuracy(
                             misc_min_l,
                             misc_min_k,
                         )
-                        .unwrap();
+                        .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
                     array3_mae[(r, i, j)] = mae;
                     if *optimise_n_reps > 1 {
                         println!("{}\t{}\t{}\t{}", r, vec_min_corr[i], vec_max_dist[j], mae);
@@ -450,7 +450,7 @@ pub fn optimise_params_and_estimate_accuracy(
             vec_vec_masked_alleles_freqs,
         ) = genotype_data_for_expected_mae
             .simulate_missing(&0.1)
-            .unwrap();
+            .expect("Error calling simulate_missing() method when we are not optimising for counts or thresholds within optimise_params_and_estimate_accuracy().");
         assert_eq!(
             max_sparsity, 0.1,
             "Ooops! Missing unexpected simulated sparsity!"
@@ -469,7 +469,7 @@ pub fn optimise_params_and_estimate_accuracy(
                 misc_min_l,
                 misc_min_k,
             )
-            .unwrap();
+            .expect("Error calling estimate_expected_mae_in_aldknni() method when we are not optimising for counts or thresholds within optimise_params_and_estimate_accuracy().");
         (*min_loci_corr, *max_pool_dist, mae)
     };
     Ok((min_loci_corr, max_pool_dist, mae))

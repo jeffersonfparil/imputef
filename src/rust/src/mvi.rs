@@ -7,10 +7,10 @@ use crate::structs_and_traits::*;
 
 impl GenotypesAndPhenotypes {
     pub fn mean_imputation(&mut self) -> io::Result<&mut Self> {
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within mean_imputation() method for GenotypesAndPhenotypes struct.");
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
         let (n, p) = self.intercept_and_allele_frequencies.dim();
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().unwrap();
+        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within mean_imputation() method for GenotypesAndPhenotypes struct.");
         let l = loci_idx.len() - 1; // less the final position, this is equivalent to the the number of columns of self.coverages
         for j in 0..l {
             // Use the indexes of each locus
@@ -20,7 +20,7 @@ impl GenotypesAndPhenotypes {
                 .intercept_and_allele_frequencies
                 .slice(s![.., idx_ini..idx_fin])
                 .to_owned();
-            let mean_freqs = mean_axis_ignore_nan(&freqs, 0).unwrap();
+            let mean_freqs = mean_axis_ignore_nan(&freqs, 0).expect("Error calculating axis-wise mean ignoring NANs within mean_imputation() method for GenotypesAndPhenotypes struct.");
             let sum_freqs = mean_freqs.sum();
             // We need to correct for imputations resulting in a sum of allele frequencies greater or less than 1
             let mean_freqs = if sum_freqs != 1.0 {
@@ -72,88 +72,10 @@ pub fn impute_mean(
     n_threads: &usize,
     out: &String,
 ) -> io::Result<String> {
-    // println!("###################################################################################################");
-    // println!("mvi: mean value imputation");
-    // println!("###################################################################################################");
-    // println!(
-    //     "file_sync_phen.filename_sync: {:?}",
-    //     file_sync_phen.filename_sync
-    // );
-    // // println!("filter_stats: {:?}", filter_stats);
-    // println!(
-    //     "min_depth_below_which_are_missing: {:?}",
-    //     min_depth_below_which_are_missing
-    // );
-    // println!(
-    //     "max_depth_above_which_are_missing: {:?}",
-    //     max_depth_above_which_are_missing
-    // );
-    // println!("frac_top_missing_pools: {:?}", frac_top_missing_pools);
-    // println!("frac_top_missing_loci: {:?}", frac_top_missing_loci);
-    // println!("n_threads: {:?}", n_threads);
-    // println!("out: {:?}", out);
-    // println!("###################################################################################################");
-    // // All non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
-    // let keep_p_minus_1 = false;
-    // let start = std::time::SystemTime::now();
-    // let mut genotypes_and_phenotypes = file_sync_phen
-    //     .into_genotypes_and_phenotypes(filter_stats, keep_p_minus_1, n_threads)
-    //     .unwrap();
-    // let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).unwrap();
-    // println!(
-    //     "Parsed the sync file into allele frequncies: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     genotypes_and_phenotypes.coverages.nrows(),
-    //     genotypes_and_phenotypes.coverages.ncols(),
-    //     genotypes_and_phenotypes.missing_rate().unwrap(),
-    //     duration.as_secs()
-    // );
-    // let start = std::time::SystemTime::now();
-    // genotypes_and_phenotypes
-    //     .set_missing_by_depth(
-    //         min_depth_below_which_are_missing,
-    //         max_depth_above_which_are_missing,
-    //     )
-    //     .unwrap();
-    // let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).unwrap();
-    // println!(
-    //     "Set loci beyond the minimum and maximum depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     genotypes_and_phenotypes.coverages.nrows(),
-    //     genotypes_and_phenotypes.coverages.ncols(),
-    //     genotypes_and_phenotypes.missing_rate().unwrap(),
-    //     duration.as_secs()
-    // );
-    // let start = std::time::SystemTime::now();
-    // genotypes_and_phenotypes
-    //     .filter_out_top_missing_pools(frac_top_missing_pools)
-    //     .unwrap();
-    // let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).unwrap();
-    // println!(
-    //     "Filtered out sparsest pools: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     genotypes_and_phenotypes.coverages.nrows(),
-    //     genotypes_and_phenotypes.coverages.ncols(),
-    //     genotypes_and_phenotypes.missing_rate().unwrap(),
-    //     duration.as_secs()
-    // );
-    // let start = std::time::SystemTime::now();
-    // genotypes_and_phenotypes
-    //     .filter_out_top_missing_loci(frac_top_missing_loci)
-    //     .unwrap();
-    // let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).unwrap();
-    // println!(
-    //     "Filtered out sparsest loci: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     genotypes_and_phenotypes.coverages.nrows(),
-    //     genotypes_and_phenotypes.coverages.ncols(),
-    //     genotypes_and_phenotypes.missing_rate().unwrap(),
-    //     duration.as_secs()
-    // );
     // Estimate predicted imputation accuracy
     let mae = genotypes_and_phenotypes
         .estimate_expected_mae_in_mvi()
-        .unwrap();
+        .expect("Error calling estimate_expected_mae_in_mvi() method within impute_mean().");
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     println!(
         "Expected imputation accuracy in terms of mean absolute error: {}",
@@ -161,14 +83,14 @@ pub fn impute_mean(
     );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes.mean_imputation().unwrap();
+    genotypes_and_phenotypes.mean_imputation().expect("Error calling mean_imputation() method within impute_mean().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of mean value imputation within impute_mean()");
     println!(
         "Mean value imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity after mean value imputation within impute_mean()."),
         duration.as_secs()
     );
 
@@ -178,20 +100,20 @@ pub fn impute_mean(
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
         .filter_out_top_missing_loci(&1.00)
-        .unwrap();
+        .expect("Error calling filter_out_top_missing_loci() method within impute_mean().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of filter_out_top_missing_loci() within impute_mean()");
     println!(
         "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity after filter_out_top_missing_loci(0) within impute_mean()."),
         duration.as_secs()
     );
     // Output
     let out = genotypes_and_phenotypes
         .write_csv(filter_stats, false, out, n_threads)
-        .unwrap();
+        .expect("Error writing the output of mean value imputation within impute_mean().");
 
     Ok(out)
 }

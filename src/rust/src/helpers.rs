@@ -16,12 +16,12 @@ use std::io::{Error, ErrorKind};
 fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
     let mut out = pos;
     if out > 0 {
-        let mut file = File::open(fname).unwrap();
+        let mut file = File::open(fname).expect("Error opening file.");
         let _ = file.seek(SeekFrom::Start(out));
         let mut reader = BufReader::new(file);
         let mut line = String::new();
-        let _ = reader.read_line(&mut line).unwrap();
-        out = reader.stream_position().unwrap();
+        let _ = reader.read_line(&mut line).expect("Error reading file.");
+        out = reader.stream_position().expect("Error navigating file.");
     }
     out
 }
@@ -34,7 +34,7 @@ pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64
     };
     let _ = file.seek(SeekFrom::End(0));
     let mut reader = BufReader::new(file);
-    let end = reader.stream_position().unwrap();
+    let end = reader.stream_position().expect("Error navigating file.");
     let mut out = (0..end)
         .step_by((end as usize) / n_threads)
         .collect::<Vec<u64>>();
@@ -50,7 +50,7 @@ pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64
 pub fn sensible_round(x: f64, n_digits: usize) -> f64 {
     let factor = ("1e".to_owned() + &n_digits.to_string())
         .parse::<f64>()
-        .unwrap();
+        .expect("Error parsing String into f64.");
     (x * factor).round() / factor
 }
 
@@ -250,7 +250,7 @@ pub fn define_sliding_windows(
         // println!("idx_head={:?}", idx_head);
         // println!("idx_tail={:?}", idx_tail);
         // Did we reach the end of the chromosome or the end of the window according to window size?
-        if (&chr != chr_head.last().unwrap()) | (pos > (pos_head.last().unwrap() + window_size_bp))
+        if (&chr != chr_head.last().expect("Error extracting the last character of chr_head.")) | (pos > (pos_head.last().expect("Error extracting the last character of pos_head.") + window_size_bp))
         {
             // If we found the start of the next window in body of the current (ending) window then,
             //  we use the next window head as the start of the next slide not the end of the window,
@@ -263,7 +263,7 @@ pub fn define_sliding_windows(
             let chr = loci_chr[i].to_owned();
             let pos = loci_pos[i];
             // Do we have the minimum number of required loci in the current window?
-            if cov.last().unwrap() >= min_loci_per_window {
+            if cov.last().expect("Error extracting the last value of cov.") >= min_loci_per_window {
                 // If we have enough loci covered in the current (ending) window:
                 // We also add the details of the start of the next window
                 idx_head.push(i);
@@ -294,7 +294,7 @@ pub fn define_sliding_windows(
             pos_tail[i_] = pos;
             cov[i_] += 1;
             // We also check if we have reached the start of the next window and note the index if we have
-            if !marker_next_window_head & (pos >= (pos_head.last().unwrap() + window_slide_size_bp))
+            if !marker_next_window_head & (pos >= (pos_head.last().expect("Error extracting the last character of pos_head.") + window_slide_size_bp))
             {
                 marker_next_window_head = true;
                 idx_next_head = i;
@@ -310,7 +310,7 @@ pub fn define_sliding_windows(
     let mut out_idx_tail: Vec<usize> = vec![idx_tail[0]];
     for i in 1..n {
         // println!("out_idx_tail={:?}", out_idx_tail);
-        if &idx_tail[i] != out_idx_tail.last().unwrap() {
+        if &idx_tail[i] != out_idx_tail.last().expect("Error extracting the last value of out_idx_tail.") {
             out_idx_head.push(idx_head[i]);
             out_idx_tail.push(idx_tail[i]);
         }
@@ -350,8 +350,8 @@ pub fn pearsons_correlation_pairwise_complete(
     let x = Array1::from_vec(filtered_vectors.0);
     let y = Array1::from_vec(filtered_vectors.1);
     // Make sure we are handling NAN properly
-    let mu_x = mean_array1_ignore_nan(&x.view()).unwrap();
-    let mu_y = mean_array1_ignore_nan(&y.view()).unwrap();
+    let mu_x = mean_array1_ignore_nan(&x.view()).expect("Error calculating the mean of x while ignoring NANs.");
+    let mu_y = mean_array1_ignore_nan(&y.view()).expect("Error calculating the mean of y while ignoring NANs.");
     let x_less_mu_x = x
         .iter()
         .filter(|&x| !x.is_nan())
@@ -379,7 +379,7 @@ pub fn pearsons_correlation_pairwise_complete(
     let sigma_r = sigma_r_denominator.sqrt();
     let t = r / sigma_r;
     let pval = if n > 2 {
-        let d = StudentsT::new(0.0, 1.0, n as f64 - 2.0).unwrap();
+        let d = StudentsT::new(0.0, 1.0, n as f64 - 2.0).expect("Error defining Student's t-distribution.");
         2.00 * (1.00 - d.cdf(t.abs()))
     } else {
         f64::NAN
@@ -387,62 +387,6 @@ pub fn pearsons_correlation_pairwise_complete(
     Ok((sensible_round(r, 7), pval))
 }
 
-// /// Load table from a delimited text file
-// pub fn load_table(
-//     fname: &String,
-//     delimiter: &String,
-//     idx_row_labels: &Vec<usize>,
-//     data_start_col: &usize,
-//     data_end_col: &usize,
-// ) -> io::Result<(Vec<String>, Vec<String>, Vec<Vec<f64>>)> {
-//     let file = File::open(fname).unwrap();
-//     let reader = BufReader::new(file);
-//     let mut lines = reader.lines();
-//     let column_labels = match lines.next() {
-//         Some(x) => x
-//             .unwrap()
-//             .split(delimiter.as_str())
-//             .map(|x| x.to_owned())
-//             .collect::<Vec<String>>(),
-//         None => return Err(Error::new(ErrorKind::Other, "No lines found.")),
-//     };
-//     let data_end_col = if column_labels.len() < *data_end_col {
-//         column_labels.len()
-//     } else {
-//         *data_end_col
-//     };
-//     let column_labels = column_labels[*data_start_col..data_end_col]
-//         .iter()
-//         .map(|x| x.to_owned())
-//         .collect::<Vec<String>>();
-//     let mut row_labels: Vec<String> = vec![];
-//     let mut data: Vec<Vec<f64>> = vec![];
-//     for line in lines {
-//         let mut line = line.unwrap();
-//         if line.ends_with('\n') {
-//             line.pop();
-//             if line.ends_with('\r') {
-//                 line.pop();
-//             }
-//         }
-//         let line = line.split(delimiter.as_str()).collect::<Vec<&str>>();
-//         let mut lab = vec![];
-//         for i in idx_row_labels {
-//             lab.push(line[*i].to_owned())
-//         }
-//         row_labels.push(lab.join("__-__"));
-//         data.push(
-//             line[*data_start_col..data_end_col]
-//                 .iter()
-//                 .map(|x| match x.parse::<f64>() {
-//                     Ok(x) => x,
-//                     Err(_) => f64::NAN,
-//                 })
-//                 .collect::<Vec<f64>>(),
-//         );
-//     }
-//     Ok((row_labels, column_labels, data))
-// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #[cfg(test)]

@@ -51,7 +51,7 @@ impl Parse<LocusFrequencies> for String {
                 })
                 .collect::<Vec<f64>>(),
         )
-        .unwrap();
+        .expect("Error parsing the allele frequency table text file within the lparse() method for parsing String into LocusFrequencies struct.");
         let freq_line = LocusFrequencies {
             chromosome: chromosome,
             position: position,
@@ -77,19 +77,19 @@ impl LoadAll for FileGeno {
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let cnts: Vec<LocusCounts> = Vec::new(); // Empty and will remain empty as each line corresponds to just an allele of a locus
                                                  // Input file chunk
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error opening the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).unwrap();
+        reader.seek(SeekFrom::Start(*start)).expect("Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically moves the cursor position to the next line
-            let _ = reader.read_line(&mut line).unwrap();
+            let _ = reader.read_line(&mut line).expect("Error reading the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
             // Find the new cursor position
-            i = reader.stream_position().unwrap();
+            i = reader.stream_position().expect("Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -127,7 +127,7 @@ impl LoadAll for FileGeno {
     ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
         let fname = self.filename.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).unwrap();
+        let chunks = find_file_splits(&fname, n_threads).expect("Error splitting the allele frequency table file format given the number of threads suppplied within load() method for FileGeno struct.");
         let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
@@ -149,9 +149,9 @@ impl LoadAll for FileGeno {
             let thread = std::thread::spawn(move || {
                 let (mut freq, mut cnts) = self_clone
                     .per_chunk_load(&start, &end, &filter_stats, keep_p_minus_1)
-                    .unwrap();
-                thread_ouputs_freq_clone.lock().unwrap().append(&mut freq);
-                thread_ouputs_cnts_clone.lock().unwrap().append(&mut cnts);
+                    .expect("Error calling per_chunk_load() within load() method for FileGeno struct.");
+                thread_ouputs_freq_clone.lock().expect("Thread error within load() method for FileGeno struct.").append(&mut freq);
+                thread_ouputs_cnts_clone.lock().expect("Thread error within load() method for FileGeno struct.").append(&mut cnts);
             });
             thread_objects.push(thread);
         }
@@ -162,7 +162,7 @@ impl LoadAll for FileGeno {
         // Extract output filenames from each thread into a vector and sort them
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let cnts: Vec<LocusCounts> = Vec::new(); // Empty and will remain empty as each line corresponds to just an allele of a locus
-        for x in thread_ouputs_freq.lock().unwrap().iter() {
+        for x in thread_ouputs_freq.lock().expect("Error unlocking the threads after multi-threaded execution of per_chunk_load() within load() method for FileGeno struct.").iter() {
             freq.push(x.clone());
         }
         freq.sort_by(|a, b| {
@@ -181,10 +181,10 @@ impl LoadAll for FileGeno {
     ) -> io::Result<GenotypesAndPhenotypes> {
         // No filtering! Just loading the allele frequency data
         // Extract pool names
-        let file: File = File::open(self.filename.clone()).unwrap();
+        let file: File = File::open(self.filename.clone()).expect("Error opening the allele frequency table text file within the into_genotypes_and_phenotypes() method for FileGeno struct.");
         let reader = io::BufReader::new(file);
         let mut header: String = match reader.lines().next() {
-            Some(x) => x.unwrap(),
+            Some(x) => x.expect("Error reading the allele frequency table text file within the into_genotypes_and_phenotypes() method for FileGeno struct."),
             None => return Err(Error::new(ErrorKind::Other, "No header line found.")),
         };
         if header.ends_with('\n') {
@@ -210,7 +210,7 @@ impl LoadAll for FileGeno {
             .map(|&x| x.to_owned())
             .collect();
         // Load allele frequencies
-        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
+        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the into_genotypes_and_phenotypes() method for FileGeno struct.");
         let n = freqs[0].matrix.nrows();
         assert_eq!(
             n,
@@ -251,8 +251,8 @@ impl LoadAll for FileGeno {
         }
         // Add the last allele of the last locus
         loci_idx.push(p);
-        loci_chr.push(chromosome.last().unwrap().to_owned());
-        loci_pos.push(position.last().unwrap().to_owned());
+        loci_chr.push(chromosome.last().expect("Error push chromosome within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
+        loci_pos.push(position.last().expect("Error push position within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
         // Add alternative alleles if the allele frequencies per locus do not add up to 1.00 or if only one allele per locus is present
         // Count how many allele we have to add
         // println!("p={}", p);
@@ -312,32 +312,12 @@ impl LoadAll for FileGeno {
                 j += 1;
             }
         }
-        // println!("chromosome_new.len()={:?}", chromosome_new.len());
-        // println!("position_new.len()={:?}", position_new.len());
-        // println!("allele_new.len()={:?}", allele_new.len());
-        // println!("mat_new.dim()={:?}", mat_new.dim());
-        // let q = out.count_loci();
-        // println!("out={:?}", out);
-        // println!("q={:?}", q);
-        // println!("mat={:?}", mat.slice(s![0..3, 0..4]));
-        // println!("chromosome[0]={:?}", chromosome[0]);
-        // println!("chromosome[1]={:?}", chromosome[1]);
-        // println!("chromosome[2]={:?}", chromosome[2]);
-        // println!("chromosome[3]={:?}", chromosome[3]);
-        // println!("position[0]={:?}", position[0]);
-        // println!("position[1]={:?}", position[1]);
-        // println!("position[2]={:?}", position[2]);
-        // println!("position[3]={:?}", position[3]);
-        // println!("allele[0]={:?}", allele[0]);
-        // println!("allele[1]={:?}", allele[1]);
-        // println!("allele[2]={:?}", allele[2]);
-        // println!("allele[3]={:?}", allele[3]);
         Ok(GenotypesAndPhenotypes {
             chromosome: chromosome_new,
             position: position_new,
             allele: allele_new,
             intercept_and_allele_frequencies: mat_new,
-            phenotypes: Array2::from_shape_vec((n, 1), vec![f64::NAN; n]).unwrap(),
+            phenotypes: Array2::from_shape_vec((n, 1), vec![f64::NAN; n]).expect("Error generating dummy phenotype data within the into_genotypes_and_phenotypes() method for FileGeno struct."),
             pool_names,
             coverages: Array2::from_elem((n, l), 1_000.0),
         })

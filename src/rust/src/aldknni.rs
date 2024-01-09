@@ -26,7 +26,10 @@ fn calculate_mean_absolute_distances(
             .collect::<Vec<f64>>();
         // println!("vec_corr={:?}", vec_corr);
         // println!("min_loci_corr={:?}", min_loci_corr);
-        vec_corr.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        vec_corr.sort_by(|a, b| {
+            b.partial_cmp(a)
+                .expect("In calculate_mean_absolute_distances() the correlations are incomparable.")
+        });
         let m = if *min_loci_corr as usize > vec_corr.len() {
             vec_corr.len()
         } else {
@@ -60,7 +63,11 @@ fn calculate_mean_absolute_distances(
                 .into_iter()
                 .filter(|&x| !x.is_nan())
                 .collect::<Vec<f64>>();
-            vec_corr.sort_by(|a, b| b.partial_cmp(a).unwrap());
+            vec_corr.sort_by(|a, b| {
+                b.partial_cmp(a).expect(
+                    "In calculate_mean_absolute_distances() the correlations are incomparable.",
+                )
+            });
             let m = if min_loci_corr as usize > vec_corr.len() {
                 vec_corr.len()
             } else {
@@ -121,7 +128,10 @@ fn find_k_nearest_neighbours(
         // let mut vec_dist = dist.to_vec();
         // println!("dist={:?}", dist);
         // println!("0.0/0.0={:?}", 0.0/0.0);
-        vec_dist.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        vec_dist.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("In find_k_nearest_neighbours() the distances are incomparable.")
+        });
         let m = if *max_pool_dist as usize > vec_dist.len() {
             vec_dist.len()
         } else {
@@ -152,7 +162,10 @@ fn find_k_nearest_neighbours(
     if freqs_k_neighbours.len() < *misc_min_k as usize {
         let max_pool_dist = {
             let mut vec_dist = dist.to_vec();
-            vec_dist.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            vec_dist.sort_by(|a, b| {
+                a.partial_cmp(b)
+                    .expect("In find_k_nearest_neighbours() the distances are incomparable.")
+            });
             let m = if max_pool_dist as usize > vec_dist.len() {
                 vec_dist.len()
             } else {
@@ -236,7 +249,7 @@ impl GenotypesAndPhenotypes {
         misc_min_l: &u64,
         misc_min_k: &u64,
     ) -> io::Result<&mut Self> {
-        self.check().unwrap();
+        self.check().expect("Error self.check() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         // Define sliding windows
@@ -248,7 +261,7 @@ impl GenotypesAndPhenotypes {
         } else {
             *window_size_bp
         };
-        let (loci_idx, loci_chr, loci_pos) = self.count_loci().unwrap();
+        let (loci_idx, loci_chr, loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
         let mut loci_chr_no_redundant_tail = loci_chr.to_owned();
         loci_chr_no_redundant_tail.pop();
         let mut loci_pos_no_redundant_tail = loci_pos.to_owned();
@@ -260,7 +273,7 @@ impl GenotypesAndPhenotypes {
             window_slide_size_bp,
             min_loci_per_window,
         )
-        .unwrap();
+        .expect("Error calling define_sliding_windows() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
         let w = idx_window_head.len();
         // Parallel processing per window
         let mut vec_windows_freqs: Vec<Array2<f64>> = vec![Array2::from_elem((1, 1), f64::NAN); w];
@@ -318,7 +331,7 @@ impl GenotypesAndPhenotypes {
                                 min_loci_corr,
                                 misc_min_l
                             )
-                            .unwrap();
+                            .expect("Error calling calculate_mean_absolute_distances() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
                             // Now, let's find the pools needing imputation and impute them using the k-nearest neighbours
                             for i in 0..n {
                                 if !window_freqs[(i, j)].is_nan() {
@@ -331,7 +344,7 @@ impl GenotypesAndPhenotypes {
                                             max_pool_dist,
                                             misc_min_k
                                         )
-                                        .unwrap();
+                                        .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
                                     // Impute
                                     // println!("dist={:?}", dist);
                                     // println!("window_freqs.column(j)={:?}", window_freqs.column(j));
@@ -352,7 +365,7 @@ impl GenotypesAndPhenotypes {
                                     if freqs_k_neighbours.is_empty() {
                                         window_freqs[(i, j)] =
                                             mean_array1_ignore_nan(&window_freqs.column(j))
-                                                .unwrap();
+                                                .expect("Error calling mean_array1_ignore_nan() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
                                         *n_mvi = *n_mvi + 1.0;
                                     } else {
                                         if do_linkimpute_weighted_mode {
@@ -393,12 +406,6 @@ impl GenotypesAndPhenotypes {
                                                 weights / weights_sum
                                             };
                                             window_freqs[(i, j)] = (&freqs_k_neighbours * &weights).sum();
-                                            if window_freqs[(i, j)].is_nan() {
-                                                println!("corr.column(j).select(Axis(0), &idx_linked_alleles)={:?}", corr.column(j).select(Axis(0), &idx_linked_alleles));
-                                                println!("dist_k_neighbours={:?}", dist_k_neighbours);
-                                                println!("weights={:?}", weights);
-                                                println!("freqs_k_neighbours={:?}", freqs_k_neighbours);
-                                            }
                                         }
                                         *n_aldknni = *n_aldknni + 1.0;
                                     };
@@ -416,7 +423,7 @@ impl GenotypesAndPhenotypes {
                                         &idx_window_tail,
                                         &loci_idx,
                                     )
-                                    .unwrap();
+                                    .expect("Error calling correct_allele_frequencies_per_locus() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
                                 }
                             } // Impute across pools with missing data
                         } // Impute if we have missing data
@@ -543,7 +550,7 @@ pub fn impute_aldknni(
         misc_min_l,
         misc_min_k,
     )
-    .unwrap();
+    .expect("Error calling optimise_params_and_estimate_accuracy() in impute_aldknni().");
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     if min_loci_corr > 1.0 {
         println!("Number of linked loci included = {}", min_loci_corr);
@@ -579,34 +586,36 @@ pub fn impute_aldknni(
             misc_min_l,
             misc_min_k,
         )
-        .unwrap();
+        .expect("Error calling adaptive_ld_knn_imputation() within impute_aldknni().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().");
     println!(
         "Adaptive LD-kNN imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
         duration.as_secs()
     );
     // Remove 100% of the loci with missing data
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
         .filter_out_top_missing_loci(&1.00)
-        .unwrap();
+        .expect("Error calling filter_out_top_missing_loci() method within impute_aldknni().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of running filter_out_top_missing_loci() within impute_aldknni().");
     println!(
         "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
         duration.as_secs()
     );
     // Output
     let out = genotypes_and_phenotypes
         .write_csv(filter_stats, false, out, n_threads)
-        .unwrap();
+        .expect(
+            "Error writing the output file using the write_csv() method within impute_aldknni().",
+        );
     Ok(out)
 }
 

@@ -10,7 +10,7 @@ impl GenotypesAndPhenotypes {
         min_depth_below_which_are_missing: &f64,
         max_depth_above_which_are_missing: &f64,
     ) -> io::Result<&mut Self> {
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
         // println!(
@@ -21,7 +21,7 @@ impl GenotypesAndPhenotypes {
         // println!("self.position.len()={:?}", self.position.len());
         // println!("self.allele.len()={:?}", self.allele.len());
         // println!("self.coverages.dim()={:?}", self.coverages.dim());
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().unwrap();
+        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
         for i in 0..n {
             for j in 0..l {
                 if (self.coverages[(i, j)] < *min_depth_below_which_are_missing)
@@ -37,7 +37,7 @@ impl GenotypesAndPhenotypes {
                 }
             }
         }
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
         Ok(self)
     }
 
@@ -53,7 +53,7 @@ impl GenotypesAndPhenotypes {
         &mut self,
         frac_top_missing_pools: &f64,
     ) -> io::Result<&mut Self> {
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within filter_out_top_missing_pools() method for GenotypesAndPhenotypes struct.");
         let n = self.intercept_and_allele_frequencies.nrows();
         let p = self.intercept_and_allele_frequencies.ncols() - 1;
         let missingness_per_pool: Array1<f64> = self
@@ -81,7 +81,7 @@ impl GenotypesAndPhenotypes {
         idx.sort_by(|&a, &b| {
             missingness_per_pool[a]
                 .partial_cmp(&missingness_per_pool[b])
-                .unwrap()
+                .expect("Error sorting indexes by sparsity  within filter_out_top_missing_pools() method for GenotypesAndPhenotypes struct.")
         });
         // println!("idx={:?}", idx);
         // Omit the pools with high missingness rates
@@ -123,7 +123,7 @@ impl GenotypesAndPhenotypes {
         // println!("self.allele.len()={:?}", self.allele.len());
         // println!("self.intercept_and_allele_frequencies.dim()={:?}", self.intercept_and_allele_frequencies.dim());
         // println!("self.coverages.len()={:?}", self.coverages.dim());
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within filter_out_top_missing_pools() method for GenotypesAndPhenotypes struct.");
         Ok(self)
     }
 
@@ -132,9 +132,9 @@ impl GenotypesAndPhenotypes {
         &mut self,
         frac_top_missing_loci: &f64,
     ) -> io::Result<&mut Self> {
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
         let n = self.intercept_and_allele_frequencies.nrows();
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().unwrap();
+        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
         let l = loci_idx.len() - 1; // Less one for the trailing locus
                                     // Define loci start and end indexes
         let loci_idx_ini = loci_idx[0..l].to_vec();
@@ -165,7 +165,7 @@ impl GenotypesAndPhenotypes {
         idx.sort_by(|&a, &b| {
             missingness_per_locus[a]
                 .partial_cmp(&missingness_per_locus[b])
-                .unwrap()
+                .expect("Error sorting indexes by sparsity  within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.")
         });
         // println!("idx={:?}", idx);
         // Omit the loci with high missingness rates
@@ -227,7 +227,7 @@ impl GenotypesAndPhenotypes {
         // println!("self.allele.len()={:?}", self.allele.len());
         // println!("self.intercept_and_allele_frequencies.dim()={:?}", self.intercept_and_allele_frequencies.dim());
         // println!("self.coverages.len()={:?}", self.coverages.dim());
-        self.check().unwrap();
+        self.check().expect("Error calling check() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
         Ok(self)
     }
 }
