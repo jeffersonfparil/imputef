@@ -36,7 +36,7 @@ impl Parse<Phen> for FilePhen {
                 .expect(&("Input phenotype file not found: ".to_owned() + &filename_phen[..]));
             let reader = BufReader::new(file);
             for l in reader.lines() {
-                let mut line = l.unwrap();
+                let mut line = l.expect("Error parsing the phenotype file within the lparse() method for the FilePhen struct.");
                 // Remove trailing newline character in Unix-like (\n) and Windows (\r)
                 if line.ends_with('\n') {
                     line.pop();
@@ -171,7 +171,7 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             // Default format //
             ////////////////////
-            let phen = self.1.lparse().unwrap();
+            let phen = self.1.lparse().expect("Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct.");
             Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,
@@ -183,7 +183,7 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             // GWAlpha format //
             ////////////////////
-            let phen = self.1.lparse().unwrap();
+            let phen = self.1.lparse().expect("Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct.");
             return Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,

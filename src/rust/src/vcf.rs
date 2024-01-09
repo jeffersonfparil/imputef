@@ -50,7 +50,7 @@ impl Parse<VcfLine> for String {
                         .split(',')
                         .collect::<Vec<&str>>()
                         .iter()
-                        .map(|&x| x.parse::<u64>().unwrap())
+                        .map(|&x| x.parse::<u64>().expect("Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct."))
                         .collect::<Vec<u64>>()
                 });
             }
@@ -78,12 +78,12 @@ impl Parse<VcfLine> for String {
                             .split('/')
                             .collect::<Vec<&str>>()
                             .iter()
-                            .map(|&x| x.parse::<u64>().unwrap())
+                            .map(|&x| x.parse::<u64>().expect("Error parsing genotype calls from the GT field in the input vcf file within the lparse() method for String to generate VcfLline struct."))
                             .collect::<Vec<u64>>()
                     } else {
                         diploid_geno
                             .iter()
-                            .map(|&x| x.parse::<u64>().unwrap())
+                            .map(|&x| x.parse::<u64>().expect("Error parsing genotype calls from the GT field in the input vcf file within the lparse() method for String to generate VcfLline struct."))
                             .collect::<Vec<u64>>()
                     };
                     // println!("diploid_geno={:?}", diploid_geno);
@@ -137,7 +137,7 @@ impl Filter for VcfLine {
 
     /// Parse `VcfLine` into `AlleleFrequencies`
     fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
-        let locus_counts = self.to_counts().unwrap();
+        let locus_counts = self.to_counts().expect("Error calling to_counts() within the to_frequencies() method for VcfLine struct.");
         let n = locus_counts.matrix.nrows();
         let p = locus_counts.matrix.ncols();
         let row_sums = locus_counts.matrix.sum_axis(Axis(1)); // summation across the columns which means sum of all elements per row
@@ -288,19 +288,19 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         let file_out = File::create(fname_out).expect(&error_writing_file);
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error opening the input vcf file within the per_chuck() method for FileVcf struct.");
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).unwrap();
+        reader.seek(SeekFrom::Start(*start)).expect("Error navigating the input vcf file within the per_chuck() method for FileVcf struct.");
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically movesthe cursor position to the next line
-            let _ = reader.read_line(&mut line).unwrap();
+            let _ = reader.read_line(&mut line).expect("Error reading the input vcf file within the per_chuck() method for FileVcf struct.");
             // Find the new cursor position
-            i = reader.stream_position().unwrap();
+            i = reader.stream_position().expect("Error navigating the input vcf file within the per_chuck() method for FileVcf struct.");
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -345,7 +345,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         if out == *"" {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("Error extracting time in UNIX_EPOCH within read_analyse_write() method for FileVcf struct.")
                 .as_secs_f64();
             let bname = fname
                 .split('.')
@@ -373,11 +373,11 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             .open(&out)
             .expect(&error_writing_file);
         // Find the pool names from the last header line of the vcf file
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error opening the input vcf file within the read_analyse_write() method for FileVcf struct.");
         let reader = BufReader::new(file);
         let mut pool_names: Vec<String> = vec![];
         for line in reader.lines() {
-            let line = line.unwrap();
+            let line = line.expect("Error reading the input vcf file within the read_analyse_write() method for FileVcf struct.");
             if line.len() < 6 {
                 continue;
             }
@@ -396,7 +396,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             return Err(Error::new(ErrorKind::Other, "Pool names not found, please check the header line of the vcf file. Make sure `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT...` header exists.".to_owned()));
         };
         // Find the positions where to split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).unwrap();
+        let chunks = find_file_splits(&fname, n_threads).expect("Error calling find_file_splits() within the read_analyse_write() method for FileVcf struct.");
         let n_threads = chunks.len() - 1;
         let outname_ndigits = chunks[n_threads].to_string().len();
         println!("Chunks: {:?}", chunks);
@@ -418,10 +418,10 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             let thread = std::thread::spawn(move || {
                 let fname_out_per_thread = self_clone
                     .per_chunk(&start, &end, &outname_ndigits, &filter_stats, function)
-                    .unwrap();
+                    .expect("Error calling per_chunk() within the read_analyse_write() method for FileVcf struct.");
                 thread_ouputs_clone
                     .lock()
-                    .unwrap()
+                    .expect("Error locking thread_ouputs_clone during multi-threaded execution of per_chunk() within the read_analyse_write() method for FileVcf struct.")
                     .push(fname_out_per_thread);
             });
             thread_objects.push(thread);
@@ -432,19 +432,19 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         }
         file_out
             .write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes())
-            .unwrap();
+            .expect("Error writing the header line of the output file within the read_analyse_write() method for FileVcf struct.");
         // Extract output filenames from each thread into a vector and sort them
         let mut fnames_out: Vec<String> = Vec::new();
-        for f in thread_ouputs.lock().unwrap().iter() {
+        for f in thread_ouputs.lock().expect("Error unlocking the threads after multi-threaded execution of per_chunk() within the read_analyse_write() method for FileVcf struct.").iter() {
             fnames_out.push(f.to_owned());
         }
         println!("fnames_out={:?}", fnames_out);
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
-            let mut file: File = File::open(&f).unwrap();
-            if file.metadata().unwrap().len() > 0 {
-                io::copy(&mut file, &mut file_out).unwrap();
+            let mut file: File = File::open(&f).expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.");
+            if file.metadata().expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.").len() > 0 {
+                io::copy(&mut file, &mut file_out).expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.");
             }
             // Clean-up: remove temporary output files from each thread
             let error_deleting_file = "Unable to remove file: ".to_owned() + &f;

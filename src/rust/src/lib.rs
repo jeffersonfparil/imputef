@@ -52,7 +52,7 @@ fn impute(
     // 1) vcf - richest (*.vcf)
     // 2) sync - intermediate richness and most preferred (*.sync)
     // 3) geno - least detailed - tab-delimited: chr,pos,allele,sample-1,sample-2,some-name-@#@#$%^&*(+)}:<'?"-with-a-bunch-of-asci-characters,... (*.txt)
-    let extension_name: &str = fname.split(".").collect::<Vec<&str>>().last().unwrap();
+    let extension_name: &str = fname.split(".").collect::<Vec<&str>>().last().expect("Error extracting the last character of the input filename in impute().");
     println!("##################################################");
     if extension_name == "vcf" {
         println!("Input uncompressed vcf file:\n{:?}", fname);
@@ -78,7 +78,7 @@ fn impute(
     // Create a random ID by concatenating the time in seconds with some trailing random numbers for extra safe write-outs (extra safe because Rust will complain if the file which we want to write on already exists)
     let time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .expect("Error extracting time in UNIX_EPOCH within impute().")
         .as_secs_f64();
     let mut rng = rand::thread_rng();
     let num = rng.gen::<u32>();
@@ -98,10 +98,10 @@ fn impute(
     let mut genotypes_and_phenotypes: GenotypesAndPhenotypes = if extension_name == "vcf" {
         // Extract pool names from the vcf file
         let mut pool_names: Vec<String> = vec![];
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error opening the input vcf file.");
         let reader = BufReader::new(file);
         for l in reader.lines() {
-            let mut line = l.unwrap();
+            let mut line = l.expect("Error reading the input vcf file.");
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -143,7 +143,7 @@ fn impute(
                 &(n_threads as usize),
                 vcf_to_sync,
             )
-            .unwrap();
+            .expect("Error converting the vcf into sync via read_analyse_write() method within impute().");
         // Initialise dummy phen struct (for other poolgen analyses)
         let file_sync_phen = FileSyncPhen {
             filename_sync: fname_sync_out.to_owned(),
@@ -154,14 +154,14 @@ fn impute(
         };
         file_sync_phen
             .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .unwrap()
+            .expect("Error parsing the input genotype (converted from vcf into sync) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
     } else if extension_name == "sync" {
         // Extract pool names from the sync file
         let mut pool_names: Vec<String> = vec![];
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error reading the input vcf file.");
         let reader = BufReader::new(file);
         for l in reader.lines() {
-            let mut line = l.unwrap();
+            let mut line = l.expect("Error reading the input sync file.");
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -196,12 +196,12 @@ fn impute(
         };
         file_sync_phen
             .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .unwrap()
+            .expect("Error parsing the genotype (sync format) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
     } else {
         // Extract pool names from the txt file
-        let file: File = File::open(fname.clone()).unwrap();
+        let file: File = File::open(fname.clone()).expect("Error reading the allele frequency table file.");
         let reader = io::BufReader::new(file);
-        let mut header: String = reader.lines().next().unwrap().unwrap();
+        let mut header: String = reader.lines().next().expect("Error reading the allele frequency table file.").expect("Please check the format of the allele frequency table text file.");
         if header.ends_with('\n') {
             header.pop();
             if header.ends_with('\r') {
@@ -236,7 +236,7 @@ fn impute(
         filter_stats.pool_sizes = pool_sizes;
         file_geno
             .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .unwrap()
+            .expect("Error parsing the genotype data (extracted from allele frequency table text file) via into_genotypes_and_phenotypes() method within impute().")
     };
     // println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
     // Define missing data
@@ -246,42 +246,42 @@ fn impute(
             &min_depth_below_which_are_missing,
             &max_depth_above_which_are_missing,
         )
-        .unwrap();
+        .expect("Error calling set_missing_by_depth() method within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of setting missing data within impute().");
     println!(
         "Set loci beyond the minimum and maximum depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after setting missing by depth within impute()."),
         duration.as_secs()
     );
     // Filter pools
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
         .filter_out_top_missing_pools(&frac_top_missing_pools)
-        .unwrap();
+        .expect("Error filtering out top-most missing pools within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of filtering pools within impute().");
     println!(
         "Filtered out sparsest pools: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering pools within impute()."),
         duration.as_secs()
     );
     // Filter loci
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
         .filter_out_top_missing_loci(&frac_top_missing_loci)
-        .unwrap();
+        .expect("Error filtering out top-most missing loci within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).unwrap();
+    let duration = end.duration_since(start).expect("Error measuring the duration of filtering loci within impute().");
     println!(
         "Filtered out sparsest loci: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().unwrap(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering loci within impute()."),
         duration.as_secs()
     );
     // Determine if the input data is diploid biallelic then we use LinkImpute's weighted modal imputation
@@ -328,7 +328,7 @@ fn impute(
             &(n_threads as usize),
             &fname_out,
         )
-        .unwrap()
+        .expect("Error performing mean value imputation via impute_mean() within impute().")
     } else {
         println!("###################################################################################################");
         println!("aldknni: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data");
@@ -351,7 +351,7 @@ fn impute(
             &(n_threads as usize),
             &fname_out,
         )
-        .unwrap()
+        .expect("Error performing adaptive LD-kNN imputation via impute_aldknni() within impute().")
     };
     r!(fname_out.to_owned())
     // fname_out.to_owned()
@@ -365,29 +365,4 @@ extendr_module! {
     fn impute;
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     #[test]
-//     fn test_lib() {
-//         let out = impute(
-//             "tests/test.vcf".to_owned(),
-//             "mvi".to_owned(),
-//             0,
-//             0.00001,
-//             1.0,
-//             vec![100.0],
-//             1.0,
-//             1_000_000.0,
-//             0.0,
-//             0.0,
-//             1_000_000,
-//             1,
-//             0.9,
-//             0.1,
-//             true,
-//             2,
-//             "".to_owned());
-//         assert_eq!(0, 1);
-//     }
-// }
+// Test in R: time Rscript imputef/tests/tests.R

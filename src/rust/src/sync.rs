@@ -38,7 +38,7 @@ impl CheckStruct for LocusFrequencies {
 
 impl CheckStruct for LocusCountsAndPhenotypes {
     fn check(&self) -> io::Result<()> {
-        self.locus_counts.check().unwrap();
+        self.locus_counts.check().expect("Error checking locus counts within check() method for LocusCountsAndPhenotypes struct.");
         let (n, _p) = self.locus_counts.matrix.dim();
         let (n_, _k) = self.phenotypes.dim();
         let n__ = self.pool_names.len();
@@ -92,8 +92,8 @@ impl Count for GenotypesAndPhenotypes {
             }
         }
         loci_idx.push(p); // last allele of the last locus
-        loci_chr.push(self.chromosome.last().unwrap().to_owned()); // last allele of the last locus
-        loci_pos.push(self.position.last().unwrap().to_owned()); // last allele of the last locus
+        loci_chr.push(self.chromosome.last().expect("Error accessing the last element of self.chromosome within the count_loci() method for GenotypesAndPhenotypes struct.").to_owned()); // last allele of the last locus
+        loci_pos.push(self.position.last().expect("Error accessing the last element of self.position within the count_loci() method for GenotypesAndPhenotypes struct.").to_owned()); // last allele of the last locus
         let l = loci_idx.len();
         assert_eq!(l-1, self.coverages.ncols(), "The number of loci with coverage information and the total number of loci are incompatible. You may have duplicate loci in the input genotype file (vcf, sync, or txt). Please check the 'intercept_and_allele_frequencies' and 'coverages' fields of 'GenotypesAndPhenotypes' struct.");
         Ok((loci_idx, loci_chr, loci_pos))
@@ -198,7 +198,7 @@ impl Filter for LocusCounts {
     fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Preliminary check of the structure format
-        self.check().unwrap();
+        self.check().expect("Error calling check() within filter() method for LocusCounts struct.");
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -383,7 +383,7 @@ impl Filter for LocusFrequencies {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Also, cannot filter by minimum coverage as that data is lost from counts to frequencies conversion
         // Preliminary check of the structure format
-        self.check().unwrap();
+        self.check().expect("Error calling check() within filter() method for LocusFrequencies struct.");
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -499,9 +499,9 @@ impl Sort for LocusFrequencies {
         }); // ignoring NANs!
             // println!("self={:?}", self);
         if decreasing {
-            idx.sort_by(|&a, &b| column_sums[b].partial_cmp(&column_sums[a]).unwrap());
+            idx.sort_by(|&a, &b| column_sums[b].partial_cmp(&column_sums[a]).expect("Error sorting (decreasing) mean allele frequencies across pools within the sort_by_allele_freq() method for LocusFrequencies struct."));
         } else {
-            idx.sort_by(|&a, &b| column_sums[a].partial_cmp(&column_sums[b]).unwrap());
+            idx.sort_by(|&a, &b| column_sums[a].partial_cmp(&column_sums[b]).expect("Error sorting (increasing) mean allele frequencies across pools within the sort_by_allele_freq() method for LocusFrequencies struct."));
         }
         for i in 0..p {
             sorted_matrix
@@ -523,7 +523,7 @@ impl RemoveMissing for LocusCountsAndPhenotypes {
         let (n__, p) = self.locus_counts.matrix.dim();
         assert_eq!(n, n_);
         assert_eq!(n, n__);
-        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).unwrap();
+        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).expect("Error calculating phenotype means per pool within the remove_missing() method for LocusCountsAndPhenotypes struct.");
         let mut idx: Vec<usize> = vec![];
         for i in 0..n {
             if !pool_means[i].is_nan() {
@@ -568,7 +568,7 @@ impl RemoveMissing for GenotypesAndPhenotypes {
         assert_eq!(n, n_);
         assert_eq!(n, n__);
         assert_eq!(n, n___);
-        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).unwrap();
+        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).expect("Error calculating phenotype means per pool within the remove_missing() method for GenotypesAndPhenotypes struct.");
         let mut idx: Vec<usize> = vec![];
         for i in 0..n {
             if !pool_means[i].is_nan() {
@@ -628,19 +628,19 @@ impl LoadAll for FileSyncPhen {
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let mut cnts: Vec<LocusCounts> = Vec::new();
         // Input file chunk
-        let file = File::open(fname.clone()).unwrap();
+        let file = File::open(fname.clone()).expect("Error opening input sync file within per_chunk_load() method for FileSyncPhen struct.");
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).unwrap();
+        reader.seek(SeekFrom::Start(*start)).expect("Error navigating input sync file within per_chunk_load() method for FileSyncPhen struct.");
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically movesthe cursor position to the next line
-            let _ = reader.read_line(&mut line).unwrap();
+            let _ = reader.read_line(&mut line).expect("Error reading input sync file within per_chunk_load() method for FileSyncPhen struct.");
             // Find the new cursor position
-            i = reader.stream_position().unwrap();
+            i = reader.stream_position().expect("Error navigating input sync file within per_chunk_load() method for FileSyncPhen struct.");
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -675,7 +675,7 @@ impl LoadAll for FileSyncPhen {
             };
             // Remove minor allele
             if keep_p_minus_1 {
-                locus_frequencies.sort_by_allele_freq(true).unwrap();
+                locus_frequencies.sort_by_allele_freq(true).expect("Error sorting alleles by decreasing mean frequencies within the per_chunk_load() method for FileSyncPhen struct.");
                 locus_frequencies.matrix.remove_index(Axis(1), 0);
                 locus_frequencies.alleles_vector.remove(0);
             }
@@ -693,7 +693,7 @@ impl LoadAll for FileSyncPhen {
     ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).unwrap();
+        let chunks = find_file_splits(&fname, n_threads).expect("Error splitting the input sync file within the load() method for FileSyncPhen struct.");
         let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
@@ -715,9 +715,9 @@ impl LoadAll for FileSyncPhen {
             let thread = std::thread::spawn(move || {
                 let (mut freq, mut cnts) = self_clone
                     .per_chunk_load(&start, &end, &filter_stats, keep_p_minus_1)
-                    .unwrap();
-                thread_ouputs_freq_clone.lock().unwrap().append(&mut freq);
-                thread_ouputs_cnts_clone.lock().unwrap().append(&mut cnts);
+                    .expect("Error calling per_chunk_load() within the load() method for FileSyncPhen struct.");
+                thread_ouputs_freq_clone.lock().expect("Error locking thread_ouputs_freq_clone during multi-threaded execution of per_chunk_load() within the load() method for FileSyncPhen struct.").append(&mut freq);
+                thread_ouputs_cnts_clone.lock().expect("Error locking thread_ouputs_cnts_clone during multi-threaded execution of per_chunk_load() within the load() method for FileSyncPhen struct.").append(&mut cnts);
             });
             thread_objects.push(thread);
         }
@@ -728,10 +728,10 @@ impl LoadAll for FileSyncPhen {
         // Extract output filenames from each thread into a vector and sort them
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let mut cnts: Vec<LocusCounts> = Vec::new();
-        for x in thread_ouputs_freq.lock().unwrap().iter() {
+        for x in thread_ouputs_freq.lock().expect("Error unlocking the threads after multi-threaded execution to extract allele frequencies within the load() method for FileSyncPhen struct.").iter() {
             freq.push(x.clone());
         }
-        for x in thread_ouputs_cnts.lock().unwrap().iter() {
+        for x in thread_ouputs_cnts.lock().expect("Error unlocking the threads after multi-threaded execution to extract allele counts within the load() method for FileSyncPhen struct.").iter() {
             cnts.push(x.clone());
         }
         freq.sort_by(|a, b| {
@@ -754,7 +754,7 @@ impl LoadAll for FileSyncPhen {
         keep_p_minus_1: bool,
         n_threads: &usize,
     ) -> io::Result<GenotypesAndPhenotypes> {
-        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
+        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the into_genotypes_and_phenotypes() method for FileSyncPhen struct.");
         let n = self.pool_names.len();
         let m = freqs.len(); // total number of loci
                              // Find the total number of alleles across all loci
@@ -838,7 +838,7 @@ impl SaveCsv for FileSyncPhen {
         let out = if *out == "".to_owned() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("Error extracting time in UNIX_EPOCH within write_csv() method for FileSyncPhen struct.")
                 .as_secs_f64();
             let bname = self
                 .filename_sync
@@ -868,7 +868,7 @@ impl SaveCsv for FileSyncPhen {
             .open(&out)
             .expect(&error_writing_file);
         // Load the full sync file in parallel and sort
-        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).unwrap();
+        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the write_csv() method for FileSyncPhen struct.");
         // Make sure that we have the same number of pools in the genotype and phenotype files
         assert!(!freqs.is_empty(), "No data passed the filtering variables. Please decrease minimum depth, and/or minimum allele frequency.");
         assert!(
@@ -880,7 +880,7 @@ impl SaveCsv for FileSyncPhen {
             .write_all(
                 ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
             )
-            .unwrap();
+            .expect("Error calling write_all() within the write_csv() method for FileSyncPhen struct.");
         // Write allele frequencies line by line
         for f in freqs.iter() {
             for i in 0..f.alleles_vector.len() {
@@ -899,7 +899,7 @@ impl SaveCsv for FileSyncPhen {
                 ]
                 .join(",")
                     + "\n";
-                file_out.write_all(line.as_bytes()).unwrap();
+                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for FileSyncPhen struct.");
             }
         }
         Ok(out)
@@ -933,7 +933,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
         let out = if *out == "".to_owned() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("Error extracting time in UNIX_EPOCH within write_csv() method for GenotypesAndPhenotypes struct.")
                 .as_secs_f64();
             "genotypes_and_phenotypes".to_owned()
                 + "-"
@@ -955,7 +955,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
             .write_all(
                 ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
             )
-            .unwrap();
+            .expect("Error calling write_all() within the write_csv() method for GenotypesAndPhenotypes struct.");
         // Write allele frequencies line by line (skip the intercept)
         for i in 1..p {
             let freqs_per_pool = self
@@ -973,7 +973,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
             ]
             .join(",")
                 + "\n";
-            file_out.write_all(line.as_bytes()).unwrap();
+            file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for GenotypesAndPhenotypes struct.");
         }
         Ok(out)
     }
