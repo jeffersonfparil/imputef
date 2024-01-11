@@ -8,13 +8,10 @@
     + **ALDKNNI_OPTIM_COUNTS**: adaptive LD-kNN imputation with optimisation for the number of linked loci correlation and k-nearest neighbours
     + **MVI**: mean value imputation
     <!-- + **SAMP**: Luke's LD-kNN imputation algorithm vias sampling from a normal distribution whose parameters depend on the k-nearest neighbours -->
-- 4 minor allele frequency thresholds:
+- 2 minor allele frequency thresholds:
     + 0.01
     + 0.05
-    + 0.10
-    + 0.25
-- 11 sparsity levels (missing rate):
-    + 0.0017
+- 10 sparsity levels (missing rate):
     + 0.01
     + 0.1
     + 0.2
@@ -29,6 +26,10 @@
     + autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source)
     + pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
     + diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [https://oup.silverchair-cdn.com/oup/backfile/Content_public/Journal/g3journal/5/11/10.1534_g3.115.021667/5/021667_files1.zip?Expires=1706750617&Signature=yMBQeDumKhnNHIhhUdwsdac~D81t~5RfRi39Bqs4fA8sdE27FVMiyYI7xL8OvLupTqXUim2qC5mgvd5eqby4WCWxCw8x25xnkd6~05gC6puXpHloQSbesTQGrTFios7JeCnXUf306Z~p2vMi0TRgX8qpNTWiwGwwyn2wYAr1tbWIN4EwTQvN8~BgJF31Tj8xJoCVJm2uTpA7~hhsSidJgxVqL4aO20CvwAI1iDcx1gxvienNDS1rYTOruLhwXDif4RGFv8tAb2W5SK3qt4bjgpD6mP8gghv7BWGf0g-arYQywL1fmLCia35qJr7Umxc3LM8iPvWabo5K0sTlRH1oHw__&Key-Pair-Id=APKAIE5G5CRDK6RD3PGA](https://oup.silverchair-cdn.com/oup/backfile/Content_public/Journal/g3journal/5/11/10.1534_g3.115.021667/5/021667_files1.zip?Expires=1706750617&Signature=yMBQeDumKhnNHIhhUdwsdac~D81t~5RfRi39Bqs4fA8sdE27FVMiyYI7xL8OvLupTqXUim2qC5mgvd5eqby4WCWxCw8x25xnkd6~05gC6puXpHloQSbesTQGrTFios7JeCnXUf306Z~p2vMi0TRgX8qpNTWiwGwwyn2wYAr1tbWIN4EwTQvN8~BgJF31Tj8xJoCVJm2uTpA7~hhsSidJgxVqL4aO20CvwAI1iDcx1gxvienNDS1rYTOruLhwXDif4RGFv8tAb2W5SK3qt4bjgpD6mP8gghv7BWGf0g-arYQywL1fmLCia35qJr7Umxc3LM8iPvWabo5K0sTlRH1oHw__&Key-Pair-Id=APKAIE5G5CRDK6RD3PGA))
+
+- **Genome partitioning:**
+    + **By chromosomes or scaffolds**
+    + **Rename all chromosomes as chr1**
 
 *prepping_datasets.sh*
 
@@ -83,25 +84,17 @@ rownames(G) = vec_loci_names
 colnames(G) = vec_sample_names
 ### Create n pools of the most related individuals
 print("Clustering. This may take a while.")
-n = length(vec_sample_names)
-for (i in )
-
-
-
-
+PCA = prcomp(G, rank=100)
+C = PCA$rotation
 p = length(vec_loci_names)
-C = t(G[seq(from=1, to=p, length=1000), ])
-clustering = kmeans(x=C, centers=200)
+# C = t(G[seq(from=1, to=p, length=1000), ])
+clustering = kmeans(x=C, centers=200, iter.max=20)
 vec_clusters = table(clustering$cluster)
 vec_clusters = vec_clusters[vec_clusters >= min_pool_size]
 n = length(vec_clusters)
 GT = matrix("AD", nrow=p, ncol=n+1)
 pb = txtProgressBar(min=0, max=n, initial=0, style=3)
 for (i in 1:n) {
-    # i = 1
-    # ini = ((i-1)*min_pool_size) + 1
-    # fin = ((i-1)*min_pool_size) + min_pool_size
-    # q = rowMeans(G[, ini:fin])
     idx = which(clustering$cluster == i)
     q = rowMeans(G[, idx])
     for (j in 1:p) {

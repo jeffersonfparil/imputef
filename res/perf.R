@@ -122,19 +122,49 @@ fn_simulate_missing_data = function(vcf, mat_genotypes, maf=0.25, missing_rate=0
     ))
 }
 ### Imputation accuracy metrics
-fn_metrics = function(y_predicted, y_expected) {
-    deviation = y_predicted - y_expected
+fn_metrics = function(q_predicted, q_expected) {
+    ## Overall metrics
+    deviation = q_predicted - q_expected
     mae = mean(abs(deviation), na.rm=TRUE)
     mse = mean(deviation^2, na.rm=TRUE)
     rmse = sqrt(mse)
-    r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((y_expected-mean(y_expected))^2, na.rm=TRUE))
-    concordance = mean(y_predicted == y_expected, na.rm=TRUE)
+    r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((q_expected-mean(q_expected))^2, na.rm=TRUE))
+    concordance = mean(q_predicted == q_expected, na.rm=TRUE)
+    ### Metrics across the range of expected allele frequencies
+    vec_q_max = c(0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
+    vec_n = rep(0, each=length(vec_q_max))
+    vec_mae = rep(NA, each=length(vec_q_max))
+    vec_mse = rep(NA, each=length(vec_q_max))
+    vec_rmse = rep(NA, each=length(vec_q_max))
+    vec_r2 = rep(NA, each=length(vec_q_max))
+    vec_concordance = rep(NA, each=length(vec_q_max))
+    for (i in 1:length(vec_q_max)) {
+        # i = 1
+        if (i==1) {
+            q_min = 0.0
+        } else {
+            q_min = vec_q_max[i-1]
+        }
+        q_max = vec_q_max[i]
+        idx = which((q_expected > q_min) & (q_expected <= q_max))
+        if (length(idx) > 0) {
+            vec_n[i] = length(idx)
+            vec_deviations = q_predicted[idx] - q_expected[idx]
+            vec_mae[i] = mean(abs(vec_deviations), na.rm=TRUE)
+            vec_mse[i] = mean(vec_deviations^2, na.rm=TRUE)
+            vec_rmse[i] = sqrt(vec_mse[i])
+            vec_r2[i] = 1.00 - (mean(vec_mse[i], na.rm=TRUE) / mean((q_expected[idx]-mean(q_expected[idx]))^2, na.rm=TRUE))
+            vec_concordance[i] = mean(q_predicted[idx] == q_expected[idx], na.rm=TRUE)
+        }
+    }
+    df_metrics_across_allele_freqs = data.frame(q=vec_q_max, n=vec_n, mae=vec_mae, mse=vec_mse, rmse=vec_rmse, r2=vec_r2, concordance=vec_concordance)
     return(list(
         mae=mae,
         mse=mse,
         rmse=rmse,
         r2=r2,
-        concordance=concordance
+        concordance=concordance,
+        df_metrics_across_allele_freqs=df_metrics_across_allele_freqs
     ))
 }
 ### Assess imputation accuracies
@@ -196,11 +226,11 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     # print(paste0("Total number of simulated missing data = ", n_missing))
     # print(paste0("Total number of imputed missing data = ", n_imputed))
     ### Metrics using allele frequencies
-    metrics_allele_frequencies = fn_metrics(y_predicted=vec_imputed, y_expected=list_sim_missing$expected_allele_frequencies)
+    metrics_allele_frequencies = fn_metrics(q_predicted=vec_imputed, q_expected=list_sim_missing$expected_allele_frequencies)
     ### Metrics using genotype classes
     vec_expected_classes = fn_classify_allele_frequencies(mat_genotypes=list_sim_missing$expected_allele_frequencies, ploidy=ploidy, strict_boundaries=strict_boundaries)
     vec_imputed_classes = fn_classify_allele_frequencies(mat_genotypes=vec_imputed, ploidy=ploidy, strict_boundaries=strict_boundaries)
-    metrics_genotype_classes = fn_metrics(y_predicted=vec_imputed_classes, y_expected=vec_expected_classes)
+    metrics_genotype_classes = fn_metrics(q_predicted=vec_imputed_classes, q_expected=vec_expected_classes)
     return(list(
         frac_imputed = n_imputed / n_missing,
         mae_freqs = metrics_allele_frequencies$mae,
