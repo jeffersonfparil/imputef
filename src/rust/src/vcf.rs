@@ -131,7 +131,6 @@ impl Filter for VcfLine {
         }
         let n = self.allele_depths.len();
         let m = self.allele_depths[0].len(); // All pools should have the same number of alleles in the current locus
-        println!("self={:?}", self);
         let mut matrix: Array2<u64> = Array2::from_elem((n, m), 0);
         for i in 0..n {
             for j in 0..m {
