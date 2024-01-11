@@ -145,6 +145,11 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     # lukes = FALSE
     # mat_genotypes = NULL
     # n_threads = 32
+
+### Pick high-depth missing data points to recompute accuracies
+
+### Accuracies per range of allele freqs
+
     ### Extract imputed allele frequencies corresponding to the expected allele frequencies
     n_missing = length(list_sim_missing$vec_missing_loci)
     # vec_imputed = c()
@@ -267,23 +272,27 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     fname_out_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.csv")
     vcf_for_linkimpute = vcfR::read.vcfR(list_sim_missing$fname_vcf)
     mat_genotypes_for_linkimpute = t(fn_classify_allele_frequencies(fn_extract_allele_frequencies(vcf_for_linkimpute), ploidy=2)) * 2
-    mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
-    write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
-    time_ini = Sys.time()
-    system(paste0("java -jar linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute))
-    duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
-    mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
-    rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
-    colnames(mat_linkimputed) = colnames(mat_genotypes_for_linkimpute)
-    mat_linkimputed = t(mat_linkimputed / 2)
-    list_loci_names = strsplit(rownames(mat_linkimputed), "_")
-    chr = unlist(lapply(list_loci_names, FUN=function(x){(paste(x[1:(length(x)-2)], collapse="_"))}))
-    pos = unlist(lapply(list_loci_names, FUN=function(x){as.numeric(x[(length(x)-1)])}))
-    allele = unlist(lapply(list_loci_names, FUN=function(x){x[length(x)]}))
-    df_linkimputed = data.frame(chr, pos, allele)
-    df_linkimputed = cbind(df_linkimputed, mat_linkimputed)
-    colnames(df_linkimputed)[1] = "#chr"
-    write.table(df_linkimputed, file=fname_out_linkimpute, sep=",", row.names=FALSE, col.names=TRUE, quote=FALSE)
+    bool_enough_data_to_simulate_10k_missing = prod(dim(mat_genotypes_for_linkimpute)) >= (11000)
+    if (bool_enough_data_to_simulate_10k_missing == TRUE) {
+        ### LinkImpute stalls if it cannot mask 10,000 data points for optimising l and k, because the number of non-missing data points is not enough to reach the fixed 10,000 random data points.
+        mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
+        write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+        time_ini = Sys.time()
+        system(paste0("java -jar linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute))
+        duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
+        mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
+        rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
+        colnames(mat_linkimputed) = colnames(mat_genotypes_for_linkimpute)
+        mat_linkimputed = t(mat_linkimputed / 2)
+        list_loci_names = strsplit(rownames(mat_linkimputed), "_")
+        chr = unlist(lapply(list_loci_names, FUN=function(x){(paste(x[1:(length(x)-2)], collapse="_"))}))
+        pos = unlist(lapply(list_loci_names, FUN=function(x){as.numeric(x[(length(x)-1)])}))
+        allele = unlist(lapply(list_loci_names, FUN=function(x){x[length(x)]}))
+        df_linkimputed = data.frame(chr, pos, allele)
+        df_linkimputed = cbind(df_linkimputed, mat_linkimputed)
+        colnames(df_linkimputed)[1] = "#chr"
+        write.table(df_linkimputed, file=fname_out_linkimpute, sep=",", row.names=FALSE, col.names=TRUE, quote=FALSE)
+    }
     ### Validating imputation
     metrics_mvi = fn_imputation_accuracy(fname_imputed=fname_out_mvi,
         list_sim_missing=list_sim_missing,
@@ -305,11 +314,24 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_linkimpute = fn_imputation_accuracy(fname_imputed=fname_out_linkimpute,
-        list_sim_missing=list_sim_missing,
-        ploidy=2,
-        strict_boundaries=strict_boundaries,
-        n_threads=n_threads)
+    if (bool_enough_data_to_simulate_10k_missing == TRUE) {
+        metrics_linkimpute = fn_imputation_accuracy(fname_imputed=fname_out_linkimpute,
+            list_sim_missing=list_sim_missing,
+            ploidy=2,
+            strict_boundaries=strict_boundaries,
+            n_threads=n_threads)
+    } else {
+        metrics_linkimpute = list(
+            frac_imputed = 0.0,
+            mae_freqs = NA,
+            rmse_freqs = NA,
+            r2_freqs = NA,
+            mae_classes = NA,
+            rmse_classes = NA,
+            r2_classes = NA,
+            concordance_classes = NA
+        )
+    }
     ### Merge imputation accuracy metrics into the output data.frame
     # string_metric_lists = c("metrics_mvi", "metrics_aldknni", "metrics_lukes")
     string_metric_lists = c("metrics_mvi", "metrics_aldknni", "metrics_aldknni_optim_thresholds", "metrics_aldknni_optim_counts", "metrics_linkimpute")

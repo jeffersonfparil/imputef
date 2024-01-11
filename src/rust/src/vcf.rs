@@ -1,4 +1,4 @@
-//! Vcf data (i.e. variant calling format cannonical in human genetics) processing (`Parse` and `Filter` traits and `vcf_to_sync` format conversion function) and parallel I/O (`ChunkyReadAnalyseWrite` trait)
+//! Vcf data (i.e. variant calling format canonical in human genetics) processing (`Parse` and `Filter` traits and `vcf_to_sync` format conversion function) and parallel I/O (`ChunkyReadAnalyseWrite` trait)
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*, BufReader, BufWriter, Error, ErrorKind, SeekFrom};
@@ -29,7 +29,7 @@ impl Parse<VcfLine> for String {
             .collect::<Vec<char>>();
         // Allele depths per pool
         let mut allele_depths = vec![];
-        // First find the index of each genotype column (delimited by ":") referes to the allele depth, i.e. field "AD"
+        // First find the index of each genotype column (delimited by ":") refers to the allele depth, i.e. field "AD"
         let idx = raw_locus_data[8]
             .split(':')
             .enumerate()
@@ -45,13 +45,23 @@ impl Parse<VcfLine> for String {
                     // Missing data, i.e. coded as "./." which we are coding here as 0 depth across all alleles
                     vec![0; 1 + alternative_alleles.len()]
                 } else {
-                    // Non-mising data
-                    geno_data[idx]
+                    // Non-missing data
+                    let mut d = geno_data[idx]
                         .split(',')
                         .collect::<Vec<&str>>()
                         .iter()
                         .map(|&x| x.parse::<u64>().expect("Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct."))
-                        .collect::<Vec<u64>>()
+                        .collect::<Vec<u64>>();
+                    // Add zero to the alternative allele counts if the after splitting the allele depths we have less than the expected counts
+                    if d.len() == (1 + alternative_alleles.len()) {
+                        d
+                    } else {
+                        let n_missing_allele_counts = (1 + alternative_alleles.len()) - d.len();
+                        for _ in 0..n_missing_allele_counts {
+                            d.push(0);
+                        }
+                        d
+                    }
                 });
             }
         } else {
@@ -121,6 +131,7 @@ impl Filter for VcfLine {
         }
         let n = self.allele_depths.len();
         let m = self.allele_depths[0].len(); // All pools should have the same number of alleles in the current locus
+        println!("self={:?}", self);
         let mut matrix: Array2<u64> = Array2::from_elem((n, m), 0);
         for i in 0..n {
             for j in 0..m {
@@ -428,7 +439,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            thread.join().expect("Unknown thread error occured.");
+            thread.join().expect("Unknown thread error occurred.");
         }
         file_out
             .write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes())

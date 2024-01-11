@@ -8,8 +8,8 @@ plot_metrics = function(df, dataset) {
   df$algorithm[df$algorithm=="mvi"] = "MVI"
   # df$algorithm[df$algorithm=="lukes"] = "SAMP"
   df$algorithm[df$algorithm=="aldknni"] = "ALDKNNI"
-  df$algorithm[df$algorithm=="aldknni_optim_thresholds"] = "ALDKNNI_OPTIM_THRESHOLDS"
-  df$algorithm[df$algorithm=="aldknni_optim_counts"] = "ALDKNNI_OPTIM_COUNTS"
+  df$algorithm[df$algorithm=="aldknni_optim_thresholds"] = "AOT"
+  df$algorithm[df$algorithm=="aldknni_optim_counts"] = "AOC"
   df$algorithm[df$algorithm=="linkimpute"] = "LINKIMPUTE"
 
   # agg_concordance = aggregate(concordance_classes ~ algorithm + maf + missing_rate, data=df, FUN=mean)
@@ -63,7 +63,7 @@ plot_metrics = function(df, dataset) {
       par(xpd=TRUE) ### xpd=TRUE allows us to place the legend outside the plot area
       bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, border=NA, ylim=ylim, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
       if (maf==min(vec_maf)) {
-        legend("topright", inset=c(-0.001, -0.5), legend=vec_algorithm, fill=vec_colours, bty="n")
+        legend("topright", inset=c(-0.001, -0.5), legend=vec_algorithm, fill=vec_colours, bty="n", horiz=TRUE)
         par(xpd=FALSE)
       }
       arrows(bplot, mat_mu-mat_sd,
