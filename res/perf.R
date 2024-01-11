@@ -176,9 +176,8 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     # mat_genotypes = NULL
     # n_threads = 32
 
-### Pick high-depth missing data points to recompute accuracies
+    ### Pick high-depth missing data points to recompute accuracies
 
-### Accuracies per range of allele freqs
 
     ### Extract imputed allele frequencies corresponding to the expected allele frequencies
     n_missing = length(list_sim_missing$vec_missing_loci)
@@ -239,7 +238,9 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
         mae_classes = metrics_genotype_classes$mae,
         rmse_classes = metrics_genotype_classes$rmse,
         r2_classes = metrics_genotype_classes$r2,
-        concordance_classes = metrics_genotype_classes$concordance
+        concordance_classes = metrics_genotype_classes$concordance,
+        df_metrics_across_allele_freqs = metrics_allele_frequencies$df_metrics_across_allele_freqs,
+        df_metrics_across_allele_freqs_classes = metrics_genotype_classes$df_metrics_across_allele_freqs
     ))
 }
 ### Performance assessment function
@@ -441,7 +442,7 @@ idx = which((mean_allele_freqs>=0.01) & ((1-mean_allele_freqs)>=0.01))
 vcf = vcf[idx, , ]
 mat_genotypes = mat_genotypes[idx, ]
 ### Note that sparsity of 0.17% is used so that we can compare with the output shown in the LinkImpute paper: https://doi.org/10.1534/g3.115.021667
-mat_maf_missingRate = expand.grid(maf=rev(c(0.01, 0.05, 0.10, 0.25)), missing_rate=rev(c(0.0017, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)))
+mat_maf_missingRate = expand.grid(maf=rev(c(0.01, 0.05)), missing_rate=rev(c(0.0017, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)))
 maf = mat_maf_missingRate$maf[i]
 missing_rate = mat_maf_missingRate$missing_rate[i]
 for (r in c(1:n_reps)) {
