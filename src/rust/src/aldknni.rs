@@ -459,6 +459,10 @@ pub fn impute_aldknni(
     n_threads: &usize,
     out: &String,
 ) -> io::Result<String> {
+
+    // Will need to remove window-related parameters and rename misc_min_l and misc_min_l to be main parameters
+    // Also note that the we are no longer reverting to MVI as setting and optimising for min_l and min_k clashes with that idea
+
     let (min_loci_corr, max_pool_dist, mae) = optimise_params_and_estimate_accuracy(
         &genotypes_and_phenotypes,
         min_loci_corr,
