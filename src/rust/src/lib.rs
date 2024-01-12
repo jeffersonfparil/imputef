@@ -52,7 +52,11 @@ fn impute(
     // 1) vcf - richest (*.vcf)
     // 2) sync - intermediate richness and most preferred (*.sync)
     // 3) geno - least detailed - tab-delimited: chr,pos,allele,sample-1,sample-2,some-name-@#@#$%^&*(+)}:<'?"-with-a-bunch-of-asci-characters,... (*.txt)
-    let extension_name: &str = fname.split(".").collect::<Vec<&str>>().last().expect("Error extracting the last character of the input filename in impute().");
+    let extension_name: &str = fname
+        .split(".")
+        .collect::<Vec<&str>>()
+        .last()
+        .expect("Error extracting the last character of the input filename in impute().");
     println!("##################################################");
     if extension_name == "vcf" {
         println!("Input uncompressed vcf file:\n{:?}", fname);
@@ -199,9 +203,14 @@ fn impute(
             .expect("Error parsing the genotype (sync format) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
     } else {
         // Extract pool names from the txt file
-        let file: File = File::open(fname.clone()).expect("Error reading the allele frequency table file.");
+        let file: File =
+            File::open(fname.clone()).expect("Error reading the allele frequency table file.");
         let reader = io::BufReader::new(file);
-        let mut header: String = reader.lines().next().expect("Error reading the allele frequency table file.").expect("Please check the format of the allele frequency table text file.");
+        let mut header: String = reader
+            .lines()
+            .next()
+            .expect("Error reading the allele frequency table file.")
+            .expect("Please check the format of the allele frequency table text file.");
         if header.ends_with('\n') {
             header.pop();
             if header.ends_with('\r') {
@@ -248,7 +257,9 @@ fn impute(
         )
         .expect("Error calling set_missing_by_depth() method within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of setting missing data within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of setting missing data within impute().");
     println!(
         "Set loci beyond the minimum and maximum depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
@@ -262,7 +273,9 @@ fn impute(
         .filter_out_top_missing_pools(&frac_top_missing_pools)
         .expect("Error filtering out top-most missing pools within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of filtering pools within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of filtering pools within impute().");
     println!(
         "Filtered out sparsest pools: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
@@ -276,7 +289,9 @@ fn impute(
         .filter_out_top_missing_loci(&frac_top_missing_loci)
         .expect("Error filtering out top-most missing loci within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of filtering loci within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of filtering loci within impute().");
     println!(
         "Filtered out sparsest loci: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),

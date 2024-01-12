@@ -250,7 +250,15 @@ pub fn define_sliding_windows(
         // println!("idx_head={:?}", idx_head);
         // println!("idx_tail={:?}", idx_tail);
         // Did we reach the end of the chromosome or the end of the window according to window size?
-        if (&chr != chr_head.last().expect("Error extracting the last character of chr_head.")) | (pos > (pos_head.last().expect("Error extracting the last character of pos_head.") + window_size_bp))
+        if (&chr
+            != chr_head
+                .last()
+                .expect("Error extracting the last character of chr_head."))
+            | (pos
+                > (pos_head
+                    .last()
+                    .expect("Error extracting the last character of pos_head.")
+                    + window_size_bp))
         {
             // If we found the start of the next window in body of the current (ending) window then,
             //  we use the next window head as the start of the next slide not the end of the window,
@@ -294,7 +302,12 @@ pub fn define_sliding_windows(
             pos_tail[i_] = pos;
             cov[i_] += 1;
             // We also check if we have reached the start of the next window and note the index if we have
-            if !marker_next_window_head & (pos >= (pos_head.last().expect("Error extracting the last character of pos_head.") + window_slide_size_bp))
+            if !marker_next_window_head
+                & (pos
+                    >= (pos_head
+                        .last()
+                        .expect("Error extracting the last character of pos_head.")
+                        + window_slide_size_bp))
             {
                 marker_next_window_head = true;
                 idx_next_head = i;
@@ -310,7 +323,11 @@ pub fn define_sliding_windows(
     let mut out_idx_tail: Vec<usize> = vec![idx_tail[0]];
     for i in 1..n {
         // println!("out_idx_tail={:?}", out_idx_tail);
-        if &idx_tail[i] != out_idx_tail.last().expect("Error extracting the last value of out_idx_tail.") {
+        if &idx_tail[i]
+            != out_idx_tail
+                .last()
+                .expect("Error extracting the last value of out_idx_tail.")
+        {
             out_idx_head.push(idx_head[i]);
             out_idx_tail.push(idx_tail[i]);
         }
@@ -328,6 +345,7 @@ pub fn define_sliding_windows(
     Ok((out_idx_head, out_idx_tail))
 }
 
+// Pearson's product moment correlation using only complete data across pair of vectors
 pub fn pearsons_correlation_pairwise_complete(
     x: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
     y: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
@@ -350,8 +368,10 @@ pub fn pearsons_correlation_pairwise_complete(
     let x = Array1::from_vec(filtered_vectors.0);
     let y = Array1::from_vec(filtered_vectors.1);
     // Make sure we are handling NAN properly
-    let mu_x = mean_array1_ignore_nan(&x.view()).expect("Error calculating the mean of x while ignoring NANs.");
-    let mu_y = mean_array1_ignore_nan(&y.view()).expect("Error calculating the mean of y while ignoring NANs.");
+    let mu_x = mean_array1_ignore_nan(&x.view())
+        .expect("Error calculating the mean of x while ignoring NANs.");
+    let mu_y = mean_array1_ignore_nan(&y.view())
+        .expect("Error calculating the mean of y while ignoring NANs.");
     let x_less_mu_x = x
         .iter()
         .filter(|&x| !x.is_nan())
@@ -368,7 +388,13 @@ pub fn pearsons_correlation_pairwise_complete(
     let denominator = x_less_mu_x_squared.sum().sqrt() * y_less_mu_y_squared.sum().sqrt();
     let r_tmp = numerator / denominator;
     let r = match r_tmp.is_nan() {
-        true => return Ok((f64::NAN, f64::NAN)),
+        true => {
+            if numerator == 0.0 {
+                0.0
+            } else {
+                return Ok((f64::NAN, f64::NAN));
+            }
+        }
         false => r_tmp,
     };
     let sigma_r_denominator = (1.0 - r.powf(2.0)) / (n as f64 - 2.0);
@@ -379,7 +405,8 @@ pub fn pearsons_correlation_pairwise_complete(
     let sigma_r = sigma_r_denominator.sqrt();
     let t = r / sigma_r;
     let pval = if n > 2 {
-        let d = StudentsT::new(0.0, 1.0, n as f64 - 2.0).expect("Error defining Student's t-distribution.");
+        let d = StudentsT::new(0.0, 1.0, n as f64 - 2.0)
+            .expect("Error defining Student's t-distribution.");
         2.00 * (1.00 - d.cdf(t.abs()))
     } else {
         f64::NAN
@@ -387,6 +414,36 @@ pub fn pearsons_correlation_pairwise_complete(
     Ok((sensible_round(r, 7), pval))
 }
 
+// Compute summary minimum, maximum and arithmetic mean of a vector
+pub fn summary_stats(x: &Vec<f64>) -> io::Result<(f64, f64, f64)> {
+    let x: Vec<f64> = x
+        .iter()
+        .filter(|&x| !x.is_nan())
+        .map(|&x| x.to_owned())
+        .collect();
+    assert!(
+        x.len() > 0,
+        "Error: the input vector is empty or contains only f64::NAN."
+    );
+    let mut min = x[0];
+    let mut mean = x[0];
+    let mut max = x[0];
+    let mut n = 0.0;
+    for i in 0..x.len() {
+        if x[i].is_nan() == false {
+            if x[i] < min {
+                min = x[i]
+            }
+            if x[i] > max {
+                max = x[i]
+            }
+            mean += x[i];
+            n += 1.0;
+        }
+    }
+    mean = mean / n;
+    Ok((min, mean, max))
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #[cfg(test)]
@@ -509,5 +566,11 @@ mod tests {
         assert!(corr1.1 < 0.0001);
         assert!(corr2.0 == 0.00);
         assert!(corr2.1 == 1.00);
+
+        let x: Vec<f64> = (0..10).map(|x| x as f64).collect();
+        let (min, mean, max) = summary_stats(&x).unwrap();
+        assert_eq!(min, 0.0);
+        assert_eq!(mean, 4.5);
+        assert_eq!(max, 9.0);
     }
 }

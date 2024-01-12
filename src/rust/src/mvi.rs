@@ -2,7 +2,6 @@ use ndarray::prelude::*;
 use std::io;
 
 use crate::helpers::*;
-
 use crate::structs_and_traits::*;
 
 impl GenotypesAndPhenotypes {
@@ -83,14 +82,20 @@ pub fn impute_mean(
     );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes.mean_imputation().expect("Error calling mean_imputation() method within impute_mean().");
+    genotypes_and_phenotypes
+        .mean_imputation()
+        .expect("Error calling mean_imputation() method within impute_mean().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of mean value imputation within impute_mean()");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of mean value imputation within impute_mean()");
     println!(
         "Mean value imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity after mean value imputation within impute_mean()."),
+        genotypes_and_phenotypes
+            .missing_rate()
+            .expect("Error measuring sparsity after mean value imputation within impute_mean()."),
         duration.as_secs()
     );
 
@@ -102,7 +107,9 @@ pub fn impute_mean(
         .filter_out_top_missing_loci(&1.00)
         .expect("Error calling filter_out_top_missing_loci() method within impute_mean().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of filter_out_top_missing_loci() within impute_mean()");
+    let duration = end.duration_since(start).expect(
+        "Error measuring the duration of filter_out_top_missing_loci() within impute_mean()",
+    );
     println!(
         "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),

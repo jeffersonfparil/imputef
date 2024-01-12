@@ -149,9 +149,17 @@ impl LoadAll for FileGeno {
             let thread = std::thread::spawn(move || {
                 let (mut freq, mut cnts) = self_clone
                     .per_chunk_load(&start, &end, &filter_stats, keep_p_minus_1)
-                    .expect("Error calling per_chunk_load() within load() method for FileGeno struct.");
-                thread_ouputs_freq_clone.lock().expect("Thread error within load() method for FileGeno struct.").append(&mut freq);
-                thread_ouputs_cnts_clone.lock().expect("Thread error within load() method for FileGeno struct.").append(&mut cnts);
+                    .expect(
+                        "Error calling per_chunk_load() within load() method for FileGeno struct.",
+                    );
+                thread_ouputs_freq_clone
+                    .lock()
+                    .expect("Thread error within load() method for FileGeno struct.")
+                    .append(&mut freq);
+                thread_ouputs_cnts_clone
+                    .lock()
+                    .expect("Thread error within load() method for FileGeno struct.")
+                    .append(&mut cnts);
             });
             thread_objects.push(thread);
         }

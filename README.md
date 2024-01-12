@@ -69,8 +69,8 @@ Exclusive to `aldknni`:
 - **optimise_n_steps_corr**: number levels for the optimisation of the minimum loci correlation or number of linked loci. [Default=10]
 - **optimise_n_steps_dist**: number levels for the optimisation of the maximum pool distance or number of nearest neighbours. [Default=10]
 - **optimise_n_reps**: number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
-- **misc_min_l**: minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=0].
-- **misc_min_k**: minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=0].
+- **misc_min_l**: minimum number (greater than 0) of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=1].
+- **misc_min_k**: minimum number (greater than 0) of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=1].
 
 
 ## Output

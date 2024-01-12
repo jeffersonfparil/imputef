@@ -198,7 +198,8 @@ impl Filter for LocusCounts {
     fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Preliminary check of the structure format
-        self.check().expect("Error calling check() within filter() method for LocusCounts struct.");
+        self.check()
+            .expect("Error calling check() within filter() method for LocusCounts struct.");
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -383,7 +384,8 @@ impl Filter for LocusFrequencies {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Also, cannot filter by minimum coverage as that data is lost from counts to frequencies conversion
         // Preliminary check of the structure format
-        self.check().expect("Error calling check() within filter() method for LocusFrequencies struct.");
+        self.check()
+            .expect("Error calling check() within filter() method for LocusFrequencies struct.");
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -628,7 +630,9 @@ impl LoadAll for FileSyncPhen {
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let mut cnts: Vec<LocusCounts> = Vec::new();
         // Input file chunk
-        let file = File::open(fname.clone()).expect("Error opening input sync file within per_chunk_load() method for FileSyncPhen struct.");
+        let file = File::open(fname.clone()).expect(
+            "Error opening input sync file within per_chunk_load() method for FileSyncPhen struct.",
+        );
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
@@ -693,7 +697,9 @@ impl LoadAll for FileSyncPhen {
     ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).expect("Error splitting the input sync file within the load() method for FileSyncPhen struct.");
+        let chunks = find_file_splits(&fname, n_threads).expect(
+            "Error splitting the input sync file within the load() method for FileSyncPhen struct.",
+        );
         let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
@@ -868,7 +874,9 @@ impl SaveCsv for FileSyncPhen {
             .open(&out)
             .expect(&error_writing_file);
         // Load the full sync file in parallel and sort
-        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the write_csv() method for FileSyncPhen struct.");
+        let (freqs, _cnts) = self
+            .load(filter_stats, keep_p_minus_1, n_threads)
+            .expect("Error calling load() within the write_csv() method for FileSyncPhen struct.");
         // Make sure that we have the same number of pools in the genotype and phenotype files
         assert!(!freqs.is_empty(), "No data passed the filtering variables. Please decrease minimum depth, and/or minimum allele frequency.");
         assert!(
@@ -880,7 +888,9 @@ impl SaveCsv for FileSyncPhen {
             .write_all(
                 ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
             )
-            .expect("Error calling write_all() within the write_csv() method for FileSyncPhen struct.");
+            .expect(
+                "Error calling write_all() within the write_csv() method for FileSyncPhen struct.",
+            );
         // Write allele frequencies line by line
         for f in freqs.iter() {
             for i in 0..f.alleles_vector.len() {
