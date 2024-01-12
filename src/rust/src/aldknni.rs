@@ -10,6 +10,7 @@ fn calculate_genomewide_ld(
     intercept_and_allele_frequencies: &Array2<f64>,
 ) -> io::Result<Vec<Vec<f64>>> {
     // Errors and f64::NAN are all converted into 0.0 for simplicity
+    println!("Calculating genomewide correlations between pairs of loci.");
     let (_n, p) = intercept_and_allele_frequencies.dim();
     let mut corr: Vec<Vec<f64>> = vec![vec![]; p - 1];
     let vec_idx: Vec<usize> = (0..(p - 1)).collect();
@@ -37,6 +38,7 @@ fn calculate_genomewide_ld(
             idx
         )
     });
+    println!("Finished calculating genomewide correlations between pairs of loci.");
     Ok(corr)
 }
 
@@ -374,10 +376,26 @@ impl GenotypesAndPhenotypes {
             }
         }
         // Report actual correlation and distance parameters used
-        let (actual_corr_min, actual_corr_mean, actual_corr_max) = summary_stats(&actual_corr).expect("Error calculating the summary statistics of actual_corr within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-        let (actual_dist_min, actual_dist_mean, actual_dist_max) = summary_stats(&actual_dist).expect("Error calculating the summary statistics of actual_dist within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-        let (actual_l_min, actual_l_mean, actual_l_max) = summary_stats(&(actual_l.into_iter().map(|x| x as f64).collect::<Vec<f64>>())).expect("Error calculating the summary statistics of actual_l within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-        let (actual_k_min, actual_k_mean, actual_k_max) = summary_stats(&(actual_k.into_iter().map(|x| x as f64).collect::<Vec<f64>>())).expect("Error calculating the summary statistics of actual_k within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        let (actual_corr_min, actual_corr_mean, actual_corr_max) = match summary_stats(&actual_corr)
+        {
+            Ok(x) => x,
+            Err(_) => (f64::NAN, f64::NAN, f64::NAN),
+        };
+        let (actual_dist_min, actual_dist_mean, actual_dist_max) = match summary_stats(&actual_dist)
+        {
+            Ok(x) => x,
+            Err(_) => (f64::NAN, f64::NAN, f64::NAN),
+        };
+        let (actual_l_min, actual_l_mean, actual_l_max) =
+            match summary_stats(&(actual_l.into_iter().map(|x| x as f64).collect::<Vec<f64>>())) {
+                Ok(x) => x,
+                Err(_) => (f64::NAN, f64::NAN, f64::NAN),
+            };
+        let (actual_k_min, actual_k_mean, actual_k_max) =
+            match summary_stats(&(actual_k.into_iter().map(|x| x as f64).collect::<Vec<f64>>())) {
+                Ok(x) => x,
+                Err(_) => (f64::NAN, f64::NAN, f64::NAN),
+            };
         println!(
             "Actual minimum correlation threshold statistics | min={}; mean={}; max={}",
             actual_corr_min, actual_corr_mean, actual_corr_max

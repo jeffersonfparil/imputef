@@ -89,8 +89,8 @@ mvi = function(fname,
         optimise_n_steps_corr=0,
         optimise_n_steps_dist=0,
         optimise_n_reps=0,
-        misc_min_l=0,
-        misc_min_k=0,
+        misc_min_l=1,
+        misc_min_k=1,
         n_threads=n_threads,
         fname_out_prefix=fname_out_prefix)
     return(out)
@@ -118,8 +118,8 @@ mvi = function(fname,
 #'         optimise_n_steps_corr=10,
 #'         optimise_n_steps_dist=10,
 #'         optimise_n_reps=1,
-#'         misc_min_l=0,
-#'         misc_min_k=0,
+#'         misc_min_l=1,
+#'         misc_min_k=1,
 #'         n_threads=2,
 #'         fname_out_prefix="")
 #' @param fname
@@ -157,9 +157,9 @@ mvi = function(fname,
 #' @param optimise_n_reps
 #' number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
 #' @param misc_min_l
-#' Minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=0].
+#' Minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=1].
 #' @param misc_min_k
-#' Minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=0].
+#' Minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=1].
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
@@ -216,8 +216,8 @@ aldknni = function(fname,
                     optimise_n_steps_corr=10,
                     optimise_n_steps_dist=10,
                     optimise_n_reps=1,
-                    misc_min_l=0,
-                    misc_min_k=0,
+                    misc_min_l=1,
+                    misc_min_k=1,
                     n_threads=2,
                     fname_out_prefix="") {
     out = impute(fname=fname,
