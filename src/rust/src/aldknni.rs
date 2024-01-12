@@ -256,6 +256,10 @@ fn impute_allele_frequencies(
                 imputed_freqs[j] += weights[i] * frequencies[(i, j)];
             }
         }
+        if imputed_freqs[0].is_nan() {
+            println!("frequencies={:?}", frequencies);
+            println!("distances={:?}", distances);
+        }
         // Correct allele frequencies so that they sum up to 1, if we have more than 1 allele present
         if p > 1 {
             let sum = imputed_freqs.iter().fold(0.0, |sum, &x| sum + x);
@@ -352,14 +356,34 @@ impl GenotypesAndPhenotypes {
                         &self.intercept_and_allele_frequencies,
                     )
                     .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                // if self.position[j] == 2309794 {
+                //     println!("pools_idx={:?}", pools_idx); 
+                //     println!("distances_all_loci={:?}", distances_all_loci); 
+                //     println!("distances={:?}", distances); 
+                //     println!("self.intercept_and_allele_frequencies[(*i, j)]={:?}", self.intercept_and_allele_frequencies[(*i, j)]); 
+                //     println!("self.chromosome[*i]={:?}", self.chromosome[*i]); 
+                //     println!("self.position[*i]={:?}", self.position[*i]); 
+                // }
                 // Impute missing allele frequencies at the current locus
                 let imputed_freq = impute_allele_frequencies(&frequencies, &distances, do_linkimpute_weighted_mode).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
                 let idx_alleles: Vec<usize> = (j..j1).collect();
                 assert_eq!(idx_alleles.len(), imputed_freq.len(), "Error: the number of allele expected to be imputed and number of imputed allele frequencies do not match.");
                 for imputed_idx in 0..imputed_freq.len() {
                     let j = idx_alleles[imputed_idx];
+                    // if self.position[j] == 2309794 {
+                    //     println!("idx_alleles={:?}", idx_alleles); 
+                    //     println!("pools_idx={:?}", pools_idx); 
+                    //     println!("distances_all_loci={:?}", distances_all_loci); 
+                    //     println!("distances={:?}", distances); 
+                    //     println!("imputed_freq={:?}", imputed_freq); 
+                    //     println!("self.intercept_and_allele_frequencies[(*i, j)]={:?}", self.intercept_and_allele_frequencies[(*i, j)]); 
+                    //     println!("self.chromosome[j]={:?}", self.chromosome[j]); 
+                    //     println!("self.position[j]={:?}", self.position[j]); 
+                    // }
                     self.intercept_and_allele_frequencies[(*i, j)] = imputed_freq[imputed_idx];
                 }
+                // Convert imputed coverages to f64::INFINITY
+                self.coverages[(*i, idx_locus_major_allele)] = f64::INFINITY;
                 // Noting actual correlation and distance parameters used
                 actual_corr.push(
                     correlations
