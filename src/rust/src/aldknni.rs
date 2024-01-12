@@ -313,7 +313,7 @@ impl GenotypesAndPhenotypes {
         let mut actual_l: Vec<usize> = vec![];
         let mut actual_k: Vec<usize> = vec![];
         // Iterative imputation per locus
-        for idx_locus_major_allele in 0..(loci_idx.len()-1) {
+        for idx_locus_major_allele in 0..(loci_idx.len() - 1) {
             // Index of the major allele of the current locus
             let j = loci_idx[idx_locus_major_allele];
             // Index of the last allele of the current locus
@@ -378,10 +378,22 @@ impl GenotypesAndPhenotypes {
         let (actual_dist_min, actual_dist_mean, actual_dist_max) = summary_stats(&actual_dist).expect("Error calculating the summary statistics of actual_dist within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
         let (actual_l_min, actual_l_mean, actual_l_max) = summary_stats(&(actual_l.into_iter().map(|x| x as f64).collect::<Vec<f64>>())).expect("Error calculating the summary statistics of actual_l within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
         let (actual_k_min, actual_k_mean, actual_k_max) = summary_stats(&(actual_k.into_iter().map(|x| x as f64).collect::<Vec<f64>>())).expect("Error calculating the summary statistics of actual_k within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-        println!("Actual minimum correlation threshold statistics | min={}; mean={}; max={}", actual_corr_min, actual_corr_mean, actual_corr_max);
-        println!("Actual maximum distance threshold statistics | min={}; mean={}; max={}", actual_dist_min, actual_dist_mean, actual_dist_max);
-        println!("Actual minimum l-linked loci statistics | min={}; mean={}; max={}", actual_l_min, actual_l_mean, actual_l_max);
-        println!("Actual minimum k-nearest neighbours statistics | min={}; mean={}; max={}", actual_k_min, actual_k_mean, actual_k_max);
+        println!(
+            "Actual minimum correlation threshold statistics | min={}; mean={}; max={}",
+            actual_corr_min, actual_corr_mean, actual_corr_max
+        );
+        println!(
+            "Actual maximum distance threshold statistics | min={}; mean={}; max={}",
+            actual_dist_min, actual_dist_mean, actual_dist_max
+        );
+        println!(
+            "Actual minimum l-linked loci statistics | min={}; mean={}; max={}",
+            actual_l_min, actual_l_mean, actual_l_max
+        );
+        println!(
+            "Actual minimum k-nearest neighbours statistics | min={}; mean={}; max={}",
+            actual_k_min, actual_k_mean, actual_k_max
+        );
         Ok(self)
     }
 }
@@ -540,7 +552,10 @@ mod tests {
             "Before imputation:\n{:?}",
             frequencies_and_phenotypes.intercept_and_allele_frequencies
         );
-        let n_nan = frequencies_and_phenotypes.intercept_and_allele_frequencies.iter().fold(0, |n_nan, &x| if x.is_nan(){n_nan+1}else{n_nan});
+        let n_nan = frequencies_and_phenotypes
+            .intercept_and_allele_frequencies
+            .iter()
+            .fold(0, |n_nan, &x| if x.is_nan() { n_nan + 1 } else { n_nan });
         println!("n_nan={}", n_nan);
         assert_eq!(n_nan, 22_997);
 
@@ -623,11 +638,11 @@ mod tests {
         let min_loci_per_window = 1;
         let min_loci_corr = 0.9;
         let max_pool_dist = 0.1;
-        let optimise_for_thresholds = true;
-        let optimise_n_steps_corr = 10;
-        let optimise_n_steps_dist = 10;
-        let optimise_n_reps = 3;
-        let do_linkimpute_weighted_mode = false;
+        let _optimise_for_thresholds = true;
+        let _optimise_n_steps_corr = 10;
+        let _optimise_n_steps_dist = 10;
+        let _optimise_n_reps = 3;
+        let _do_linkimpute_weighted_mode = false;
         let misc_min_l = 1;
         let misc_min_k = 1;
         let _ = frequencies_and_phenotypes
@@ -647,16 +662,18 @@ mod tests {
             "After imputation:\n{:?}",
             frequencies_and_phenotypes.intercept_and_allele_frequencies
         );
-        let n_nan = frequencies_and_phenotypes.intercept_and_allele_frequencies.iter().fold(0, |n_nan, &x| if x.is_nan(){n_nan+1}else{n_nan});
+        let n_nan = frequencies_and_phenotypes
+            .intercept_and_allele_frequencies
+            .iter()
+            .fold(0, |n_nan, &x| if x.is_nan() { n_nan + 1 } else { n_nan });
         println!("n_nan={}", n_nan);
         assert_eq!(n_nan, 7_945); // corresponds to the 1_589 alleles completely missing across all pools
 
         let keep_p_minus_1 = false;
         let _start = std::time::SystemTime::now();
-        let genotypes_and_phenotypes = file_sync_phen
+        let _genotypes_and_phenotypes = file_sync_phen
             .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &n_threads)
             .unwrap();
-
 
         // let outname = impute_aldknni(
         //     genotypes_and_phenotypes,
