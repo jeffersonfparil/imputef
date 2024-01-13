@@ -326,16 +326,20 @@ impl GenotypesAndPhenotypes {
             let mut idx_locus_major_allele = 0;
             let chr = self.chromosome[j].clone();
             let pos = self.position[j];
-            for ix in 0..loci_idx.len() {
+let j: usize; 
+let j1:usize; 
+            for ix in 0..(loci_idx.len() - 1) {
                 if (chr == loci_chr[ix]) & (pos == loci_pos[ix]) {
-                    idx_locus_major_allele = ix;
+                    // idx_locus_major_allele = ix;
+j = loci_idx[ix];
+j1 = loci_idx[ix + 1];
                     break;
                 }
             }
             // // Index of the major allele of the current locus
             // let j = loci_idx[idx_locus_major_allele];
             // Index of the last allele of the current locus
-            let j1 = loci_idx[idx_locus_major_allele + 1];
+            // let j1 = loci_idx[idx_locus_major_allele + 1];
             
             
             
