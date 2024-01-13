@@ -261,9 +261,8 @@ impl LoadAll for FileGeno {
         loci_idx.push(p);
         loci_chr.push(chromosome.last().expect("Error push chromosome within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
         loci_pos.push(position.last().expect("Error push position within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
-        // Add alternative alleles if the allele frequencies per locus do not add up to 1.00 or if only one allele per locus is present
+        // Add alternative alleles if the allele frequencies per locus do not add up to 1.00 (~or if only one allele per locus is present~)
         // Count how many allele we have to add
-        // println!("p={}", p);
         for j in 0..l {
             let idx_ini = loci_idx[j];
             let idx_fin = loci_idx[j + 1];
@@ -275,11 +274,11 @@ impl LoadAll for FileGeno {
                     break;
                 }
             }
-            if (n_alleles == 1) | freq_sum_less_than_one {
+            // if (n_alleles == 1) | freq_sum_less_than_one {
+            if freq_sum_less_than_one {
                 p += 1;
             }
         }
-        // println!("p={}", p);
         let mut chromosome_new: Vec<String> = Vec::with_capacity(p);
         chromosome_new.push("intercept".to_owned());
         let mut position_new: Vec<u64> = Vec::with_capacity(p);
