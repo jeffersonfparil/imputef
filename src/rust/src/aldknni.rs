@@ -324,7 +324,7 @@ impl GenotypesAndPhenotypes {
         Zip::indexed(&mut self.intercept_and_allele_frequencies)
         .par_for_each(|(i, j_true), q| {
             let mut idx_locus_major_allele = 0;
-            let chr = self.chromosome[j].clone();
+            let chr = self.chromosome[j_true].clone();
             let pos = self.position[j_true];
 let mut j: usize = 0; 
 let mut j1:usize = 0; 
