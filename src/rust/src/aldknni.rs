@@ -322,7 +322,7 @@ impl GenotypesAndPhenotypes {
         // Parallel imputation 
         let mat_freqs = self.intercept_and_allele_frequencies.clone();
         Zip::indexed(&mut self.intercept_and_allele_frequencies)
-        .par_for_each(|(i, j), q| {
+        .par_for_each(|(i, j_true), q| {
             let mut idx_locus_major_allele = 0;
             let chr = self.chromosome[j].clone();
             let pos = self.position[j];
@@ -389,7 +389,7 @@ j1 = loci_idx[ix + 1];
                         // let j = idx_alleles[imputed_idx];
                         // self.intercept_and_allele_frequencies[(*i, j)] = imputed_freq[imputed_idx];
                         let j_current = idx_alleles[imputed_idx];
-                        if j == j_current {
+                        if j_true == j_current {
                             *q = imputed_freq[imputed_idx];
                         }
                     }
