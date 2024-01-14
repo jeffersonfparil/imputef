@@ -326,8 +326,8 @@ impl GenotypesAndPhenotypes {
             let mut idx_locus_major_allele = 0;
             let chr = self.chromosome[j].clone();
             let pos = self.position[j];
-let j: usize; 
-let j1:usize; 
+let mut j: usize = 0; 
+let mut j1:usize = 0; 
             for ix in 0..(loci_idx.len() - 1) {
                 if (chr == loci_chr[ix]) & (pos == loci_pos[ix]) {
                     // idx_locus_major_allele = ix;
