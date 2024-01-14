@@ -325,7 +325,7 @@ impl GenotypesAndPhenotypes {
         .par_for_each(|(i, j_true), q| {
             let mut idx_locus_major_allele = 0;
             let chr = self.chromosome[j].clone();
-            let pos = self.position[j];
+            let pos = self.position[j_true];
 let mut j: usize = 0; 
 let mut j1:usize = 0; 
             for ix in 0..(loci_idx.len() - 1) {
