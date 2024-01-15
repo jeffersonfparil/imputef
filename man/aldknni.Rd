@@ -45,25 +45,29 @@ aldknni(fname,
 
 \item{frac_top_missing_loci}{fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. \link{Default=0.0}}
 
-\item{window_size_bp}{non-overlapping window size in bases to be used in the adaptive linkage-informed k-nearest neighbour imputation (aldknni) of allele frequencies. By default, set to the length of the longest chromosome or scaffold. Alternatively, set to the expected linkage block size (e.g. 10,000,000 or 10 megabases) to maximise the use available computing threads and decrease computation time. \link{Default=0}}
+\item{min_loci_corr}{Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. \link{Default=0.9}}
 
-\item{min_loci_per_window}{minimum number of loci per window to be used in the imputation of allele frequencies. Windows which fail this threshold are omitted. If the default value of one is used, then at very sparse windows the mean value will likely be used for imputation. \link{Default=1}}
+\item{max_pool_dist}{Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. \link{Default=0.1}}
 
-\item{min_loci_corr}{minimum correlation between loci or number of linked loci. If the former is intended, then this value ranges between 0 and 1, while greater than or equal to 1 if otherwise. Definition 1: Minimum correlation between the locus requiring imputation and other loci deemed to be in linkage with it. Definition 2: The number of linked loci. The resulting linked loci will be used to estimate the distances between pools. If this is set to 0, then this value will be optimised - see additional parameters below. \link{Default=0.9}}
+\item{min_l_loci}{Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. \link{Default=1}}
 
-\item{max_pool_dist}{maximum distance between the pool or number of nearest neighbours. If the former is intended, then this value ranges between 0 and 1, while greater than or equal to 1 if otherwise. Definition 1: Maximum distance between the pool requiring imputation and other pools deemed to be the closest neighbours. Definition 2: Number of nearest neighbours. The resulting close neighbours will be used to impute. The distance metric is the mean absolute difference between pools across the linked loci. If this is set to 0, then this value will be optimised - see additional parameters below. \link{Default=0.1}}
+\item{min_k_neighbours}{Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. \link{Default=1}}
 
-\item{optimise_for_thresholds}{optimise for minimum correlation and maximum distance thresholds if TRUE, else optimise for the number of linked loci and nearest neighbours. \link{Default=TRUE}}
+\item{restrict_linked_loci_per_chromosome}{Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? \link{Default=TRUE}}
 
-\item{optimise_n_steps_corr}{number levels for the optimisation of the minimum loci correlation or number of linked loci. \link{Default=10}}
+\item{optimise_n_steps_min_loci_corr}{Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
-\item{optimise_n_steps_dist}{number levels for the optimisation of the maximum pool distance or number of nearest neighbours. \link{Default=10}}
+\item{optimise_n_steps_max_pool_dist}{Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
-\item{optimise_n_reps}{number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. \link{Default=1}}
+\item{optimise_n_steps_min_l_loci}{Number of steps requested for the values of minimum number of linked loci to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
-\item{misc_min_l}{Minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold \link{Default=1}.}
+\item{optimise_n_steps_min_k_neighbours}{Number of steps requested for the values of minimum number of nearest neighbours to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
-\item{misc_min_k}{Minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold \link{Default=1}.}
+\item{optimise_max_l_loci}{Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. \link{Default=100}}
+
+\item{optimise_max_k_neighbours}{Maximum number of k-nearest neighbours to be tested, if optimising for the best number of nearest neighbours to include in imputation. Minimum value of 2. \link{Default=50}}
+
+\item{optimise_n_reps}{Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance, and/or minimum number of linked loci, and/or minimum number of k-nearest neighbours. Minimum value of 1. \link{Default=1}}
 
 \item{n_threads}{number of computing threads or processor cores to use in the computations. \link{Default=2}}
 
@@ -98,17 +102,6 @@ Adaptive linkage-informed k-nearest neighbour imputation of allele frequencies
 This is an attempt to extend the \href{https://doi.org/10.1534/g3.115.021667}{LD-kNNi method of Money et al, 2015, i.e. LinkImpute}, which was an extension of the \href{https://doi.org/10.1093/bioinformatics/17.6.520}{kNN imputation of Troyanskaya et al, 2001}.
 Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples, but instead of computing this across all the loci, we divide the genome into windows which respect chromosomal/scaffold boundaries.
 We use the mean absolute difference (MAD or MAE where E stands for error) between allele frequencies as an estimate of distance between samples.
-Instead of optimising for the number of loci to include in the distance estimation and the number neighbours to include in the weighted allele frequency mean, we use a minimum correlation coefficient for the former, and a maximum distance for the latter.
-Both of these parameters can range from 0 to 1 and can be separately optimised, but a single pair of reasonable values is expected to result in good imputation accuracy, e.g. the default values of 0.9 minimum correlation, and 0.1 maximum distance.
-The adaptive behaviour of our algorithm can be described in cases where:
-\itemize{
-\item sparsity in the data is too high, or
-\item loci are too uncorrelated because the breadth of coverage is too sparse, or
-\item pools are too unrelated.
-}
-
-These cases can mean that the data may not be informative enough to yield LD-kNN imputations better than mean value imputation.
-Hence, under these cases mean value imputation will be used instead of LD-kNN imputation.
 This function prints out the expected mean absolute error (MAE) of the imputation using 10\% simulated missing data. Repeat the imputation manually to get a range of these MAEs for a better estimate of the expected MAE.
 This function does not import any genotype data into R. Most processes are multi-threaded and outputs are written into disk as text files, i.e. sync file, and csv file of imputed allele frequencies.
 It converts vcf into sync with locus filtering based on minimum depth, minimum allele frequency, and maximum missingness rate with minimal memory footprint as large vcf files are split into chunks equivalent to the number of threads and processed line-by-line.

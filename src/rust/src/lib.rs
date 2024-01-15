@@ -15,11 +15,8 @@ mod structs_and_traits;
 mod sync;
 mod vcf;
 use crate::aldknni::*;
-
 use crate::mvi::*;
-
 use crate::structs_and_traits::*;
-
 use crate::vcf::*;
 
 #[extendr]
@@ -34,16 +31,18 @@ fn impute(
     max_depth_above_which_are_missing: f64,
     frac_top_missing_pools: f64,
     frac_top_missing_loci: f64,
-    window_size_bp: u64,
-    min_loci_per_window: u64,
     min_loci_corr: f64,
     max_pool_dist: f64,
-    optimise_for_thresholds: bool,
-    optimise_n_steps_corr: u64,
-    optimise_n_steps_dist: u64,
+    min_l_loci: u64,
+    min_k_neighbours: u64,
+    restrict_linked_loci_per_chromosome: bool,
+    optimise_n_steps_min_loci_corr: u64,
+    optimise_n_steps_max_pool_dist: u64,
+    optimise_n_steps_min_l_loci: u64,
+    optimise_n_steps_min_k_neighbours: u64,
+    optimise_max_l_loci: u64,
+    optimise_max_k_neighbours: u64,
     optimise_n_reps: u64,
-    misc_min_l: u64,
-    misc_min_k: u64,
     n_threads: u64,
     fname_out_prefix: String,
     // ) -> String {
@@ -319,10 +318,8 @@ fn impute(
     if do_linkimpute_weighted_mode {
         println!("The input genotype data is biallelic diploid and will be using weighted modal imputation.");
     } else {
-        println!("The input genotype data is not biallelic diploid and will be using weighted mean imputation.");
+        println!("The input genotype data is not biallelic diploid and will be using weighted mean imputation (At least one allele frequency is not 0.0, 0.5 or 1.0.).");
     }
-    // println!("genotypes_and_phenotypes.intercept_and_allele_frequencies={:?}", genotypes_and_phenotypes.intercept_and_allele_frequencies);
-    // println!("do_linkimpute_weighted_mode={:?}", do_linkimpute_weighted_mode);
     // Prepare output file name
     let fname_out = if fname_out_prefix == *"" {
         fname.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
@@ -351,18 +348,19 @@ fn impute(
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
-            &window_size_bp,
-            &window_size_bp, // set the slide size as the window size hence non-overlapping windows
-            &min_loci_per_window,
             &min_loci_corr,
             &max_pool_dist,
-            &optimise_for_thresholds,
-            &(optimise_n_steps_corr as usize),
-            &(optimise_n_steps_dist as usize),
-            &(optimise_n_reps as usize),
+            &min_l_loci,
+            &min_k_neighbours,
+            restrict_linked_loci_per_chromosome,
             do_linkimpute_weighted_mode,
-            &misc_min_l,
-            &misc_min_k,
+            &(optimise_n_steps_min_loci_corr as usize),
+            &(optimise_n_steps_max_pool_dist as usize),
+            &(optimise_n_steps_min_l_loci as usize),
+            &(optimise_n_steps_min_k_neighbours as usize),
+            &optimise_max_l_loci,
+            &optimise_max_k_neighbours,
+            &(optimise_n_reps as usize),
             &(n_threads as usize),
             &fname_out,
         )

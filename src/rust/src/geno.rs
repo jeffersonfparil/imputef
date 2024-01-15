@@ -266,7 +266,7 @@ impl LoadAll for FileGeno {
         for j in 0..l {
             let idx_ini = loci_idx[j];
             let idx_fin = loci_idx[j + 1];
-            let n_alleles = idx_fin - idx_ini;
+            let _n_alleles = idx_fin - idx_ini;
             let mut freq_sum_less_than_one = false;
             for i in 0..n {
                 if mat.slice(s![i, idx_ini..idx_fin]).sum() < 1.0 {

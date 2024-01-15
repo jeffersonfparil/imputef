@@ -14,7 +14,7 @@ MVI_impute_2_loci = function(fname_vcf_sync_csv) {
 }
 
 ALDKNNI_FIXED_LK_impute_2_loci = function(fname_vcf_sync_csv) {
-    out = aldknni(fname=fname_vcf_sync_csv, min_loci_corr=10, max_pool_dist=3)
+    out = aldknni(fname=fname_vcf_sync_csv, min_l_loci=10, min_k_neighbours=3)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
     idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))
@@ -34,7 +34,7 @@ ALDKNNI_FIXED_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
 }
 
 ALDKNNI_OPTIM_LK_impute_2_loci = function(fname_vcf_sync_csv) {
-    out = aldknni(fname=fname_vcf_sync_csv, min_loci_corr=0, max_pool_dist=0, optimise_for_thresholds=FALSE, optimise_n_reps=1)
+    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_loci_corr=10, optimise_n_steps_max_pool_dist=10, min_l_loci=1, min_k_neighbours=1)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
     idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))
@@ -44,7 +44,17 @@ ALDKNNI_OPTIM_LK_impute_2_loci = function(fname_vcf_sync_csv) {
 }
 
 ALDKNNI_OPTIM_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
-    out = aldknni(fname=fname_vcf_sync_csv, min_loci_corr=0, max_pool_dist=0, optimise_for_thresholds=TRUE, optimise_n_reps=1)
+    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_l_loci=10, optimise_n_steps_min_k_neighbours=10, min_loci_corr=0.0, max_pool_dist=1.0)
+    df = read.csv(out)
+    idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
+    idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))
+    vcf_idx_1 = df$Entry.0[idx_1]
+    vcf_idx_2 = df$Entry.1[idx_2]
+    return(c(vcf_idx_1, vcf_idx_2, nrow(df), ncol(df)))
+}
+
+ALDKNNI_OPTIM_FULL_impute_2_loci = function(fname_vcf_sync_csv) {
+    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_loci_corr=3, optimise_n_steps_max_pool_dist=3, optimise_n_steps_min_l_loci=3, optimise_n_steps_min_k_neighbours=3)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
     idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))
@@ -54,24 +64,24 @@ ALDKNNI_OPTIM_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
 }
 
 tests = function() {
-    # test_that(
-    #     "mvi", {
-    #         print("mvi:")
-    #         vcf = MVI_impute_2_loci("tests/test.vcf")
-    #         sync = MVI_impute_2_loci("tests/test.sync")
-    #         csv = MVI_impute_2_loci("tests/test.csv")
-    #         expect_equal(vcf, c(0.018519, 0.981481, 0.084808, 0.915192, 753, 13))
-    #         expect_equal(vcf, sync)
-    #         expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0)) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
-    #     }
-    # )
+    test_that(
+        "mvi", {
+            print("mvi:")
+            vcf = MVI_impute_2_loci("tests/test.vcf")
+            sync = MVI_impute_2_loci("tests/test.sync")
+            csv = MVI_impute_2_loci("tests/test.csv")
+            expect_equal(vcf, c(0.018519, 0.981481, 0.084808, 0.915192, 753, 13))
+            expect_equal(vcf, sync)
+            expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0)) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
+        }
+    )
     test_that(
         "aldknni_fixed_lk", {
             print("aldknni_fixed_lk:")
             vcf = ALDKNNI_FIXED_LK_impute_2_loci("tests/test.vcf")
             sync = ALDKNNI_FIXED_LK_impute_2_loci("tests/test.sync")
             csv = ALDKNNI_FIXED_LK_impute_2_loci("tests/test.csv")
-            expect_equal(vcf, c(0.019371, 0.980629, 0.086328, 0.913672, 753, 13))
+            expect_equal(vcf, c(0.0, 1.0, 0.093652, 0.906348, 753, 13))
             expect_equal(vcf, sync)
             expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0)) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
         }
@@ -84,7 +94,7 @@ tests = function() {
             csv = ALDKNNI_FIXED_CORRDIST_impute_2_loci("tests/test.csv")
             expect_equal(vcf, c(0.017927, 0.982073, 0.084668, 0.915332, 753, 13))
             expect_equal(vcf, sync)
-            expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0), tolerance=1e-5) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
+            expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0)) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
         }
     )
     test_that(
@@ -94,8 +104,8 @@ tests = function() {
             sync = ALDKNNI_OPTIM_LK_impute_2_loci("tests/test.sync")
             csv = ALDKNNI_OPTIM_LK_impute_2_loci("tests/test.csv")
             expect_equal(vcf, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
-            expect_equal(vcf, sync, tolerance=0.2)
-            expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0), tolerance=0.2) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
+            expect_equal(sync, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
+            expect_equal(csv, c(0.0, 1.0, 0.0, 1.0, 752, 13), tolerance=0.1)
         }
     )
     test_that(
@@ -105,8 +115,19 @@ tests = function() {
             sync = ALDKNNI_OPTIM_CORRDIST_impute_2_loci("tests/test.sync")
             csv = ALDKNNI_OPTIM_CORRDIST_impute_2_loci("tests/test.csv")
             expect_equal(vcf, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
-            expect_equal(vcf, sync, tolerance=0.2)
-            expect_equal(vcf, csv - c(0, 0, 0, 0, 1, 0), tolerance=0.2) ### reduce the number of alleles across loci by one as the csv or geno format file had one locus appended with an additional missing alternative allele
+            expect_equal(sync, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
+            expect_equal(csv, c(0.0, 1.0, 0.0, 1.0, 752, 13), tolerance=0.1)
+        }
+    )
+    test_that(
+        "aldknni_optim_full", {
+            print("aldknni_optim_full:")
+            vcf = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.vcf")
+            sync = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.sync")
+            csv = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.csv")
+            expect_equal(vcf, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
+            expect_equal(sync, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
+            expect_equal(csv, c(0.0, 1.0, 0.0, 1.0, 752, 13), tolerance=0.1)
         }
     )
 }
