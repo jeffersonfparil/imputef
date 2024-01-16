@@ -63,7 +63,7 @@ impl GenotypesAndPhenotypes {
                 }
                 idx += 1;
             }
-        }        
+        }
         self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         Ok((
             self,
@@ -236,41 +236,65 @@ pub fn optimise_params_and_estimate_accuracy(
     // Note: The number of steps may vary from the input depending on how we can evenly divide the range
     let vec_min_loci_corr: Vec<f64> = if *optimise_n_steps_min_loci_corr > 1 {
         let step_size = (101.0 / *optimise_n_steps_min_loci_corr as f64).round() as usize;
-        (0..=100).step_by(step_size).map(|x| x as f64 / 100.0).collect()
+        (0..=100)
+            .step_by(step_size)
+            .map(|x| x as f64 / 100.0)
+            .collect()
     } else {
         vec![*min_loci_corr]
     };
     let vec_max_pool_dist: Vec<f64> = if *optimise_n_steps_max_pool_dist > 1 {
         let step_size = (101.0 / *optimise_n_steps_max_pool_dist as f64).round() as usize;
-         (0..=100).step_by(step_size).map(|x| x as f64 / 100.0).collect()
+        (0..=100)
+            .step_by(step_size)
+            .map(|x| x as f64 / 100.0)
+            .collect()
     } else {
         vec![*max_pool_dist]
     };
     let vec_min_l_loci: Vec<u64> = if *optimise_n_steps_min_l_loci > 1 {
-        let step_size = (*optimise_max_l_loci as f64 / *optimise_n_steps_min_l_loci as f64).round() as usize;
-         (1..=*optimise_max_l_loci).step_by(step_size).map(|x| x as u64).collect()
+        let step_size =
+            (*optimise_max_l_loci as f64 / *optimise_n_steps_min_l_loci as f64).round() as usize;
+        (1..=*optimise_max_l_loci)
+            .step_by(step_size)
+            .map(|x| x as u64)
+            .collect()
     } else {
         vec![*min_l_loci]
     };
     let vec_min_k_neighbours: Vec<u64> = if *optimise_n_steps_min_k_neighbours > 1 {
-        let k_max = if *optimise_max_k_neighbours as usize > genotypes_and_phenotypes.intercept_and_allele_frequencies.nrows() {
-            genotypes_and_phenotypes.intercept_and_allele_frequencies.nrows()
+        let k_max = if *optimise_max_k_neighbours as usize
+            > genotypes_and_phenotypes
+                .intercept_and_allele_frequencies
+                .nrows()
+        {
+            genotypes_and_phenotypes
+                .intercept_and_allele_frequencies
+                .nrows()
         } else {
             *optimise_max_k_neighbours as usize
         };
         let step_size = (k_max as f64 / *optimise_n_steps_min_k_neighbours as f64).round() as usize;
-         (1..=k_max).step_by(step_size).map(|x| x as u64).collect()
+        (1..=k_max).step_by(step_size).map(|x| x as u64).collect()
     } else {
         vec![*min_k_neighbours]
     };
     // Use the same simulated missing data across the range of corr/l and dist/k...
     let mut array5_mae: Array5<f64> = Array5::from_elem(
-        (*optimise_n_reps, vec_min_loci_corr.len(),vec_max_pool_dist.len(),vec_min_l_loci.len(),vec_min_k_neighbours.len()),
+        (
+            *optimise_n_reps,
+            vec_min_loci_corr.len(),
+            vec_max_pool_dist.len(),
+            vec_min_l_loci.len(),
+            vec_min_k_neighbours.len(),
+        ),
         f64::NAN,
     );
+    println!("-----------------------------------------------");
     if *optimise_n_reps > 1 {
-        println!("-----------------------------------------------");
         println!("rep\tmin_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae");
+    } else {
+        println!("min_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae");
     }
     for r in 0..*optimise_n_reps {
         // Simulate 10% sparsity to determine accuracy (in terms of MAE) and to optimise for the best k and l, if applicable, i.e. n_loci_to_estimate_distance==0 or k_neighbours==0
@@ -308,33 +332,58 @@ pub fn optimise_params_and_estimate_accuracy(
                             )
                             .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
                         array5_mae[(r, i, j, k, l)] = mae;
-                        println!("{}\t{}\t{}\t{}\t{}\t{}", r, vec_min_loci_corr[i], vec_max_pool_dist[j], vec_min_l_loci[k], vec_min_k_neighbours[l], mae);
+                        if *optimise_n_reps > 1 {
+                            println!(
+                                "{}\t{}\t{}\t{}\t{}\t{}",
+                                r,
+                                vec_min_loci_corr[i],
+                                vec_max_pool_dist[j],
+                                vec_min_l_loci[k],
+                                vec_min_k_neighbours[l],
+                                mae
+                            );
+                        } else {
+                            println!(
+                                "{}\t{}\t{}\t{}\t{}",
+                                vec_min_loci_corr[i],
+                                vec_max_pool_dist[j],
+                                vec_min_l_loci[k],
+                                vec_min_k_neighbours[l],
+                                mae
+                            );
+                        }
                     }
                 }
             }
         }
     }
-    if *optimise_n_reps > 1 {
-        println!("-----------------------------------------------");
-    }
+    println!("-----------------------------------------------");
     // Identify best min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
     let mut optimum_mae: f64 = 1.0;
     let mut optimum_min_loci_corr: f64 = 0.0;
     let mut optimum_max_pool_dist: f64 = 1.0;
     let mut optimum_min_l_loci: u64 = 0;
     let mut optimum_min_k_neighbours: u64 = 0;
-    println!("-----------------------------------------------");
-    println!("min_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae\tsd");
+    if *optimise_n_reps > 1 {
+        println!("-----------------------------------------------");
+        println!("min_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae\tsd");
+    }
     for i in 0..vec_min_loci_corr.len() {
         for j in 0..vec_max_pool_dist.len() {
             for k in 0..vec_min_l_loci.len() {
                 for l in 0..vec_min_k_neighbours.len() {
-                    for r in 0..*optimise_n_reps {
-                        let mae: Array1<f64> = array5_mae.slice(s![.., i, j, k, l]).iter().filter(|&x| !x.is_nan()).map(|&x| x.to_owned()).collect();
+                    for _r in 0..*optimise_n_reps {
+                        let mae: Array1<f64> = array5_mae
+                            .slice(s![.., i, j, k, l])
+                            .iter()
+                            .filter(|&x| !x.is_nan())
+                            .map(|&x| x.to_owned())
+                            .collect();
                         let (mu, sd) = if mae.len() > 0 {
                             let mu = mae.iter().fold(0.0, |sum, &x| sum + x) / (mae.len() as f64);
                             let sd = if mae.len() > 1 {
-                                mae.iter().fold(0.0, |sum, &x| sum + (x-mu).powf(2.0)) / (mae.len() as f64 - 1.00).sqrt()
+                                mae.iter().fold(0.0, |sum, &x| sum + (x - mu).powf(2.0))
+                                    / (mae.len() as f64 - 1.00).sqrt()
                             } else {
                                 0.0
                             };
@@ -342,7 +391,17 @@ pub fn optimise_params_and_estimate_accuracy(
                         } else {
                             (f64::NAN, f64::NAN)
                         };
-                        println!("{}\t{}\t{}\t{}\t{}\t{}", vec_min_loci_corr[i], vec_max_pool_dist[j], vec_min_l_loci[k], vec_min_k_neighbours[l], mu, sd);
+                        if *optimise_n_reps > 1 {
+                            println!(
+                                "{}\t{}\t{}\t{}\t{}\t{}",
+                                vec_min_loci_corr[i],
+                                vec_max_pool_dist[j],
+                                vec_min_l_loci[k],
+                                vec_min_k_neighbours[l],
+                                mu,
+                                sd
+                            );
+                        }
                         if mu.is_nan() == false {
                             if optimum_mae > mu {
                                 optimum_mae = mu;
@@ -357,11 +416,16 @@ pub fn optimise_params_and_estimate_accuracy(
             }
         }
     }
-    println!("-----------------------------------------------");
-    
-    
-    
-    Ok((optimum_min_loci_corr, optimum_max_pool_dist, optimum_min_l_loci, optimum_min_k_neighbours, optimum_mae))
+    if *optimise_n_reps > 1 {
+        println!("-----------------------------------------------");
+    }
+    Ok((
+        optimum_min_loci_corr,
+        optimum_max_pool_dist,
+        optimum_min_l_loci,
+        optimum_min_k_neighbours,
+        optimum_mae,
+    ))
 }
 
 // Make tests

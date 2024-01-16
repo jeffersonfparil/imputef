@@ -261,29 +261,31 @@ fn impute_allele_frequencies(
     // LD-kNN imputations (weighted mode and mean)
     if do_linkimpute_weighted_mode {
         // Perform weighted modal imputation as in LinkImpute for biallelic diploids - the only 2 differences are that we are performing this per chromosome and the distance metric is MAE rather than Manhattan distance
-        assert_eq!(frequencies.ncols(), 1, "Error in the number of alleles per locus. We expect a biallelic locus, please remove the alternative allele or set do_linkimpute_weighted_mode to false.");
-        let vec_geno = vec![0.0, 0.5, 1.0];
-        let mut max_score = 0.0;
-        let mut weighted_mode = 0.0;
-        for j in 0..vec_geno.len() {
-            let a = vec_geno[j];
-            let mut score = 0.0;
-            for i in 0..frequencies.column(0).len() {
-                let f = 1.00 / (&distances[i] + f64::EPSILON);
-                let g = if frequencies.column(0)[i] == a {
-                    1.0
-                } else {
-                    0.0
-                };
-                score += f * g;
+        assert!(frequencies.ncols() <= 2, "Error in the number of alleles per locus. We expect a biallelic locus, set do_linkimpute_weighted_mode to false.");
+        for idx_allele in 0..p {
+            let vec_geno = vec![0.0, 0.5, 1.0];
+            let mut max_score = 0.0;
+            let mut weighted_mode = 0.0;
+            for j in 0..vec_geno.len() {
+                let a = vec_geno[j];
+                let mut score = 0.0;
+                for i in 0..frequencies.column(idx_allele).len() {
+                    let f = 1.00 / (&distances[i] + f64::EPSILON);
+                    let g = if frequencies.column(idx_allele)[i] == a {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                    score += f * g;
+                }
+                if score > max_score {
+                    max_score = score;
+                    weighted_mode = vec_geno[j];
+                }
             }
-            if score > max_score {
-                max_score = score;
-                weighted_mode = vec_geno[j];
-            }
+            // println!("weighted_mode={:?}", weighted_mode);
+            imputed_freqs[idx_allele] = weighted_mode;
         }
-        // println!("weighted_mode={:?}", weighted_mode);
-        imputed_freqs.push(weighted_mode);
     } else {
         // Perform weighted mean allele frequencies
         let additive_inverse_plus_epsilon: Array1<f64> =
@@ -416,7 +418,6 @@ impl GenotypesAndPhenotypes {
     }
 }
 
-// Impute using adaptive linkage disequilibrium (estimated using correlations within a window) k-nearest neighbour weighted allele frequencies imputation
 pub fn impute_aldknni(
     mut genotypes_and_phenotypes: GenotypesAndPhenotypes,
     filter_stats: &FilterStats,
@@ -440,7 +441,13 @@ pub fn impute_aldknni(
     // Also note that the we are no longer reverting to MVI as setting and optimising for min_l and min_k clashes with that idea
 
     // let (min_loci_corr, max_pool_dist, mae) = optimise_params_and_estimate_accuracy(
-    let (optimum_min_loci_corr, optimum_max_pool_dist, optimum_min_l_loci, optimum_min_k_neighbours, optimum_mae) = optimise_params_and_estimate_accuracy(
+    let (
+        optimum_min_loci_corr,
+        optimum_max_pool_dist,
+        optimum_min_l_loci,
+        optimum_min_k_neighbours,
+        optimum_mae,
+    ) = optimise_params_and_estimate_accuracy(
         &genotypes_and_phenotypes,
         min_loci_corr,
         max_pool_dist,
@@ -454,15 +461,27 @@ pub fn impute_aldknni(
         optimise_n_steps_min_k_neighbours,
         optimise_max_l_loci,
         optimise_max_k_neighbours,
-        optimise_n_reps
+        optimise_n_reps,
     )
     .expect("Error calling optimise_params_and_estimate_accuracy() in impute_aldknni().");
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    println!("Minimum loci correlation threshold: {}", optimum_min_loci_corr);
-    println!("Maximum neighbour distance threshold: {}", optimum_max_pool_dist);
+    println!(
+        "Minimum loci correlation threshold: {}",
+        optimum_min_loci_corr
+    );
+    println!(
+        "Maximum neighbour distance threshold: {}",
+        optimum_max_pool_dist
+    );
     println!("Minimum number of linked loci: {}", optimum_min_l_loci);
-    println!("Minimum number of k-nearest neighbours: {}", optimum_min_k_neighbours);
-    println!("Estimated imputation accuracy in terms of mean absolute error: {}", optimum_mae);
+    println!(
+        "Minimum number of k-nearest neighbours: {}",
+        optimum_min_k_neighbours
+    );
+    println!(
+        "Estimated imputation accuracy in terms of mean absolute error: {}",
+        optimum_mae
+    );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
@@ -646,8 +665,8 @@ mod tests {
         assert_eq!(imputed_freq.len(), 2);
         assert_eq!(imputed_freq[0] + imputed_freq[1], 1.0);
 
-        let frac_top_missing_pools = 0.0;
-        let frac_top_missing_loci = 0.2;
+        let _frac_top_missing_pools = 0.0;
+        let _frac_top_missing_loci = 0.2;
         let min_loci_corr = 0.9;
         let max_pool_dist = 0.1;
         let min_l_loci = 10;
@@ -661,7 +680,7 @@ mod tests {
         let optimise_n_steps_min_k_neighbours = 1;
         let optimise_max_l_loci = 100;
         let optimise_max_k_neighbours = 50;
-        
+
         let optimise_n_reps = 1;
 
         let _ = frequencies_and_phenotypes

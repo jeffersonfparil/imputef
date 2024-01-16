@@ -1,7 +1,8 @@
 ### Load imputef library
-library(imputef)
+# library(imputef)
 # system("conda activate rustenv")
-# devtools::load_all()
+devtools::load_all()
+rextendr::document()
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
 fn_extract_allele_frequencies = function(vcf) {
@@ -123,18 +124,48 @@ fn_simulate_missing_data = function(vcf, mat_genotypes, maf=0.25, missing_rate=0
 }
 ### Imputation accuracy metrics
 fn_metrics = function(y_predicted, y_expected) {
-    deviation = y_predicted - y_expected
+    ## Overall metrics
+    deviation = q_predicted - q_expected
     mae = mean(abs(deviation), na.rm=TRUE)
     mse = mean(deviation^2, na.rm=TRUE)
     rmse = sqrt(mse)
-    r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((y_expected-mean(y_expected))^2, na.rm=TRUE))
-    concordance = mean(y_predicted == y_expected, na.rm=TRUE)
+    r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((q_expected-mean(q_expected))^2, na.rm=TRUE))
+    concordance = mean(q_predicted == q_expected, na.rm=TRUE)
+    ### Metrics across the range of expected allele frequencies
+    vec_q_max = c(0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
+    vec_n = rep(0, each=length(vec_q_max))
+    vec_mae = rep(NA, each=length(vec_q_max))
+    vec_mse = rep(NA, each=length(vec_q_max))
+    vec_rmse = rep(NA, each=length(vec_q_max))
+    vec_r2 = rep(NA, each=length(vec_q_max))
+    vec_concordance = rep(NA, each=length(vec_q_max))
+    for (i in 1:length(vec_q_max)) {
+        # i = 1
+        if (i==1) {
+            q_min = 0.0
+        } else {
+            q_min = vec_q_max[i-1]
+        }
+        q_max = vec_q_max[i]
+        idx = which((q_expected > q_min) & (q_expected <= q_max))
+        if (length(idx) > 0) {
+            vec_n[i] = length(idx)
+            vec_deviations = q_predicted[idx] - q_expected[idx]
+            vec_mae[i] = mean(abs(vec_deviations), na.rm=TRUE)
+            vec_mse[i] = mean(vec_deviations^2, na.rm=TRUE)
+            vec_rmse[i] = sqrt(vec_mse[i])
+            vec_r2[i] = 1.00 - (mean(vec_mse[i], na.rm=TRUE) / mean((q_expected[idx]-mean(q_expected[idx]))^2, na.rm=TRUE))
+            vec_concordance[i] = mean(q_predicted[idx] == q_expected[idx], na.rm=TRUE)
+        }
+    }
+    df_metrics_across_allele_freqs = data.frame(q=vec_q_max, n=vec_n, mae=vec_mae, mse=vec_mse, rmse=vec_rmse, r2=vec_r2, concordance=vec_concordance)
     return(list(
         mae=mae,
         mse=mse,
         rmse=rmse,
         r2=r2,
-        concordance=concordance
+        concordance=concordance,
+        df_metrics_across_allele_freqs=df_metrics_across_allele_freqs
     ))
 }
 ### Assess imputation accuracies
@@ -229,38 +260,50 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         fname_out_prefix=paste0("MVI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
         n_threads=n_threads)
     duration_mvi = difftime(Sys.time(), time_ini, units="mins")
-    ### Adaptive LD-kNN imputation using fixed 0.9 minimum loci correlation and 0.1 maximum genetic distance
+    ### Adaptive LD-kNN imputation using fixed min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
     time_ini = Sys.time()
-    fname_out_aldknni = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("ALDKNNI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        misc_min_l=10,
-        misc_min_k=10,
+    fname_out_aldknni_fixed = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        min_loci_corr=0.9,
+        max_pool_dist=0.1,
+        min_l_loci=10,
+        min_k_neighbours=5,
         n_threads=n_threads)
-    duration_aldknni = difftime(Sys.time(), time_ini, units="mins")
-    ### Adaptive LD-kNN imputation: optimise for thresholds
+    duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
+    ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, and max_pool_dist, and fixed min_l_loci, and min_k_neighbours
     time_ini = Sys.time()
-    fname_out_aldknni_optim_thresholds = aldknni(fname=list_sim_missing$fname_vcf,
-        min_loci_corr=0,
-        max_pool_dist=0,
-        optimise_for_thresholds=TRUE,
-        optimise_n_steps_corr=10,
-        optimise_n_steps_dist=10,
-        optimise_n_reps=1,
-        fname_out_prefix=paste0("ALDKNNI_OPTIM_THRESHOLDS-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+    fname_out_aldknni_optimcd = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTCD-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        optimise_n_steps_min_loci_corr=10,
+        optimise_n_steps_max_pool_dist=10,
+        min_l_loci=10,
+        min_k_neighbours=5,
         n_threads=n_threads)
-    duration_aldknni_optim_thresholds = difftime(Sys.time(), time_ini, units="mins")
-    ### Adaptive LD-kNN imputation: optimise for counts
+    duration_aldknni_optimcd = difftime(Sys.time(), time_ini, units="mins")
+    ### Adaptive LD-kNN imputation with optimisation for min_l_loci, and min_k_neighbours, and fixed min_loci_corr, and max_pool_dist
     time_ini = Sys.time()
-    fname_out_aldknni_optim_counts = aldknni(fname=list_sim_missing$fname_vcf,
-        min_loci_corr=0,
-        max_pool_dist=0,
-        optimise_for_thresholds=FALSE,
-        optimise_n_steps_corr=10,
-        optimise_n_steps_dist=10,
-        optimise_n_reps=1,
-        fname_out_prefix=paste0("ALDKNNI_OPTIM_COUNTS-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+    fname_out_aldknni_optimlk = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTLK-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        min_loci_corr=0.9,
+        max_pool_dist=0.1,
+        optimise_n_steps_min_l_loci=10,
+        optimise_n_steps_min_k_neighbours=10,
+        optimise_max_l_loci=100,
+        optimise_max_k_neighbours=50,
         n_threads=n_threads)
-    duration_aldknni_optim_counts = difftime(Sys.time(), time_ini, units="mins")
+    duration_aldknni_optimlk = difftime(Sys.time(), time_ini, units="mins")
+    ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
+    time_ini = Sys.time()
+    fname_out_aldknni_optimall = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        optimise_n_steps_min_loci_corr=10,
+        optimise_n_steps_max_pool_dist=10,
+        optimise_n_steps_min_l_loci=10,
+        optimise_n_steps_min_k_neighbours=10,
+        optimise_max_l_loci=100,
+        optimise_max_k_neighbours=50,
+        n_threads=n_threads)
+    duration_aldknni_optimall = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
     fname_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,".tsv")
     output_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.tsv")
@@ -290,17 +333,22 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni = fn_imputation_accuracy(fname_imputed=fname_out_aldknni,
+    metrics_aldknni_fixed = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_fixed,
         list_sim_missing=list_sim_missing,
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni_optim_thresholds = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim_thresholds,
+    metrics_aldknni_optimcd = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimcd,
         list_sim_missing=list_sim_missing,
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni_optim_counts = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim_counts,
+    metrics_aldknni_optimlk = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimlk,
+        list_sim_missing=list_sim_missing,
+        ploidy=ploidy,
+        strict_boundaries=strict_boundaries,
+        n_threads=n_threads)
+    metrics_aldknni_optimall = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimall,
         list_sim_missing=list_sim_missing,
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
@@ -379,7 +427,7 @@ n_threads = as.numeric(args[5])
 # fname_vcf="/group/pasture/Jeff/imputef/misc/soybean.vcf"; ploidy=84; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
 # fname_vcf="/group/pasture/Jeff/imputef/misc/zucchini.vcf"; ploidy=2; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
 # fname_vcf="/group/pasture/Jeff/imputef/misc/apple.vcf"; ploidy=2; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
-# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
+# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=1; n_reps=3; n_threads=32; strict_boundaries=FALSE
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf) ### high-confidence genotype data: 154 pools X 124,151 loci
 mat_genotypes = fn_extract_allele_frequencies(vcf)
@@ -389,7 +437,7 @@ idx = which((mean_allele_freqs>=0.01) & ((1-mean_allele_freqs)>=0.01))
 vcf = vcf[idx, , ]
 mat_genotypes = mat_genotypes[idx, ]
 ### Note that sparsity of 0.17% is used so that we can compare with the output shown in the LinkImpute paper: https://doi.org/10.1534/g3.115.021667
-mat_maf_missingRate = expand.grid(maf=rev(c(0.01, 0.05, 0.10, 0.25)), missing_rate=rev(c(0.0017, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)))
+mat_maf_missingRate = expand.grid(maf=rev(c(0.01, 0.05)), missing_rate=rev(c(0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)))
 maf = mat_maf_missingRate$maf[i]
 missing_rate = mat_maf_missingRate$missing_rate[i]
 for (r in c(1:n_reps)) {
