@@ -259,33 +259,32 @@ fn impute_allele_frequencies(
     }
     let mut imputed_freqs = vec![0.0; p];
     // LD-kNN imputations (weighted mode and mean)
+    // let do_linkimpute_weighted_mode = false; // Testing forcing mean for individual diploid biallelic loci imputation
     if do_linkimpute_weighted_mode {
         // Perform weighted modal imputation as in LinkImpute for biallelic diploids - the only 2 differences are that we are performing this per chromosome and the distance metric is MAE rather than Manhattan distance
         assert!(frequencies.ncols() <= 2, "Error in the number of alleles per locus. We expect a biallelic locus, set do_linkimpute_weighted_mode to false.");
-        for idx_allele in 0..p {
-            let vec_geno = vec![0.0, 0.5, 1.0];
-            let mut max_score = 0.0;
-            let mut weighted_mode = 0.0;
-            for j in 0..vec_geno.len() {
-                let a = vec_geno[j];
-                let mut score = 0.0;
-                for i in 0..frequencies.column(idx_allele).len() {
-                    let f = 1.00 / (&distances[i] + f64::EPSILON);
-                    let g = if frequencies.column(idx_allele)[i] == a {
-                        1.0
-                    } else {
-                        0.0
-                    };
-                    score += f * g;
-                }
-                if score > max_score {
-                    max_score = score;
-                    weighted_mode = vec_geno[j];
-                }
+        let vec_geno = vec![0.0, 0.5, 1.0];
+        let mut max_score = 0.0;
+        let mut weighted_mode = 0.0;
+        for j in 0..vec_geno.len() {
+            let a = vec_geno[j];
+            let mut score = 0.0;
+            for i in 0..frequencies.column(0).len() {
+                let f = 1.00 - &distances[i];
+                let g = if frequencies.column(0)[i] == a {
+                    1.0
+                } else {
+                    0.0
+                };
+                score += f * g;
             }
-            // println!("weighted_mode={:?}", weighted_mode);
-            imputed_freqs[idx_allele] = weighted_mode;
+            if score > max_score {
+                max_score = score;
+                weighted_mode = vec_geno[j];
+            }
         }
+        imputed_freqs[0] = weighted_mode;
+        imputed_freqs[1] = 1.0 - weighted_mode;
     } else {
         // Perform weighted mean allele frequencies
         let additive_inverse_plus_epsilon: Array1<f64> =
@@ -343,8 +342,14 @@ impl GenotypesAndPhenotypes {
         // Extract loci indices
         let (loci_idx, loci_chr, loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
         // Calculate LD across the entire genome
+        if (self.intercept_and_allele_frequencies.nrows() * self.intercept_and_allele_frequencies.ncols()) > 1_000_000 {
+            println!("Estimating linkage between loci across the entire genome...")
+        }
         let corr = calculate_genomewide_ld(&self.intercept_and_allele_frequencies)
             .expect("Error estimating pairwise linkage between loci across the entire genome.");
+        if (self.intercept_and_allele_frequencies.nrows() * self.intercept_and_allele_frequencies.ncols()) > 1_000_000 {
+            println!("LD estimation finished.")
+        }
         // Parallel imputation
         let mat_freqs = self.intercept_and_allele_frequencies.clone();
         Zip::indexed(&mut self.intercept_and_allele_frequencies)

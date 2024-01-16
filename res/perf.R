@@ -123,7 +123,7 @@ fn_simulate_missing_data = function(vcf, mat_genotypes, maf=0.25, missing_rate=0
     ))
 }
 ### Imputation accuracy metrics
-fn_metrics = function(y_predicted, y_expected) {
+fn_metrics = function(q_predicted, q_expected) {
     ## Overall metrics
     deviation = q_predicted - q_expected
     mae = mean(abs(deviation), na.rm=TRUE)
@@ -132,7 +132,7 @@ fn_metrics = function(y_predicted, y_expected) {
     r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((q_expected-mean(q_expected))^2, na.rm=TRUE))
     concordance = mean(q_predicted == q_expected, na.rm=TRUE)
     ### Metrics across the range of expected allele frequencies
-    vec_q_max = c(0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
+    vec_q_max = c(0.00, 0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
     vec_n = rep(0, each=length(vec_q_max))
     vec_mae = rep(NA, each=length(vec_q_max))
     vec_mse = rep(NA, each=length(vec_q_max))
@@ -142,12 +142,12 @@ fn_metrics = function(y_predicted, y_expected) {
     for (i in 1:length(vec_q_max)) {
         # i = 1
         if (i==1) {
-            q_min = 0.0
+            q_min = -1e-20
         } else {
             q_min = vec_q_max[i-1]
         }
         q_max = vec_q_max[i]
-        idx = which((q_expected > q_min) & (q_expected <= q_max))
+        idx = which((q_expected > q_min) & (q_expected <= q_max) & (is.na(q_expected)==FALSE) & (is.na(q_predicted)==FALSE))
         if (length(idx) > 0) {
             vec_n[i] = length(idx)
             vec_deviations = q_predicted[idx] - q_expected[idx]
@@ -222,20 +222,22 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     # print(paste0("Total number of simulated missing data = ", n_missing))
     # print(paste0("Total number of imputed missing data = ", n_imputed))
     ### Metrics using allele frequencies
-    metrics_allele_frequencies = fn_metrics(y_predicted=vec_imputed, y_expected=list_sim_missing$expected_allele_frequencies)
+    metrics_allele_frequencies = fn_metrics(q_predicted=vec_imputed, q_expected=list_sim_missing$expected_allele_frequencies)
     ### Metrics using genotype classes
     vec_expected_classes = fn_classify_allele_frequencies(mat_genotypes=list_sim_missing$expected_allele_frequencies, ploidy=ploidy, strict_boundaries=strict_boundaries)
     vec_imputed_classes = fn_classify_allele_frequencies(mat_genotypes=vec_imputed, ploidy=ploidy, strict_boundaries=strict_boundaries)
-    metrics_genotype_classes = fn_metrics(y_predicted=vec_imputed_classes, y_expected=vec_expected_classes)
+    metrics_genotype_classes = fn_metrics(q_predicted=vec_imputed_classes, q_expected=vec_expected_classes)
     return(list(
         frac_imputed = n_imputed / n_missing,
-        mae_freqs = metrics_allele_frequencies$mae,
-        rmse_freqs = metrics_allele_frequencies$rmse,
-        r2_freqs = metrics_allele_frequencies$r2,
+        mae_frequencies = metrics_allele_frequencies$mae,
+        rmse_frequencies = metrics_allele_frequencies$rmse,
+        r2_frequencies = metrics_allele_frequencies$r2,
         mae_classes = metrics_genotype_classes$mae,
         rmse_classes = metrics_genotype_classes$rmse,
         r2_classes = metrics_genotype_classes$r2,
-        concordance_classes = metrics_genotype_classes$concordance
+        concordance_classes = metrics_genotype_classes$concordance,
+        df_metrics_across_allele_freqs_frequencies = metrics_allele_frequencies$df_metrics_across_allele_freqs,
+        df_metrics_across_allele_freqs_classes = metrics_genotype_classes$df_metrics_across_allele_freqs
     ))
 }
 ### Performance assessment function
@@ -270,31 +272,9 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         min_k_neighbours=5,
         n_threads=n_threads)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
-    ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, and max_pool_dist, and fixed min_l_loci, and min_k_neighbours
-    time_ini = Sys.time()
-    fname_out_aldknni_optimcd = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("AOPTCD-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        optimise_n_steps_min_loci_corr=10,
-        optimise_n_steps_max_pool_dist=10,
-        min_l_loci=10,
-        min_k_neighbours=5,
-        n_threads=n_threads)
-    duration_aldknni_optimcd = difftime(Sys.time(), time_ini, units="mins")
-    ### Adaptive LD-kNN imputation with optimisation for min_l_loci, and min_k_neighbours, and fixed min_loci_corr, and max_pool_dist
-    time_ini = Sys.time()
-    fname_out_aldknni_optimlk = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("AOPTLK-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        min_loci_corr=0.9,
-        max_pool_dist=0.1,
-        optimise_n_steps_min_l_loci=10,
-        optimise_n_steps_min_k_neighbours=10,
-        optimise_max_l_loci=100,
-        optimise_max_k_neighbours=50,
-        n_threads=n_threads)
-    duration_aldknni_optimlk = difftime(Sys.time(), time_ini, units="mins")
     ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
     time_ini = Sys.time()
-    fname_out_aldknni_optimall = aldknni(fname=list_sim_missing$fname_vcf,
+    fname_out_aldknni_optim = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
         optimise_n_steps_min_loci_corr=10,
         optimise_n_steps_max_pool_dist=10,
@@ -303,30 +283,34 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=50,
         n_threads=n_threads)
-    duration_aldknni_optimall = difftime(Sys.time(), time_ini, units="mins")
+    duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
     fname_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,".tsv")
     output_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.tsv")
     fname_out_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.csv")
     vcf_for_linkimpute = vcfR::read.vcfR(list_sim_missing$fname_vcf)
     mat_genotypes_for_linkimpute = t(fn_classify_allele_frequencies(fn_extract_allele_frequencies(vcf_for_linkimpute), ploidy=2)) * 2
-    mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
-    write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
-    time_ini = Sys.time()
-    system(paste0("java -jar linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute))
-    duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
-    mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
-    rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
-    colnames(mat_linkimputed) = colnames(mat_genotypes_for_linkimpute)
-    mat_linkimputed = t(mat_linkimputed / 2)
-    list_loci_names = strsplit(rownames(mat_linkimputed), "_")
-    chr = unlist(lapply(list_loci_names, FUN=function(x){(paste(x[1:(length(x)-2)], collapse="_"))}))
-    pos = unlist(lapply(list_loci_names, FUN=function(x){as.numeric(x[(length(x)-1)])}))
-    allele = unlist(lapply(list_loci_names, FUN=function(x){x[length(x)]}))
-    df_linkimputed = data.frame(chr, pos, allele)
-    df_linkimputed = cbind(df_linkimputed, mat_linkimputed)
-    colnames(df_linkimputed)[1] = "#chr"
-    write.table(df_linkimputed, file=fname_out_linkimpute, sep=",", row.names=FALSE, col.names=TRUE, quote=FALSE)
+    bool_enough_data_to_simulate_10k_missing = prod(dim(mat_genotypes_for_linkimpute)) >= (20000)
+    if (bool_enough_data_to_simulate_10k_missing == TRUE) {
+        ### LinkImpute stalls if it cannot mask 10,000 data points for optimising l and k, because the number of non-missing data points is not enough to reach the fixed 10,000 random data points.
+        mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
+        write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+        time_ini = Sys.time()
+        system(paste0("java -jar linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute))
+        duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
+        mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
+        rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
+        colnames(mat_linkimputed) = colnames(mat_genotypes_for_linkimpute)
+        mat_linkimputed = t(mat_linkimputed / 2)
+        list_loci_names = strsplit(rownames(mat_linkimputed), "_")
+        chr = unlist(lapply(list_loci_names, FUN=function(x){(paste(x[1:(length(x)-2)], collapse="_"))}))
+        pos = unlist(lapply(list_loci_names, FUN=function(x){as.numeric(x[(length(x)-1)])}))
+        allele = unlist(lapply(list_loci_names, FUN=function(x){x[length(x)]}))
+        df_linkimputed = data.frame(chr, pos, allele)
+        df_linkimputed = cbind(df_linkimputed, mat_linkimputed)
+        colnames(df_linkimputed)[1] = "#chr"
+        write.table(df_linkimputed, file=fname_out_linkimpute, sep=",", row.names=FALSE, col.names=TRUE, quote=FALSE)
+    }
     ### Validating imputation
     metrics_mvi = fn_imputation_accuracy(fname_imputed=fname_out_mvi,
         list_sim_missing=list_sim_missing,
@@ -338,29 +322,37 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni_optimcd = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimcd,
+    metrics_aldknni_optim = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim,
         list_sim_missing=list_sim_missing,
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni_optimlk = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimlk,
-        list_sim_missing=list_sim_missing,
-        ploidy=ploidy,
-        strict_boundaries=strict_boundaries,
-        n_threads=n_threads)
-    metrics_aldknni_optimall = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optimall,
-        list_sim_missing=list_sim_missing,
-        ploidy=ploidy,
-        strict_boundaries=strict_boundaries,
-        n_threads=n_threads)
-    metrics_linkimpute = fn_imputation_accuracy(fname_imputed=fname_out_linkimpute,
-        list_sim_missing=list_sim_missing,
-        ploidy=2,
-        strict_boundaries=strict_boundaries,
-        n_threads=n_threads)
+    if (bool_enough_data_to_simulate_10k_missing == TRUE) {
+        metrics_linkimpute = fn_imputation_accuracy(fname_imputed=fname_out_linkimpute,
+            list_sim_missing=list_sim_missing,
+            ploidy=2,
+            strict_boundaries=strict_boundaries,
+            n_threads=n_threads)
+    } else {
+        df_metrics_across_allele_freqs_frequencies = metrics_aldknni_optimall$df_metrics_across_allele_freqs_frequencies
+        df_metrics_across_allele_freqs_classes = metrics_aldknni_optimall$df_metrics_across_allele_freqs_classes
+        df_metrics_across_allele_freqs_frequencies[,2:7] = NA
+        df_metrics_across_allele_freqs_classes[,2:7] = NA
+        metrics_linkimpute = list(
+            frac_imputed = 0.0,
+            mae_frequencies = NA,
+            rmse_frequencies = NA,
+            r2_frequencies = NA,
+            mae_classes = NA,
+            rmse_classes = NA,
+            r2_classes = NA,
+            concordance_classes = NA,
+            df_metrics_across_allele_freqs_frequencies = df_metrics_across_allele_freqs_frequencies,
+            df_metrics_across_allele_freqs_classes = df_metrics_across_allele_freqs_classes
+        )
+    }
     ### Merge imputation accuracy metrics into the output data.frame
-    # string_metric_lists = c("metrics_mvi", "metrics_aldknni", "metrics_lukes")
-    string_metric_lists = c("metrics_mvi", "metrics_aldknni", "metrics_aldknni_optim_thresholds", "metrics_aldknni_optim_counts", "metrics_linkimpute")
+    string_metric_lists = c("metrics_mvi", "metrics_aldknni_fixed", "metrics_aldknni_optim", "metrics_linkimpute")
     for (m in string_metric_lists) {
         # m = string_metric_lists[1]
         algorithm = gsub("metrics_", "", m)
@@ -374,7 +366,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
                 algorithm, 
                 2, 
                 as.numeric(eval(parse(text=paste0("duration_", algorithm)))),
-                matrix(unlist(eval(parse(text=m))), nrow=1))
+                matrix(unlist(eval(parse(text=paste0(m, "[1:8]")))), nrow=1))
         } else {
             df_metrics = data.frame(
                 maf,
@@ -384,7 +376,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
                 algorithm, 
                 ploidy, 
                 as.numeric(eval(parse(text=paste0("duration_", algorithm)))),
-                matrix(unlist(eval(parse(text=m))), nrow=1))
+                matrix(unlist(eval(parse(text=paste0(m, "[1:8]")))), nrow=1))
         }
         colnames(df_metrics) = c(
             "maf",
@@ -394,7 +386,14 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
             "algorithm",
             "ploidy",
             "duration_mins",
-            names(eval(parse(text=m))))
+            names(eval(parse(text=paste0(m, "[1:8]")))))
+        ### Insert metrics across allele frequency bins
+        df_metrics_across_allele_freqs_frequencies = eval(parse(text=paste0(m, "$df_metrics_across_allele_freqs_frequencies")))
+        for (q in df_metrics_across_allele_freqs_frequencies$q) {
+            idx = which(df_metrics_across_allele_freqs_frequencies$q == q)
+            eval(parse(text=paste0("df_metrics$`mae_", q, "` = df_metrics_across_allele_freqs_frequencies$mae[idx]")))
+        }
+        ### Bind
         if (m==string_metric_lists[1]) {
             df_out = df_metrics
             colnames(df_out) = names(df_metrics)
@@ -409,9 +408,6 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_thresholds)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_counts)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
-    # system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_linkimpute)))
-    # system(paste0("rm ", fname_lukes_ldknni_input_rds))
-    # system(paste0("rm ", fname_out_lukes))
     ### Output
     return(df_out)
 }
@@ -423,11 +419,8 @@ ploidy = as.numeric(args[2])
 i = as.numeric(args[3])
 n_reps = as.numeric(args[4])
 n_threads = as.numeric(args[5])
-# fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne.vcf"; ploidy=4; i=1; n_reps=3; n_threads=32; strict_boundaries=FALSE
-# fname_vcf="/group/pasture/Jeff/imputef/misc/soybean.vcf"; ploidy=84; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
-# fname_vcf="/group/pasture/Jeff/imputef/misc/zucchini.vcf"; ploidy=2; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
-# fname_vcf="/group/pasture/Jeff/imputef/misc/apple.vcf"; ploidy=2; i=44; n_reps=3; n_threads=32; strict_boundaries=FALSE
-# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=1; n_reps=3; n_threads=32; strict_boundaries=FALSE
+# fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
+# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf) ### high-confidence genotype data: 154 pools X 124,151 loci
 mat_genotypes = fn_extract_allele_frequencies(vcf)
