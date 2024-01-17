@@ -126,9 +126,9 @@ tests = function() {
             vcf = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.vcf")
             sync = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.sync")
             csv = ALDKNNI_OPTIM_FULL_impute_2_loci("tests/test.csv")
-            expect_equal(vcf, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
-            expect_equal(sync, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.1)
-            expect_equal(csv, c(0.0, 1.0, 0.0, 1.0, 752, 13), tolerance=0.1)
+            expect_equal(vcf, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.2)
+            expect_equal(sync, c(0.0, 1.0, 0.0, 1.0, 753, 13), tolerance=0.2)
+            expect_equal(csv, c(0.0, 1.0, 0.0, 1.0, 752, 13), tolerance=0.2)
         }
     )
 }

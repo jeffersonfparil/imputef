@@ -1,6 +1,6 @@
+
 use rand::prelude::IteratorRandom;
 use std::io;
-use ndarray::prelude::*;
 
 use crate::structs_and_traits::*;
 
@@ -112,6 +112,7 @@ impl GenotypesAndPhenotypes {
         max_pool_dist: &f64,
         min_l_loci: &u64,
         min_k_neighbours: &u64,
+        corr: &Vec<Vec<f64>>,
         restrict_linked_loci_per_chromosome: bool,
         loci_idx: &Vec<usize>,
         vec_masked_loci_idx: &Vec<usize>,
@@ -122,6 +123,7 @@ impl GenotypesAndPhenotypes {
             max_pool_dist,
             min_l_loci,
             min_k_neighbours,
+            corr,
             restrict_linked_loci_per_chromosome,
         )
         .expect("Error calling adaptive_ld_knn_imputation() within estimate_expected_mae_in_aldknni() method for GenotypesAndPhenotypes struct.");
@@ -163,11 +165,13 @@ impl GenotypesAndPhenotypes {
 
     pub fn estimate_expected_mae_in_mvi(&self) -> io::Result<f64> {
         let mut genotype_data_for_optimisation = self.clone();
-        let (n, p) = genotype_data_for_optimisation.intercept_and_allele_frequencies.dim();
+        let (n, p) = genotype_data_for_optimisation
+            .intercept_and_allele_frequencies
+            .dim();
         let missing_rate_sim = if (n * p) < 20_000 {
             0.01
         } else {
-            10_000.0 / ((n * p) as f64)   
+            10_000.0 / ((n * p) as f64)
         };
         let (
             _,
@@ -227,6 +231,7 @@ pub fn optimise_params_and_estimate_accuracy(
     max_pool_dist: &f64,
     min_l_loci: &u64,
     min_k_neighbours: &u64,
+    corr: &Vec<Vec<f64>>,
     restrict_linked_loci_per_chromosome: bool,
     optimise_n_steps_min_loci_corr: &usize,
     optimise_n_steps_max_pool_dist: &usize,
@@ -279,8 +284,7 @@ pub fn optimise_params_and_estimate_accuracy(
             *optimise_max_k_neighbours as usize
         };
         let step_size = 1;
-        (1..=k_max).step_by(step_size).map(|x| x as u64)
-            .collect()
+        (1..=k_max).step_by(step_size).map(|x| x as u64).collect()
     } else {
         vec![*min_k_neighbours]
     };
@@ -322,11 +326,13 @@ pub fn optimise_params_and_estimate_accuracy(
     for r in 0..optimise_n_reps {
         // Simulate 10% sparsity to determine accuracy (in terms of MAE) and to optimise for the best k and l, if applicable, i.e. n_loci_to_estimate_distance==0 or k_neighbours==0
         let mut genotype_data_for_optimisation = genotypes_and_phenotypes.clone();
-        let (n, p) = genotype_data_for_optimisation.intercept_and_allele_frequencies.dim();
+        let (n, p) = genotype_data_for_optimisation
+            .intercept_and_allele_frequencies
+            .dim();
         let missing_rate_sim = if (n * p) < 20_000 {
             0.01
         } else {
-            10_000.0 / ((n * p) as f64)   
+            10_000.0 / ((n * p) as f64)
         };
         let (
             _,
@@ -357,6 +363,7 @@ pub fn optimise_params_and_estimate_accuracy(
                 &optimum_max_pool_dist,
                 &optimum_min_l_loci,
                 &optimum_min_k_neighbours,
+                corr,
                 restrict_linked_loci_per_chromosome,
                 &loci_idx,
                 &vec_masked_loci_idx,
@@ -372,6 +379,7 @@ pub fn optimise_params_and_estimate_accuracy(
                                     &optimum_max_pool_dist,
                                     &optimum_min_l_loci,
                                     &vec_min_k_neighbours[l],
+                                    corr,
                                     restrict_linked_loci_per_chromosome,
                                     &loci_idx,
                                     &vec_masked_loci_idx,
@@ -413,6 +421,7 @@ pub fn optimise_params_and_estimate_accuracy(
                                     &vec_max_pool_dist[j],
                                     &optimum_min_l_loci,
                                     &optimum_min_k_neighbours,
+                                    corr,
                                     restrict_linked_loci_per_chromosome,
                                     &loci_idx,
                                     &vec_masked_loci_idx,
@@ -454,6 +463,7 @@ pub fn optimise_params_and_estimate_accuracy(
                                     &optimum_max_pool_dist,
                                     &vec_min_l_loci[k],
                                     &optimum_min_k_neighbours,
+                                    corr,
                                     restrict_linked_loci_per_chromosome,
                                     &loci_idx,
                                     &vec_masked_loci_idx,
@@ -495,6 +505,7 @@ pub fn optimise_params_and_estimate_accuracy(
                                     &optimum_max_pool_dist,
                                     &optimum_min_l_loci,
                                     &optimum_min_k_neighbours,
+                                    corr,
                                     restrict_linked_loci_per_chromosome,
                                     &loci_idx,
                                     &vec_masked_loci_idx,
