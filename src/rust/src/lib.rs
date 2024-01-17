@@ -38,8 +38,6 @@ fn impute(
     restrict_linked_loci_per_chromosome: bool,
     optimise_n_steps_min_loci_corr: u64,
     optimise_n_steps_max_pool_dist: u64,
-    optimise_n_steps_min_l_loci: u64,
-    optimise_n_steps_min_k_neighbours: u64,
     optimise_max_l_loci: u64,
     optimise_max_k_neighbours: u64,
     optimise_n_reps: u64,
@@ -298,28 +296,6 @@ fn impute(
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering loci within impute()."),
         duration.as_secs()
     );
-    // Determine if the input data is diploid biallelic then we use LinkImpute's weighted modal imputation
-    let mut do_linkimpute_weighted_mode = true;
-    for x in genotypes_and_phenotypes
-        .intercept_and_allele_frequencies
-        .iter()
-    {
-        if !(*x).is_nan() {
-            if (*x != 0.0) & (*x != 0.5) & (*x != 1.0) {
-                do_linkimpute_weighted_mode = false;
-                break;
-            } else {
-                continue;
-            }
-        } else {
-            continue;
-        }
-    }
-    if do_linkimpute_weighted_mode {
-        println!("The input genotype data is biallelic diploid and will be using weighted modal imputation.");
-    } else {
-        println!("The input genotype data is not biallelic diploid and will be using weighted mean imputation (At least one allele frequency is not 0.0, 0.5 or 1.0.).");
-    }
     // Prepare output file name
     let fname_out = if fname_out_prefix == *"" {
         fname.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
@@ -353,11 +329,8 @@ fn impute(
             &min_l_loci,
             &min_k_neighbours,
             restrict_linked_loci_per_chromosome,
-            do_linkimpute_weighted_mode,
             &(optimise_n_steps_min_loci_corr as usize),
             &(optimise_n_steps_max_pool_dist as usize),
-            &(optimise_n_steps_min_l_loci as usize),
-            &(optimise_n_steps_min_k_neighbours as usize),
             &optimise_max_l_loci,
             &optimise_max_k_neighbours,
             &(optimise_n_reps as usize),

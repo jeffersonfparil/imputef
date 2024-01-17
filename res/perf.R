@@ -3,6 +3,7 @@
 # system("conda activate rustenv")
 devtools::load_all()
 rextendr::document()
+setwd("res/")
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
 fn_extract_allele_frequencies = function(vcf) {
@@ -270,20 +271,45 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         max_pool_dist=0.1,
         min_l_loci=10,
         min_k_neighbours=5,
+        optimise_max_l_loci=1,
+        optimise_max_k_neighbours=1,
         n_threads=n_threads)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
     ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
+    
     time_ini = Sys.time()
-    fname_out_aldknni_optim = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+    fname_out_aldknni_optim_cd = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTIMCD-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
         optimise_n_steps_min_loci_corr=10,
         optimise_n_steps_max_pool_dist=10,
-        optimise_n_steps_min_l_loci=10,
-        optimise_n_steps_min_k_neighbours=10,
-        optimise_max_l_loci=100,
-        optimise_max_k_neighbours=50,
+        optimise_max_l_loci=1,
+        optimise_max_k_neighbours=1,
+        restrict_linked_loci_per_chromosome=FALSE,
         n_threads=n_threads)
-    duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")
+    duration_aldknni_optim_cd = difftime(Sys.time(), time_ini, units="mins")
+
+    time_ini = Sys.time()
+    fname_out_aldknni_optim_lk = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTIMLK-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        optimise_n_steps_min_loci_corr=1,
+        optimise_n_steps_max_pool_dist=1,
+        optimise_max_l_loci=100,
+        optimise_max_k_neighbours=100,
+        restrict_linked_loci_per_chromosome=FALSE,
+        n_threads=n_threads)
+    duration_aldknni_optim_lk = difftime(Sys.time(), time_ini, units="mins")
+    
+    time_ini = Sys.time()
+    fname_out_aldknni_optim_all = aldknni(fname=list_sim_missing$fname_vcf,
+        fname_out_prefix=paste0("AOPTIMAL-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        optimise_n_steps_min_loci_corr=10,
+        optimise_n_steps_max_pool_dist=10,
+        optimise_max_l_loci=100,
+        optimise_max_k_neighbours=100,
+        restrict_linked_loci_per_chromosome=FALSE,
+        n_threads=n_threads)
+    duration_aldknni_optim_all = difftime(Sys.time(), time_ini, units="mins")
+
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
     fname_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,".tsv")
     output_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.tsv")
@@ -322,7 +348,17 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
         n_threads=n_threads)
-    metrics_aldknni_optim = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim,
+    metrics_aldknni_optim_cd = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim_cd,
+        list_sim_missing=list_sim_missing,
+        ploidy=ploidy,
+        strict_boundaries=strict_boundaries,
+        n_threads=n_threads)
+    metrics_aldknni_optim_lk = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim_lk,
+        list_sim_missing=list_sim_missing,
+        ploidy=ploidy,
+        strict_boundaries=strict_boundaries,
+        n_threads=n_threads)
+    metrics_aldknni_optim_all = fn_imputation_accuracy(fname_imputed=fname_out_aldknni_optim_all,
         list_sim_missing=list_sim_missing,
         ploidy=ploidy,
         strict_boundaries=strict_boundaries,
@@ -334,8 +370,8 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
             strict_boundaries=strict_boundaries,
             n_threads=n_threads)
     } else {
-        df_metrics_across_allele_freqs_frequencies = metrics_aldknni_optimall$df_metrics_across_allele_freqs_frequencies
-        df_metrics_across_allele_freqs_classes = metrics_aldknni_optimall$df_metrics_across_allele_freqs_classes
+        df_metrics_across_allele_freqs_frequencies = metrics_aldknni_optim_all$df_metrics_across_allele_freqs_frequencies
+        df_metrics_across_allele_freqs_classes = metrics_aldknni_optim_all$df_metrics_across_allele_freqs_classes
         df_metrics_across_allele_freqs_frequencies[,2:7] = NA
         df_metrics_across_allele_freqs_classes[,2:7] = NA
         metrics_linkimpute = list(
@@ -352,7 +388,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         )
     }
     ### Merge imputation accuracy metrics into the output data.frame
-    string_metric_lists = c("metrics_mvi", "metrics_aldknni_fixed", "metrics_aldknni_optim", "metrics_linkimpute")
+    string_metric_lists = c("metrics_mvi", "metrics_aldknni_fixed", "metrics_aldknni_optim_cd", "metrics_aldknni_optim_lk", "metrics_aldknni_optim_all", "metrics_linkimpute")
     for (m in string_metric_lists) {
         # m = string_metric_lists[1]
         algorithm = gsub("metrics_", "", m)
@@ -404,9 +440,10 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     ### Cleanup
     system(paste0("rm ", list_sim_missing$fname_vcf))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_mvi)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_thresholds)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_counts)))
+    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_fixed)))
+    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_all)))
+    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_cd)))
+    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_lk)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
     ### Output
     return(df_out)

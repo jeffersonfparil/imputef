@@ -88,8 +88,6 @@ mvi = function(fname,
         restrict_linked_loci_per_chromosome=FALSE,
         optimise_n_steps_min_loci_corr=0,
         optimise_n_steps_max_pool_dist=0,
-        optimise_n_steps_min_l_loci=0,
-        optimise_n_steps_min_k_neighbours=0,
         optimise_max_l_loci=0,
         optimise_max_k_neighbours=0,
         optimise_n_reps=0,
@@ -119,8 +117,6 @@ mvi = function(fname,
 #'         restrict_linked_loci_per_chromosome=TRUE,
 #'         optimise_n_steps_min_loci_corr=1,
 #'         optimise_n_steps_max_pool_dist=1,
-#'         optimise_n_steps_min_l_loci=1,
-#'         optimise_n_steps_min_k_neighbours=1,
 #'         optimise_max_l_loci=100,
 #'         optimise_max_k_neighbours=50,
 #'         optimise_n_reps=1,
@@ -158,10 +154,6 @@ mvi = function(fname,
 #' Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
 #' @param optimise_n_steps_max_pool_dist
 #' Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-#' @param optimise_n_steps_min_l_loci
-#' Number of steps requested for the values of minimum number of linked loci to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-#' @param optimise_n_steps_min_k_neighbours
-#' Number of steps requested for the values of minimum number of nearest neighbours to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
 #' @param optimise_max_l_loci
 #' Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. [Default=100]
 #' @param optimise_max_k_neighbours
@@ -218,8 +210,6 @@ aldknni = function(fname,
                     restrict_linked_loci_per_chromosome=TRUE,
                     optimise_n_steps_min_loci_corr=1,
                     optimise_n_steps_max_pool_dist=1,
-                    optimise_n_steps_min_l_loci=1,
-                    optimise_n_steps_min_k_neighbours=1,
                     optimise_max_l_loci=100,
                     optimise_max_k_neighbours=50,
                     optimise_n_reps=1,
@@ -242,8 +232,6 @@ aldknni = function(fname,
         restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         optimise_n_steps_min_loci_corr=optimise_n_steps_min_loci_corr,
         optimise_n_steps_max_pool_dist=optimise_n_steps_max_pool_dist,
-        optimise_n_steps_min_l_loci=optimise_n_steps_min_l_loci,
-        optimise_n_steps_min_k_neighbours=optimise_n_steps_min_k_neighbours,
         optimise_max_l_loci=optimise_max_l_loci,
         optimise_max_k_neighbours=optimise_max_k_neighbours,
         optimise_n_reps=optimise_n_reps,

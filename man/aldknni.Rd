@@ -20,8 +20,6 @@ aldknni(fname,
         restrict_linked_loci_per_chromosome=TRUE,
         optimise_n_steps_min_loci_corr=1,
         optimise_n_steps_max_pool_dist=1,
-        optimise_n_steps_min_l_loci=1,
-        optimise_n_steps_min_k_neighbours=1,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=50,
         optimise_n_reps=1,
@@ -60,10 +58,6 @@ aldknni(fname,
 \item{optimise_n_steps_min_loci_corr}{Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
 \item{optimise_n_steps_max_pool_dist}{Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
-
-\item{optimise_n_steps_min_l_loci}{Number of steps requested for the values of minimum number of linked loci to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
-
-\item{optimise_n_steps_min_k_neighbours}{Number of steps requested for the values of minimum number of nearest neighbours to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
 
 \item{optimise_max_l_loci}{Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. \link{Default=100}}
 
