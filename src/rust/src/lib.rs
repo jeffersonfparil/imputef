@@ -15,11 +15,8 @@ mod structs_and_traits;
 mod sync;
 mod vcf;
 use crate::aldknni::*;
-
 use crate::mvi::*;
-
 use crate::structs_and_traits::*;
-
 use crate::vcf::*;
 
 #[extendr]
@@ -34,16 +31,16 @@ fn impute(
     max_depth_above_which_are_missing: f64,
     frac_top_missing_pools: f64,
     frac_top_missing_loci: f64,
-    window_size_bp: u64,
-    min_loci_per_window: u64,
     min_loci_corr: f64,
     max_pool_dist: f64,
-    optimise_for_thresholds: bool,
-    optimise_n_steps_corr: u64,
-    optimise_n_steps_dist: u64,
+    min_l_loci: u64,
+    min_k_neighbours: u64,
+    restrict_linked_loci_per_chromosome: bool,
+    optimise_n_steps_min_loci_corr: u64,
+    optimise_n_steps_max_pool_dist: u64,
+    optimise_max_l_loci: u64,
+    optimise_max_k_neighbours: u64,
     optimise_n_reps: u64,
-    misc_min_l: u64,
-    misc_min_k: u64,
     n_threads: u64,
     fname_out_prefix: String,
     // ) -> String {
@@ -52,7 +49,11 @@ fn impute(
     // 1) vcf - richest (*.vcf)
     // 2) sync - intermediate richness and most preferred (*.sync)
     // 3) geno - least detailed - tab-delimited: chr,pos,allele,sample-1,sample-2,some-name-@#@#$%^&*(+)}:<'?"-with-a-bunch-of-asci-characters,... (*.txt)
-    let extension_name: &str = fname.split(".").collect::<Vec<&str>>().last().expect("Error extracting the last character of the input filename in impute().");
+    let extension_name: &str = fname
+        .split(".")
+        .collect::<Vec<&str>>()
+        .last()
+        .expect("Error extracting the last character of the input filename in impute().");
     println!("##################################################");
     if extension_name == "vcf" {
         println!("Input uncompressed vcf file:\n{:?}", fname);
@@ -199,9 +200,14 @@ fn impute(
             .expect("Error parsing the genotype (sync format) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
     } else {
         // Extract pool names from the txt file
-        let file: File = File::open(fname.clone()).expect("Error reading the allele frequency table file.");
+        let file: File =
+            File::open(fname.clone()).expect("Error reading the allele frequency table file.");
         let reader = io::BufReader::new(file);
-        let mut header: String = reader.lines().next().expect("Error reading the allele frequency table file.").expect("Please check the format of the allele frequency table text file.");
+        let mut header: String = reader
+            .lines()
+            .next()
+            .expect("Error reading the allele frequency table file.")
+            .expect("Please check the format of the allele frequency table text file.");
         if header.ends_with('\n') {
             header.pop();
             if header.ends_with('\r') {
@@ -248,7 +254,9 @@ fn impute(
         )
         .expect("Error calling set_missing_by_depth() method within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of setting missing data within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of setting missing data within impute().");
     println!(
         "Set loci beyond the minimum and maximum depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
@@ -262,7 +270,9 @@ fn impute(
         .filter_out_top_missing_pools(&frac_top_missing_pools)
         .expect("Error filtering out top-most missing pools within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of filtering pools within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of filtering pools within impute().");
     println!(
         "Filtered out sparsest pools: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
@@ -276,7 +286,9 @@ fn impute(
         .filter_out_top_missing_loci(&frac_top_missing_loci)
         .expect("Error filtering out top-most missing loci within impute().");
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect("Error measuring the duration of filtering loci within impute().");
+    let duration = end
+        .duration_since(start)
+        .expect("Error measuring the duration of filtering loci within impute().");
     println!(
         "Filtered out sparsest loci: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
@@ -284,30 +296,6 @@ fn impute(
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering loci within impute()."),
         duration.as_secs()
     );
-    // Determine if the input data is diploid biallelic then we use LinkImpute's weighted modal imputation
-    let mut do_linkimpute_weighted_mode = true;
-    for x in genotypes_and_phenotypes
-        .intercept_and_allele_frequencies
-        .iter()
-    {
-        if !(*x).is_nan() {
-            if (*x != 0.0) & (*x != 0.5) & (*x != 1.0) {
-                do_linkimpute_weighted_mode = false;
-                break;
-            } else {
-                continue;
-            }
-        } else {
-            continue;
-        }
-    }
-    if do_linkimpute_weighted_mode {
-        println!("The input genotype data is biallelic diploid and will be using weighted modal imputation.");
-    } else {
-        println!("The input genotype data is not biallelic diploid and will be using weighted mean imputation.");
-    }
-    // println!("genotypes_and_phenotypes.intercept_and_allele_frequencies={:?}", genotypes_and_phenotypes.intercept_and_allele_frequencies);
-    // println!("do_linkimpute_weighted_mode={:?}", do_linkimpute_weighted_mode);
     // Prepare output file name
     let fname_out = if fname_out_prefix == *"" {
         fname.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
@@ -336,18 +324,16 @@ fn impute(
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
-            &window_size_bp,
-            &window_size_bp, // set the slide size as the window size hence non-overlapping windows
-            &min_loci_per_window,
             &min_loci_corr,
             &max_pool_dist,
-            &optimise_for_thresholds,
-            &(optimise_n_steps_corr as usize),
-            &(optimise_n_steps_dist as usize),
+            &min_l_loci,
+            &min_k_neighbours,
+            restrict_linked_loci_per_chromosome,
+            &(optimise_n_steps_min_loci_corr as usize),
+            &(optimise_n_steps_max_pool_dist as usize),
+            &optimise_max_l_loci,
+            &optimise_max_k_neighbours,
             &(optimise_n_reps as usize),
-            do_linkimpute_weighted_mode,
-            &misc_min_l,
-            &misc_min_k,
             &(n_threads as usize),
             &fname_out,
         )

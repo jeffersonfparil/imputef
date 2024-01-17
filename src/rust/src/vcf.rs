@@ -147,7 +147,9 @@ impl Filter for VcfLine {
 
     /// Parse `VcfLine` into `AlleleFrequencies`
     fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
-        let locus_counts = self.to_counts().expect("Error calling to_counts() within the to_frequencies() method for VcfLine struct.");
+        let locus_counts = self.to_counts().expect(
+            "Error calling to_counts() within the to_frequencies() method for VcfLine struct.",
+        );
         let n = locus_counts.matrix.nrows();
         let p = locus_counts.matrix.ncols();
         let row_sums = locus_counts.matrix.sum_axis(Axis(1)); // summation across the columns which means sum of all elements per row
@@ -298,11 +300,15 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         let file_out = File::create(fname_out).expect(&error_writing_file);
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
-        let file = File::open(fname.clone()).expect("Error opening the input vcf file within the per_chuck() method for FileVcf struct.");
+        let file = File::open(fname.clone()).expect(
+            "Error opening the input vcf file within the per_chuck() method for FileVcf struct.",
+        );
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).expect("Error navigating the input vcf file within the per_chuck() method for FileVcf struct.");
+        reader.seek(SeekFrom::Start(*start)).expect(
+            "Error navigating the input vcf file within the per_chuck() method for FileVcf struct.",
+        );
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line

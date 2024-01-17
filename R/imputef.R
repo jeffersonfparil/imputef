@@ -15,7 +15,7 @@
 #'        n_threads=2,
 #'        fname_out_prefix="")
 #' @param fname
-#' filename of the uncompressed vcf file which has the AD (allele depth) field and may or may not have genotypes called (e.g. generated via `bctools mpileup -a AD,DP ...`). If the GT field is present but the AD field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool.
+#' name of the genotype file to be imputed in uncompressed vcf, sync or allele frequency table format. See genotype format details below.
 #' @param min_coverage
 #' minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
 #' @param min_allele_frequency
@@ -35,30 +35,30 @@
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
-#' prefix of the output files (sync and csv files). [Default="" which will use the entire name of the input vcf file as the prefix]
+#' prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`). [Default="" which will use the name of the input file as the prefix including the path]
 #' @details
 #' This mean value imputation method simply uses the arithmetic mean of the allele frequencies across all non-missing samples to impute missing data.
 #' This function prints out the expected mean absolute error (MAE) of the imputation using 10% simulated missing data. Repeat the imputation manually to get a range of these MAEs for a better estimate of the expected MAE.
-#' This function does not import any genotype data into R. Most processes are multi-threaded and outputs are written into disk as text files, i.e. sync file, and csv file of imputed allele frequencies. 
-#' It converts vcf into sync with locus filtering based on minimum depth, minimum allele frequency, and maximum missingness rate with minimal memory footprint as large vcf files are split into chunks equivalent to the number of threads and processed line-by-line.
 #' The allele depth information (AD), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. 
-#' The genotype calls (GT), if present are not used, hence the variant caller filtering is unimportant as only the allele frequencies are extracted from the the vcf file. 
-#' However, if the AD information is absent then the GT information will be used assuming that each sample is an individual diploid, i.e., neither a polyploid nor a pool.
-#' The entire sync file is then loaded into memory and imputed in parallel across windows. 
-#' The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged with it. 
-#' @returns sync file:
-#' - filename: <fname_out_prefix>-<time>.sync
-#' - an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
-#'  + *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
-#'  + *Column 1*:       chromosome or scaffold name
-#'  + *Column 2*:       locus position 
-#'  + *Column 3*:       reference allele, e.g. A, T, C, G 
-#'  + *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
-#' @returns imputed allele frequencies:
-#' - filename: <fname_out_prefix>-<time>-<random_id>-IMPUTED.csv
-#' - comma-separated file
-#' - header: ` #chr,pos,allele,<pool_names>,...`
-#' - each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+#' Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. 
+#' If the GT field is present but the AD field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. 
+#' Genotype data are not imported into R, LD estimation and imputation per se are multi-threaded, and imputation output is written into disk as an allele frequency table. 
+#' The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged. 
+#' Genotype file formats:
+#' - vcf: canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. The [`vcf2sync`](#vcf2sync) utility is expected to work with vcf versions 4.2 and 4.3. See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+#' - sync: an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
+#'    + tab-delimited
+#'    + *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
+#'    + *Column 1*:       chromosome or scaffold name
+#'    + *Column 2*:       locus position 
+#'    + *Column 3*:       reference allele, e.g. A, T, C, G 
+#'    + *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+#' - allele frequency table
+#'    + comma-delimited
+#'    + *Header line*: ` #chr,pos,allele,<pool_name_1>,...,<pool_name_n>`
+#'    + each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+#' @returns 
+#' imputed allele frequency table with the following filename: `<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`. Additionally, a sync file is generated if the input was an uncompressed vcf.
 #' @export
 mvi = function(fname, 
                 min_coverage=0,
@@ -81,16 +81,16 @@ mvi = function(fname,
         max_depth_above_which_are_missing=max_depth_above_which_are_missing,
         frac_top_missing_pools=frac_top_missing_pools,
         frac_top_missing_loci=frac_top_missing_loci,
-        window_size_bp=0,
-        min_loci_per_window=0,
         min_loci_corr=0,
         max_pool_dist=0,
-        optimise_for_thresholds=FALSE,
-        optimise_n_steps_corr=0,
-        optimise_n_steps_dist=0,
+        min_l_loci=0,
+        min_k_neighbours=0,
+        restrict_linked_loci_per_chromosome=FALSE,
+        optimise_n_steps_min_loci_corr=0,
+        optimise_n_steps_max_pool_dist=0,
+        optimise_max_l_loci=0,
+        optimise_max_k_neighbours=0,
         optimise_n_reps=0,
-        misc_min_l=0,
-        misc_min_k=0,
         n_threads=n_threads,
         fname_out_prefix=fname_out_prefix)
     return(out)
@@ -110,20 +110,20 @@ mvi = function(fname,
 #'         max_depth_above_which_are_missing=1000000,
 #'         frac_top_missing_pools=0.0,
 #'         frac_top_missing_loci=0.0,
-#'         window_size_bp=0,
-#'         min_loci_per_window=1,
 #'         min_loci_corr=0.9,
 #'         max_pool_dist=0.1,
-#'         optimise_for_thresholds=TRUE,
-#'         optimise_n_steps_corr=10,
-#'         optimise_n_steps_dist=10,
+#'         min_l_loci=10,
+#'         min_k_neighbours=5,
+#'         restrict_linked_loci_per_chromosome=TRUE,
+#'         optimise_n_steps_min_loci_corr=1,
+#'         optimise_n_steps_max_pool_dist=1,
+#'         optimise_max_l_loci=100,
+#'         optimise_max_k_neighbours=50,
 #'         optimise_n_reps=1,
-#'         misc_min_l=0,
-#'         misc_min_k=0,
 #'         n_threads=2,
 #'         fname_out_prefix="")
 #' @param fname
-#' filename of the uncompressed vcf file which has the AD (allele depth) field and may or may not have genotypes called (e.g. generated via `bctools mpileup -a AD,DP ...`). If the GT field is present but the AD field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool.
+#' name of the genotype file to be imputed in uncompressed vcf, sync or allele frequency table format. See genotype format details below.
 #' @param min_coverage
 #' minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
 #' @param min_allele_frequency
@@ -140,64 +140,59 @@ mvi = function(fname,
 #' fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one. [Default=0.0]
 #' @param frac_top_missing_loci
 #' fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default=0.0]
-#' @param window_size_bp
-#' non-overlapping window size in bases to be used in the adaptive linkage-informed k-nearest neighbour imputation (aldknni) of allele frequencies. By default, set to the length of the longest chromosome or scaffold. Alternatively, set to the expected linkage block size (e.g. 10,000,000 or 10 megabases) to maximise the use available computing threads and decrease computation time. [Default=0]
-#' @param min_loci_per_window
-#' minimum number of loci per window to be used in the imputation of allele frequencies. Windows which fail this threshold are omitted. If the default value of one is used, then at very sparse windows the mean value will likely be used for imputation. [Default=1]
 #' @param min_loci_corr
-#' minimum correlation between loci or number of linked loci. If the former is intended, then this value ranges between 0 and 1, while greater than or equal to 1 if otherwise. Definition 1: Minimum correlation between the locus requiring imputation and other loci deemed to be in linkage with it. Definition 2: The number of linked loci. The resulting linked loci will be used to estimate the distances between pools. If this is set to 0, then this value will be optimised - see additional parameters below. [Default=0.9]
+#' Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. [Default=0.9]
 #' @param max_pool_dist
-#' maximum distance between the pool or number of nearest neighbours. If the former is intended, then this value ranges between 0 and 1, while greater than or equal to 1 if otherwise. Definition 1: Maximum distance between the pool requiring imputation and other pools deemed to be the closest neighbours. Definition 2: Number of nearest neighbours. The resulting close neighbours will be used to impute. The distance metric is the mean absolute difference between pools across the linked loci. If this is set to 0, then this value will be optimised - see additional parameters below. [Default=0.1]
-#' @param optimise_for_thresholds
-#' optimise for minimum correlation and maximum distance thresholds if TRUE, else optimise for the number of linked loci and nearest neighbours. [Default=TRUE]
-#' @param optimise_n_steps_corr
-#' number levels for the optimisation of the minimum loci correlation or number of linked loci. [Default=10]
-#' @param optimise_n_steps_dist
-#' number levels for the optimisation of the maximum pool distance or number of nearest neighbours. [Default=10]
+#' Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. [Default=0.1]
+#' @param min_l_loci
+#' Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. [Default=1]
+#' @param min_k_neighbours
+#' Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. [Default=1]
+#' @param restrict_linked_loci_per_chromosome
+#' Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
+#' @param optimise_n_steps_min_loci_corr
+#' Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
+#' @param optimise_n_steps_max_pool_dist
+#' Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
+#' @param optimise_max_l_loci
+#' Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. [Default=100]
+#' @param optimise_max_k_neighbours
+#' Maximum number of k-nearest neighbours to be tested, if optimising for the best number of nearest neighbours to include in imputation. Minimum value of 2. [Default=50]
 #' @param optimise_n_reps
-#' number of replications for the optimisation of the minimum loci correlation or number of linked loci and maximum pool distance or number of nearest neighbours. [Default=1]
-#' @param misc_min_l
-#' Minimum number of linked loci to be included in imputation if using minimum loci correlation threshold. If the default value of zero is used, then mean value imputation will be used if no loci passed the minimum correlation threshold [Default=0].
-#' @param misc_min_k
-#' Minimum number of nearest neighbours to be included in imputation if using maximum distance threshold. If the default value of zero is used, then mean value imputation will be used if no neighbours passed the maximum distance threshold [Default=0].
+#' Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance, and/or minimum number of linked loci, and/or minimum number of k-nearest neighbours. Minimum value of 1. [Default=1]
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
-#' prefix of the output files (sync and csv files). [Default="" which will use the entire name of the input vcf file as the prefix]
+#' prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`). [Default="" which will use the name of the input file as the prefix including the path]
 #' @details
 #' This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). 
-#' Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples, but instead of computing this across all the loci, we divide the genome into windows which respect chromosomal/scaffold boundaries. 
-#' We use the mean absolute difference (MAD or MAE where E stands for error) between allele frequencies as an estimate of distance between samples. 
-#' Instead of optimising for the number of loci to include in the distance estimation and the number neighbours to include in the weighted allele frequency mean, we use a minimum correlation coefficient for the former, and a maximum distance for the latter.
-#' Both of these parameters can range from 0 to 1 and can be separately optimised, but a single pair of reasonable values is expected to result in good imputation accuracy, e.g. the default values of 0.9 minimum correlation, and 0.1 maximum distance.
-#' The adaptive behaviour of our algorithm can be described in cases where:
-#'  - sparsity in the data is too high, or 
-#'  - loci are too uncorrelated because the breadth of coverage is too sparse, or
-#'  - pools are too unrelated.
-#'
-#' These cases can mean that the data may not be informative enough to yield LD-kNN imputations better than mean value imputation. 
-#' Hence, under these cases mean value imputation will be used instead of LD-kNN imputation.
-#' This function prints out the expected mean absolute error (MAE) of the imputation using 10% simulated missing data. Repeat the imputation manually to get a range of these MAEs for a better estimate of the expected MAE.
-#' This function does not import any genotype data into R. Most processes are multi-threaded and outputs are written into disk as text files, i.e. sync file, and csv file of imputed allele frequencies. 
-#' It converts vcf into sync with locus filtering based on minimum depth, minimum allele frequency, and maximum missingness rate with minimal memory footprint as large vcf files are split into chunks equivalent to the number of threads and processed line-by-line.
+#' Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. 
+#' We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. 
+#' Fixed values for the minimum correlation to identify loci used in distance estimation, and maximum genetic distance to select the k-nearest neighbours can be defined. 
+#' Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. 
+#' Moreover, all four parameters can be optimised, i.e. the minimum correlation and/or maximum distance and/or minimum number of loci and/or minimum number of nearest neighbours which minimises the MAE between predicted and expected allele frequencies after simulating 10% missing data are identified.
 #' The allele depth information (AD), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. 
-#' The genotype calls, if present are not used, hence the variant caller filtering is unimportant as only the allele frequencies are extracted from the the vcf file. 
-#' However, if the AD information is absent then the GT information will be used assuming that each sample is an individual diploid, i.e., neither a polyploid nor a pool.
-#' The entire sync file is then loaded into memory and imputed in parallel across windows. 
-#' The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged with it. 
-#' @returns sync file:
-#' - filename: <fname_out_prefix>-<time>.sync
-#' - an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
-#'  + *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
-#'  + *Column 1*:       chromosome or scaffold name
-#'  + *Column 2*:       locus position 
-#'  + *Column 3*:       reference allele, e.g. A, T, C, G 
-#'  + *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
-#' @returns imputed allele frequencies:
-#' - filename: <fname_out_prefix>-<time>-<random_id>-IMPUTED.csv
-#' - comma-separated file
-#' - header: ` #chr,pos,allele,<pool_names>,...`
-#' - each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+#' If the GT field is present but the AD field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. 
+#' Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. 
+#' Genotype data are not imported into R, LD estimation and imputation per se are multi-threaded, and imputation output is written into disk as an allele frequency table. 
+#' The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged. 
+#' Genotype file formats:
+#' - vcf: canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. The [`vcf2sync`](#vcf2sync) utility is expected to work with vcf versions 4.2 and 4.3. See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+#' - sync: an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
+#'    + tab-delimited
+#'    + *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
+#'    + *Column 1*:       chromosome or scaffold name
+#'    + *Column 2*:       locus position 
+#'    + *Column 3*:       reference allele, e.g. A, T, C, G 
+#'    + *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+#' - allele frequency table
+#'    + comma-delimited
+#'    + *Header line*: ` #chr,pos,allele,<pool_name_1>,...,<pool_name_n>`
+#'    + each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+#' @returns 
+#' imputed allele frequency table with the following filename: `<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`. Additionally, a sync file is generated if the input was an uncompressed vcf.
+
+
 #' @export
 aldknni = function(fname, 
                     min_coverage=0,
@@ -208,16 +203,16 @@ aldknni = function(fname,
                     max_depth_above_which_are_missing=1000000,
                     frac_top_missing_pools=0.0,
                     frac_top_missing_loci=0.0,
-                    window_size_bp=0,
-                    min_loci_per_window=1,
                     min_loci_corr=0.9,
                     max_pool_dist=0.1,
-                    optimise_for_thresholds=TRUE,
-                    optimise_n_steps_corr=10,
-                    optimise_n_steps_dist=10,
+                    min_l_loci=10,
+                    min_k_neighbours=5,
+                    restrict_linked_loci_per_chromosome=TRUE,
+                    optimise_n_steps_min_loci_corr=1,
+                    optimise_n_steps_max_pool_dist=1,
+                    optimise_max_l_loci=100,
+                    optimise_max_k_neighbours=50,
                     optimise_n_reps=1,
-                    misc_min_l=0,
-                    misc_min_k=0,
                     n_threads=2,
                     fname_out_prefix="") {
     out = impute(fname=fname,
@@ -230,16 +225,16 @@ aldknni = function(fname,
         max_depth_above_which_are_missing=max_depth_above_which_are_missing,
         frac_top_missing_pools=frac_top_missing_pools,
         frac_top_missing_loci=frac_top_missing_loci,
-        window_size_bp=window_size_bp,
-        min_loci_per_window=min_loci_per_window,
         min_loci_corr=min_loci_corr,
         max_pool_dist=max_pool_dist,
-        optimise_for_thresholds=optimise_for_thresholds,
-        optimise_n_steps_corr=optimise_n_steps_corr,
-        optimise_n_steps_dist=optimise_n_steps_dist,
+        min_l_loci=min_l_loci,
+        min_k_neighbours=min_k_neighbours,
+        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
+        optimise_n_steps_min_loci_corr=optimise_n_steps_min_loci_corr,
+        optimise_n_steps_max_pool_dist=optimise_n_steps_max_pool_dist,
+        optimise_max_l_loci=optimise_max_l_loci,
+        optimise_max_k_neighbours=optimise_max_k_neighbours,
         optimise_n_reps=optimise_n_reps,
-        misc_min_l=misc_min_l,
-        misc_min_k=misc_min_k,
         n_threads=n_threads,
         fname_out_prefix=fname_out_prefix)
     return(out)
