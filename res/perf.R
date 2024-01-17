@@ -177,6 +177,10 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, ploidy=4, str
     # lukes = FALSE
     # mat_genotypes = NULL
     # n_threads = 32
+
+    ### Pick high-depth missing data points to recompute accuracies
+
+
     ### Extract imputed allele frequencies corresponding to the expected allele frequencies
     n_missing = length(list_sim_missing$vec_missing_loci)
     # vec_imputed = c()

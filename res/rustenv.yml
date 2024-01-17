@@ -9,12 +9,13 @@ dependencies:
   - _r-mutex=1.0.0=anacondar_1
   - alsa-lib=1.2.6.1=h7f98852_0
   - bat=0.24.0=he8a937b_0
+  - bcftools=1.5=3
   - binutils_impl_linux-64=2.40=hf600244_0
   - blas=1.0=openblas
   - bwidget=1.9.11=1
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.19.1=h5eee18b_0
-  - ca-certificates=2023.11.17=hbcca054_0
+  - ca-certificates=2023.12.12=h06a4308_0
   - cairo=1.18.0=h3faef2a_0
   - curl=8.4.0=hdbd6064_1
   - expat=2.5.0=h6a678d5_0
@@ -49,8 +50,10 @@ dependencies:
   - libev=4.33=h7f8727e_1
   - libevent=2.1.10=h28343ad_4
   - libffi=3.4.4=h6a678d5_0
+  - libgcc=7.2.0=h69d50b8_2
   - libgcc-devel_linux-64=13.2.0=ha9c7c90_103
   - libgcc-ng=13.2.0=h807b86a_2
+  - libgfortran=3.0.0=1
   - libgfortran-ng=11.2.0=h00389a5_1
   - libgfortran5=11.2.0=h1234567_1
   - libgit2=1.6.4=h2d74bed_0
@@ -77,6 +80,7 @@ dependencies:
   - make=4.2.1=h1bed415_1
   - micro=2.0.8=ha8f183a_1
   - ncurses=6.4=h6a678d5_0
+  - openblas=0.3.4=ha44fe06_0
   - openjdk=8.0.382=hd590300_0
   - openssl=3.2.0=hd590300_1
   - pandoc=2.12=h06a4308_3
@@ -217,8 +221,10 @@ dependencies:
   - readline=8.2=h5eee18b_0
   - rust=1.73.0=h70c747d_1
   - rust-std-x86_64-unknown-linux-gnu=1.73.0=hc1431ca_1
+  - samtools=1.6=hc3601fc_10
   - sed=4.8=he412f7d_0
   - sysroot_linux-64=2.12=he073ed8_16
+  - tabix=0.2.6=ha92aebf_0
   - tk=8.6.13=noxft_h4845f30_101
   - tktable=2.10=h14c3975_0
   - tmux=3.3=h385fc29_0
@@ -241,4 +247,4 @@ dependencies:
   - xz=5.4.5=h5eee18b_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hc292b87_0
-prefix: /home/jp3h/.conda/envs/rustenv
+

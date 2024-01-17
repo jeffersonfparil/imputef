@@ -1,6 +1,6 @@
 # Assessing imputation accuracies
 
-## Variables
+## Variables and datasets
 
 - 3 imputation algorithms: 
     + **ALDKNNI**: adaptive LD-kNN imputation
@@ -8,13 +8,10 @@
     + **ALDKNNI_OPTIM_COUNTS**: adaptive LD-kNN imputation with optimisation for the number of linked loci correlation and k-nearest neighbours
     + **MVI**: mean value imputation
     <!-- + **SAMP**: Luke's LD-kNN imputation algorithm vias sampling from a normal distribution whose parameters depend on the k-nearest neighbours -->
-- 4 minor allele frequency thresholds:
+- 2 minor allele frequency thresholds:
     + 0.01
     + 0.05
-    + 0.10
-    + 0.25
-- 11 sparsity levels (missing rate):
-    + 0.0017
+- 10 sparsity levels (missing rate):
     + 0.01
     + 0.1
     + 0.2
@@ -30,10 +27,15 @@
     + pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
     + diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [https://oup.silverchair-cdn.com/oup/backfile/Content_public/Journal/g3journal/5/11/10.1534_g3.115.021667/5/021667_files1.zip?Expires=1706750617&Signature=yMBQeDumKhnNHIhhUdwsdac~D81t~5RfRi39Bqs4fA8sdE27FVMiyYI7xL8OvLupTqXUim2qC5mgvd5eqby4WCWxCw8x25xnkd6~05gC6puXpHloQSbesTQGrTFios7JeCnXUf306Z~p2vMi0TRgX8qpNTWiwGwwyn2wYAr1tbWIN4EwTQvN8~BgJF31Tj8xJoCVJm2uTpA7~hhsSidJgxVqL4aO20CvwAI1iDcx1gxvienNDS1rYTOruLhwXDif4RGFv8tAb2W5SK3qt4bjgpD6mP8gghv7BWGf0g-arYQywL1fmLCia35qJr7Umxc3LM8iPvWabo5K0sTlRH1oHw__&Key-Pair-Id=APKAIE5G5CRDK6RD3PGA](https://oup.silverchair-cdn.com/oup/backfile/Content_public/Journal/g3journal/5/11/10.1534_g3.115.021667/5/021667_files1.zip?Expires=1706750617&Signature=yMBQeDumKhnNHIhhUdwsdac~D81t~5RfRi39Bqs4fA8sdE27FVMiyYI7xL8OvLupTqXUim2qC5mgvd5eqby4WCWxCw8x25xnkd6~05gC6puXpHloQSbesTQGrTFios7JeCnXUf306Z~p2vMi0TRgX8qpNTWiwGwwyn2wYAr1tbWIN4EwTQvN8~BgJF31Tj8xJoCVJm2uTpA7~hhsSidJgxVqL4aO20CvwAI1iDcx1gxvienNDS1rYTOruLhwXDif4RGFv8tAb2W5SK3qt4bjgpD6mP8gghv7BWGf0g-arYQywL1fmLCia35qJr7Umxc3LM8iPvWabo5K0sTlRH1oHw__&Key-Pair-Id=APKAIE5G5CRDK6RD3PGA))
 
+- **Genome partitioning:**
+    + **By chromosomes or scaffolds**
+    + **Rename all chromosomes as chr1**
+
 *prepping_datasets.sh*
 
 ```shell
 #!/bin/bash
+conda activate bcftools
 DIR=/group/pasture/Jeff/imputef/misc
 cd $DIR
 ### (2) pools of diploid *Glycine max*
@@ -55,6 +57,67 @@ time Rscript \
 mv LinkImpute.data.grape.num.raw.txt.vcf grape.vcf
 ```
 
+*poolify.R* - assumes each individual per pool are perfectly equally represented (best-case scenario in the real-world)
+
+```R
+args = commandArgs(trailingOnly=TRUE)
+# args = c("/group/pasture/Jeff/imputef/misc/soybean-indi_temp.vcf", "42", "100", "/group/pasture/Jeff/imputef/misc/soybean.vcf")
+vcf_fname = args[1]
+min_pool_size = as.numeric(args[2])
+depth = as.numeric(args[3])
+out_fname = args[4]
+print("###############################################################################################################")
+print("Pooling individual diploid genotypes, i.e. each pool is comprised of {min_pool_size} most closely-related samples using k-means clustering using 1000 evenly indexes loci")
+print("Note: assumes each individual per pool are perfectly equally represented (best-case scenario in the real-world)")
+vcf = vcfR::read.vcfR(vcf_fname)
+vec_loci_names = paste(vcfR::getCHROM(vcf), vcfR::getPOS(vcf), vcfR::getREF(vcf), sep="_")
+vec_sample_names = colnames(vcf@gt)[-1]
+### Extract biallelic diploid allele frequencies
+G = matrix(NA, nrow=length(vec_loci_names), ncol=length(vec_sample_names))
+GT = vcfR::extract.gt(vcf, element="GT")
+G[(GT == "0/0") | (GT == "0|0")] = 1.0
+G[(GT == "1/1") | (GT == "1|1")] = 0.0
+G[(GT == "0/1") | (GT == "0|1") | (GT == "1|0")] = 0.5
+rm(GT)
+gc()
+rownames(G) = vec_loci_names
+colnames(G) = vec_sample_names
+### Create n pools of the most related individuals
+print("Clustering. This may take a while.")
+PCA = prcomp(G, rank=100)
+C = PCA$rotation
+p = length(vec_loci_names)
+# C = t(G[seq(from=1, to=p, length=1000), ])
+clustering = kmeans(x=C, centers=200, iter.max=20)
+vec_clusters = table(clustering$cluster)
+vec_clusters = vec_clusters[vec_clusters >= min_pool_size]
+n = length(vec_clusters)
+GT = matrix("AD", nrow=p, ncol=n+1)
+pb = txtProgressBar(min=0, max=n, initial=0, style=3)
+for (i in 1:n) {
+    idx = which(clustering$cluster == i)
+    q = rowMeans(G[, idx])
+    for (j in 1:p) {
+        # j = 1
+        ref = rbinom(n=1, size=depth, prob=q[j])
+        alt = rbinom(n=1, size=depth, prob=(1-q[j]))
+        GT[j, (i+1)] = paste0(ref, ",", alt) ### skipping the first column containing the FORMAT field "AD"
+    }
+    setTxtProgressBar(pb, i)
+}
+close(pb)
+colnames(GT) = c("FORMAT", paste0("Pool-", c(1:n)))
+### Create the output vcfR object
+vcf_out = vcf
+str(vcf_out)
+str(vcf_out@gt)
+vcf_out@gt = GT
+fname_vcf_gz = paste0(out_fname, ".gz")
+vcfR::write.vcf(vcf_out, file=fname_vcf_gz)
+system(paste0("gunzip -f ", fname_vcf_gz))
+print(paste0("Output: ", out_fname))
+```
+
 *ssv2vcf.R* - convert space-delimited genotype data from LinkImpute paper
 
 ```R
@@ -65,29 +128,28 @@ fname_geno_txt = args[1]
 fname_geno_dummy_vcf = args[2]
 dat = read.table(fname_geno_txt, header=TRUE, sep=" ")
 vcf = vcfR::read.vcfR(fname_geno_dummy_vcf)
-str(dat)
 idx_col_start = 7
 n = nrow(dat)
 p = ncol(dat) - (idx_col_start-1)
 vec_loci_names = colnames(dat)[idx_col_start:ncol(dat)]
 vec_pool_names = dat$IID
 G = dat[, idx_col_start:ncol(dat)]
-### Missing data assessment
-idx_row_without_missing = apply(G, MARGIN=1, FUN=function(x){sum(is.na(x))==0})
-idx_col_without_missing = apply(G, MARGIN=2, FUN=function(x){sum(is.na(x))==0})
-sum(idx_row_without_missing)
-sum(idx_col_without_missing)
-sum(is.na(G)) / prod(dim(G))
-### Fill missing with mean (because LinkImpute fails to finish running at MAF=0.25 for reasons I do not know)
-ploidy = 2
-pb = txtProgressBar(min=0, max=p, style=3)
-for (j in 1:p) {
-    # j = 1
-    idx_missing = which(is.na(G[, j]))
-    G[idx_missing, j] = round(mean(G[, j], na.rm=TRUE) * ploidy)
-    setTxtProgressBar(pb, j)
-}
-close(pb)
+# ### Missing data assessment
+# idx_row_without_missing = apply(G, MARGIN=1, FUN=function(x){sum(is.na(x))==0})
+# idx_col_without_missing = apply(G, MARGIN=2, FUN=function(x){sum(is.na(x))==0})
+# sum(idx_row_without_missing)
+# sum(idx_col_without_missing)
+# sum(is.na(G)) / prod(dim(G))
+# ### Fill missing with mean (because LinkImpute fails to finish running at MAF=0.25 for reasons I do not know)
+# ploidy = 2
+# pb = txtProgressBar(min=0, max=p, style=3)
+# for (j in 1:p) {
+#     # j = 1
+#     idx_missing = which(is.na(G[, j]))
+#     G[idx_missing, j] = round(mean(G[, j], na.rm=TRUE) * ploidy)
+#     setTxtProgressBar(pb, j)
+# }
+# close(pb)
 ### Create meta, fit and gt fields of the vcfR object
 mat_loci_ids = matrix(gsub("^X", "chr_", unlist(strsplit(unlist(strsplit(vec_loci_names, "[.]")), "_"))), ncol=3, byrow=TRUE)
 ### Randomly choose the alternative alleles as the genotype data (*.raw file) do not have that information.
@@ -136,69 +198,6 @@ vcfR::write.vcf(vcf_new, file=paste0(fname_geno_txt, ".vcf.gz"))
 system(paste0("gunzip -f ", fname_geno_txt, ".vcf.gz"))
 vcf_new_loaded = vcfR::read.vcfR(paste0(fname_geno_txt, ".vcf"))
 print(vcf_new_loaded)
-```
-
-*poolify.R* - assumes each individual per pool are perfectly equally represented (best-case scenario in the real-world)
-
-```R
-args = commandArgs(trailingOnly=TRUE)
-# args = c("soybean-indi_temp.vcf", "42", "100", "soybean.vcf")
-vcf_fname = args[1]
-min_pool_size = as.numeric(args[2])
-depth = as.numeric(args[3])
-out_fname = args[4]
-print("###############################################################################################################")
-print("Pooling individual diploid genotypes, i.e. each pool is comprised of {min_pool_size} most closely-related samples using k-means clustering using 1000 evenly indexes loci")
-print("Note: assumes each individual per pool are perfectly equally represented (best-case scenario in the real-world)")
-vcf = vcfR::read.vcfR(vcf_fname)
-vec_loci_names = paste(vcfR::getCHROM(vcf), vcfR::getPOS(vcf), vcfR::getREF(vcf), sep="_")
-vec_pool_names = colnames(vcf@gt)[-1]
-### Extract biallelic diploid allele frequencies
-G = matrix(0.5, nrow=length(vec_loci_names), ncol=length(vec_pool_names))
-GT = vcfR::extract.gt(vcf, element="GT")
-G[(GT == "0/0") | (GT == "0|0")] = 1.0
-G[(GT == "1/1") | (GT == "1|1")] = 0.0
-# G[(GT == "0/1") | (GT == "0|1") | (GT == "1|0")] = 0.5
-rm(GT)
-gc()
-rownames(G) = vec_loci_names
-colnames(G) = vec_pool_names
-### Create n pools of the most related individuals
-print("Clustering. This may take a while.")
-p = length(vec_loci_names)
-C = t(G[seq(from=1, to=p, length=1000), ])
-clustering = kmeans(x=C, centers=200)
-vec_clusters = table(clustering$cluster)
-vec_clusters = vec_clusters[vec_clusters >= min_pool_size]
-n = length(vec_clusters)
-GT = matrix("AD", nrow=p, ncol=n+1)
-pb = txtProgressBar(min=0, max=n, initial=0, style=3)
-for (i in 1:n) {
-    # i = 1
-    # ini = ((i-1)*min_pool_size) + 1
-    # fin = ((i-1)*min_pool_size) + min_pool_size
-    # q = rowMeans(G[, ini:fin])
-    idx = which(clustering$cluster == i)
-    q = rowMeans(G[, idx])
-    for (j in 1:p) {
-        # j = 1
-        ref = rbinom(n=1, size=depth, prob=q[j])
-        alt = rbinom(n=1, size=depth, prob=(1-q[j]))
-        GT[j, (i+1)] = paste0(ref, ",", alt) ### skipping the first column containing the FORMAT field "AD"
-    }
-    setTxtProgressBar(pb, i)
-}
-close(pb)
-colnames(GT) = c("FORMAT", paste0("Pool-", c(1:n)))
-### Create the output vcfR object
-vcf_out = vcf
-str(vcf_out)
-str(vcf_out@gt)
-vcf_out@gt = GT
-fname_vcf_gz = paste0(out_fname, ".gz")
-vcfR::write.vcf(vcf_out, file=fname_vcf_gz)
-system(paste0("gunzip -f ", fname_vcf_gz))
-print(paste0("Output: ", out_fname))
 ```
 
 
