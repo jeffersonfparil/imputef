@@ -33,7 +33,8 @@ ALDKNNI_FIXED_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
     return(c(vcf_idx_1, vcf_idx_2, nrow(df), ncol(df)))
 }
 
-ALDKNNI_OPTIM_LK_impute_2_loci = function(fname_vcf_sync_csv) {
+
+ALDKNNI_OPTIM_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
     out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_loci_corr=10, optimise_n_steps_max_pool_dist=10, min_l_loci=1, min_k_neighbours=1)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
@@ -43,8 +44,8 @@ ALDKNNI_OPTIM_LK_impute_2_loci = function(fname_vcf_sync_csv) {
     return(c(vcf_idx_1, vcf_idx_2, nrow(df), ncol(df)))
 }
 
-ALDKNNI_OPTIM_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
-    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_l_loci=10, optimise_n_steps_min_k_neighbours=10, min_loci_corr=0.0, max_pool_dist=1.0)
+ALDKNNI_OPTIM_LK_impute_2_loci = function(fname_vcf_sync_csv) {
+    out = aldknni(fname=fname_vcf_sync_csv, min_loci_corr=0.0, max_pool_dist=1.0, optimise_max_l_loci=100, optimise_max_k_neighbours=100)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
     idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))
@@ -54,7 +55,7 @@ ALDKNNI_OPTIM_CORRDIST_impute_2_loci = function(fname_vcf_sync_csv) {
 }
 
 ALDKNNI_OPTIM_FULL_impute_2_loci = function(fname_vcf_sync_csv) {
-    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_loci_corr=3, optimise_n_steps_max_pool_dist=3, optimise_n_steps_min_l_loci=3, optimise_n_steps_min_k_neighbours=3)
+    out = aldknni(fname=fname_vcf_sync_csv, optimise_n_steps_min_loci_corr=10, optimise_n_steps_max_pool_dist=10, optimise_max_l_loci=100, optimise_max_k_neighbours=100)
     df = read.csv(out)
     idx_1 = which((df$X.chr=="chrA") & (df$pos==2309794))
     idx_2 = which((df$X.chr=="chrA") & (df$pos==2309996))

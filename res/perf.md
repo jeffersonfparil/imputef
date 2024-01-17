@@ -298,7 +298,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Submit jobs as an array where each job refer to a maf x sparsity combination:
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
-sbatch --array=1-44 perf.slurm
+sbatch --array=1-20 perf.slurm
 
 ### Monitor the jobs
 DIR=/group/pasture/Jeff/imputef/res

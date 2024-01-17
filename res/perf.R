@@ -1,9 +1,9 @@
 ### Load imputef library
-# library(imputef)
+library(imputef)
 # system("conda activate rustenv")
-devtools::load_all()
-rextendr::document()
-setwd("res/")
+# devtools::load_all()
+# rextendr::document()
+# setwd("res/")
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
 fn_extract_allele_frequencies = function(vcf) {
@@ -316,7 +316,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     fname_out_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,"-IMPUTED.csv")
     vcf_for_linkimpute = vcfR::read.vcfR(list_sim_missing$fname_vcf)
     mat_genotypes_for_linkimpute = t(fn_classify_allele_frequencies(fn_extract_allele_frequencies(vcf_for_linkimpute), ploidy=2)) * 2
-    bool_enough_data_to_simulate_10k_missing = prod(dim(mat_genotypes_for_linkimpute)) >= (20000)
+    bool_enough_data_to_simulate_10k_missing = sum(!is.na(mat_genotypes_for_linkimpute)) >= 11000
     if (bool_enough_data_to_simulate_10k_missing == TRUE) {
         ### LinkImpute stalls if it cannot mask 10,000 data points for optimising l and k, because the number of non-missing data points is not enough to reach the fixed 10,000 random data points.
         mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
@@ -386,6 +386,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
             df_metrics_across_allele_freqs_frequencies = df_metrics_across_allele_freqs_frequencies,
             df_metrics_across_allele_freqs_classes = df_metrics_across_allele_freqs_classes
         )
+        duration_linkimpute = NA
     }
     ### Merge imputation accuracy metrics into the output data.frame
     string_metric_lists = c("metrics_mvi", "metrics_aldknni_fixed", "metrics_aldknni_optim_cd", "metrics_aldknni_optim_lk", "metrics_aldknni_optim_all", "metrics_linkimpute")
@@ -444,7 +445,9 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_all)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_cd)))
     system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim_lk)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
+    if (bool_enough_data_to_simulate_10k_missing == TRUE) {
+        system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
+    }
     ### Output
     return(df_out)
 }
