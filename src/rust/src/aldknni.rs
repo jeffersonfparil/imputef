@@ -256,14 +256,14 @@ fn impute_allele_frequencies(
         .iter()
         .fold(0.0, |sum, x| sum + x);
     let weights: Array1<f64> = additive_inverse_plus_epsilon / weights_sum;
-    for i in 0..n {
-        for j in 0..p {
+    for j in 0..p {
+        for i in 0..n {
             imputed_freqs[j] += weights[i] * frequencies[(i, j)];
         }
-    }
-    if imputed_freqs[0].is_nan() {
-        println!("frequencies={:?}", frequencies);
-        println!("distances={:?}", distances);
+        if imputed_freqs[j].is_nan() {
+            println!("frequencies={:?}", frequencies);
+            println!("distances={:?}", distances);
+        }
     }
     // Correct allele frequencies so that they sum up to 1, if we have more than 1 allele present
     if p > 1 {
@@ -302,6 +302,8 @@ impl GenotypesAndPhenotypes {
         };
         // Extract loci indices
         let (loci_idx, loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
+        assert_eq!(loci_idx.len()-1, self.coverages.ncols(), "The loci indices do not match the coverage matrix.");
+        assert_eq!(self.intercept_and_allele_frequencies.nrows(), self.coverages.nrows(), "The number of pools in the allele frequency matrix and coverage matrix do not match.");
         // Noting actual correlation and distance parameters used
         let mut actual_corr: Vec<f64> = vec![];
         let mut actual_dist: Vec<f64> = vec![];
