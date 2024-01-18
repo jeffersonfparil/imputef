@@ -10,11 +10,6 @@ fn calculate_genomewide_ld(
     intercept_and_allele_frequencies: &Array2<f64>,
 ) -> io::Result<Vec<Vec<f64>>> {
     // Errors and f64::NAN are all converted into 0.0 for simplicity
-    if (intercept_and_allele_frequencies.nrows() * intercept_and_allele_frequencies.ncols())
-        > 1_000_000
-    {
-        println!("Estimating linkage between loci across the entire genome...")
-    }
     let (_n, p) = intercept_and_allele_frequencies.dim();
     let mut corr: Vec<Vec<f64>> = vec![vec![]; p - 1];
     let vec_idx: Vec<usize> = (0..(p - 1)).collect();
@@ -42,11 +37,6 @@ fn calculate_genomewide_ld(
             idx
         )
     });
-    if (intercept_and_allele_frequencies.nrows() * intercept_and_allele_frequencies.ncols())
-        > 1_000_000
-    {
-        println!("LD estimation finished.")
-    }
     Ok(corr)
 }
 
@@ -284,6 +274,8 @@ impl GenotypesAndPhenotypes {
         max_pool_dist: &f64,
         min_l_loci: &u64,
         min_k_neighbours: &u64,
+        loci_idx: &Vec<usize>,
+        loci_chr: &Vec<String>,
         corr: &Vec<Vec<f64>>,
         restrict_linked_loci_per_chromosome: bool,
     ) -> io::Result<&mut Self> {
@@ -300,8 +292,8 @@ impl GenotypesAndPhenotypes {
         } else {
             *min_k_neighbours as usize
         };
-        // Extract loci indices
-        let (loci_idx, loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
+        // // Extract loci indices
+        // let (loci_idx, loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
         // Noting actual correlation and distance parameters used
         let mut actual_corr: Vec<f64> = vec![];
         let mut actual_dist: Vec<f64> = vec![];
@@ -417,11 +409,14 @@ pub fn impute_aldknni(
     // Will need to remove window-related parameters and rename min_l_loci and min_l_loci to be main parameters
     // Also note that the we are no longer reverting to MVI as setting and optimising for min_l and min_k clashes with that idea
 
+    // Extract loci indices
+    let (loci_idx, loci_chr, loci_pos) = genotypes_and_phenotypes.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
+
     // Calculate LD across the entire genome
+    println!("Estimating linkage between loci across the entire genome.");
     let corr = calculate_genomewide_ld(&genotypes_and_phenotypes.intercept_and_allele_frequencies)
         .expect("Error estimating pairwise linkage between loci across the entire genome.");
-
-    // let (min_loci_corr, max_pool_dist, mae) = optimise_params_and_estimate_accuracy(
+    println!("Optimising and/or estimating imputation accuracy.");
     let (
         optimum_min_loci_corr,
         optimum_max_pool_dist,
@@ -434,6 +429,8 @@ pub fn impute_aldknni(
         max_pool_dist,
         min_l_loci,
         min_k_neighbours,
+        &loci_idx,
+        &loci_chr,
         &corr,
         restrict_linked_loci_per_chromosome,
         optimise_n_steps_min_loci_corr,
@@ -469,6 +466,8 @@ pub fn impute_aldknni(
             &optimum_max_pool_dist,
             &optimum_min_l_loci,
             &optimum_min_k_neighbours,
+            &loci_idx,
+            &loci_chr,
             &corr,
             restrict_linked_loci_per_chromosome,
         )

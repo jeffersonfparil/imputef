@@ -109,6 +109,13 @@ fn_simulate_missing_data = function(vcf, mat_genotypes, maf=0.25, missing_rate=0
     idx_mat[,2] = 1 + idx_mat[,2] ### Skip the first column of GT, i.e. the format column
     vcf_filtered@gt[idx_mat] = NA
     print(vcf_filtered)
+    ### Remove fixed loci
+    idx_mat[,2] = idx_mat[,2] - 1 ### Un-skip the first column of GT, i.e. the format column
+    mat_genotypes_filtered[idx_mat] = NA
+    vec_var_freqs = apply(mat_genotypes_filtered, MARGIN=1, FUN=var, na.rm=TRUE)
+    idx_non_fixed_loci_after_simulating_missing_data = which(vec_var_freqs > 0.0)
+    vcf_filtered = vcf_filtered[idx_non_fixed_loci_after_simulating_missing_data, ]
+    print(vcf_filtered)
     ### Save the vcf and unzip
     print("Saving and unzipping vcf with simulated missing data...")
     fname_vcf_gz = paste0("SIMULATED_MISSING-", missing_rate, "-", as.numeric(Sys.time()), ".vcf.gz")
@@ -284,7 +291,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=1,
         optimise_max_k_neighbours=1,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=TRUE,
         n_threads=n_threads)
     duration_aldknni_optim_cd = difftime(Sys.time(), time_ini, units="mins")
 
@@ -295,7 +302,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         optimise_n_steps_max_pool_dist=1,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=TRUE,
         n_threads=n_threads)
     duration_aldknni_optim_lk = difftime(Sys.time(), time_ini, units="mins")
     
@@ -306,7 +313,7 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=TRUE,
         n_threads=n_threads)
     duration_aldknni_optim_all = difftime(Sys.time(), time_ini, units="mins")
 
@@ -461,7 +468,6 @@ n_reps = as.numeric(args[4])
 n_threads = as.numeric(args[5])
 # fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
 # fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
-# fname_vcf="/home/jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf) ### high-confidence genotype data: 154 pools X 124,151 loci
 mat_genotypes = fn_extract_allele_frequencies(vcf)
