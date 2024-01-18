@@ -7,9 +7,10 @@ setwd(dir_ouput)
 plot_metrics = function(df, dataset) {
   df$algorithm[df$algorithm=="mvi"] = "MVI"
   # df$algorithm[df$algorithm=="lukes"] = "SAMP"
-  df$algorithm[df$algorithm=="aldknni"] = "ALDKNNI"
-  df$algorithm[df$algorithm=="aldknni_optim_thresholds"] = "AOT"
-  df$algorithm[df$algorithm=="aldknni_optim_counts"] = "AOC"
+  df$algorithm[df$algorithm=="aldknni_fixed"] = "AFIXED"
+  df$algorithm[df$algorithm=="aldknni_optim_cd"] = "AOPTIMCD"
+  df$algorithm[df$algorithm=="aldknni_optim_lk"] = "AOPTIMLK"
+  df$algorithm[df$algorithm=="aldknni_optim_all"] = "AOPTIMAL"
   df$algorithm[df$algorithm=="linkimpute"] = "LINKIMPUTE"
 
   # agg_concordance = aggregate(concordance_classes ~ algorithm + maf + missing_rate, data=df, FUN=mean)
@@ -34,8 +35,8 @@ plot_metrics = function(df, dataset) {
     vec_colours = vec_colours[c(1, 2, 3, 5)]
   }
   vec_colours = rep(vec_colours, times=ceiling(length(vec_algorithm)/length(vec_colours)))[1:length(vec_algorithm)]
-  vec_metrics = c("mae_freqs", "r2_freqs", "concordance_classes")
-  vec_metrics_labels = c("Mean absolute error", "Coefficient of determination", "Concordance")
+  vec_metrics = c("mae_frequencies", "concordance_classes")
+  vec_metrics_labels = c("Mean absolute error", "Concordance")
   vec_fnames_svg = c()
   n_plots = 2*length(vec_maf)
   for (i in 1:length(vec_metrics)) {
@@ -63,7 +64,7 @@ plot_metrics = function(df, dataset) {
       par(xpd=TRUE) ### xpd=TRUE allows us to place the legend outside the plot area
       bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, border=NA, ylim=ylim, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
       if (maf==min(vec_maf)) {
-        legend("topright", inset=c(-0.001, -0.5), legend=vec_algorithm, fill=vec_colours, bty="n", horiz=TRUE)
+        legend("topright", inset=c(-0.001, -0.05), legend=vec_algorithm, fill=vec_colours, bty="n", horiz=TRUE)
         par(xpd=FALSE)
       }
       arrows(bplot, mat_mu-mat_sd,
