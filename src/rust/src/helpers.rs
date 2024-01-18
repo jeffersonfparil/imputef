@@ -184,10 +184,9 @@ pub fn summary_stats(x: &Vec<f64>) -> io::Result<(f64, f64, f64)> {
         .filter(|&x| !x.is_nan())
         .map(|&x| x.to_owned())
         .collect();
-    assert!(
-        x.len() > 0,
-        "Error: the input vector is empty or contains only f64::NAN."
-    );
+    if x.len() == 0 {
+        return Ok((f64::NAN, f64::NAN, f64::NAN))
+    }
     let mut min = x[0];
     let mut mean = x[0];
     let mut max = x[0];

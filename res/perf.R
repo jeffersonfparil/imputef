@@ -1,9 +1,9 @@
 ### Load imputef library
-# library(imputef)
+library(imputef)
 # system("conda activate rustenv")
-devtools::load_all()
-rextendr::document()
-setwd("res/")
+# devtools::load_all()
+# rextendr::document()
+# setwd("res/")
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
 fn_extract_allele_frequencies = function(vcf) {
@@ -468,6 +468,7 @@ n_reps = as.numeric(args[4])
 n_threads = as.numeric(args[5])
 # fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
 # fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
+# fname_vcf="grape.vcf"; ploidy=2; i=9; n_reps=1; n_threads=12; strict_boundaries=FALSE; r=1
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf) ### high-confidence genotype data: 154 pools X 124,151 loci
 mat_genotypes = fn_extract_allele_frequencies(vcf)
