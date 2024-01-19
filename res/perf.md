@@ -300,6 +300,7 @@ cd $DIR
 sbatch --array=1-20 perf.slurm
 
 ### Monitor the jobs
+conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort

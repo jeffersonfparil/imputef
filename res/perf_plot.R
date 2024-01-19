@@ -120,10 +120,8 @@ plot_metrics = function(df, dataset) {
               x1=agg_mu_sub[,2], y1=agg_mu_sub[,3]+agg_sd_sub[,3], length=0.05, angle=90, code=3)
       }
     }
-
-
-    ### Tests: plotting mae across freqs
-    q = c(0.0, 0.01, 0.05, seq(0.1, 0.9, by=0.1), 0.95, 0.99, 1.00)
+    ### Plot mae across expected freqs
+    q = seq(0, 1, by=0.1)
     for (algo in vec_algorithm) {
       # algo = vec_algorithm[1]
       par(mar=c(5,5,1,1))

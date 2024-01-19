@@ -140,7 +140,8 @@ fn_metrics = function(q_predicted, q_expected) {
     r2 = 1.00 - (mean(mse, na.rm=TRUE) / mean((q_expected-mean(q_expected))^2, na.rm=TRUE))
     concordance = mean(q_predicted == q_expected, na.rm=TRUE)
     ### Metrics across the range of expected allele frequencies
-    vec_q_max = c(0.00, 0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
+    # vec_q_max = c(0.00, 0.01, 0.05, c(1:9)/10, 0.95, 0.99, 1.00)
+    vec_q_max = seq(0, 1, by=0.1)
     vec_n = rep(0, each=length(vec_q_max))
     vec_mae = rep(NA, each=length(vec_q_max))
     vec_mse = rep(NA, each=length(vec_q_max))
