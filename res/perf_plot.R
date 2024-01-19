@@ -125,20 +125,37 @@ plot_metrics = function(df, dataset) {
     ### Tests: plotting mae across freqs
     q = c(0.0, 0.01, 0.05, seq(0.1, 0.9, by=0.1), 0.95, 0.99, 1.00)
     for (algo in vec_algorithm) {
+      # algo = vec_algorithm[1]
       par(mar=c(5,5,1,1))
       plot(x=c(0,1), y=c(0,1), type="n", xlab="Expected allele frequencies", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
       colour = vec_colours[vec_algorithm==algo]
       for (missing_rate in vec_missing_rate) {
         eval(parse(text=paste0("colour = rgb(", paste(as.vector(col2rgb(colour)), collapse = "/256,"), "/256, alpha=", missing_rate, ")")))
         idx = which((subdf$algorithm == algo) & (subdf$missing_rate == missing_rate))
-        eval(parse(text=paste0("mae_across_freqs = c(", paste(paste0("subdf$mae_", q, "[idx]"), collapse=", "), ")")))
+        if (length(idx) > 1) {
+          mae_across_freqs = NULL
+          for (ix in idx) {
+            # ix = idx[1]
+            if (is.null(mae_across_freqs)) {
+              eval(parse(text=paste0("mae_across_freqs = c(", paste(paste0("subdf$mae_", q, "[ix]"), collapse=", "), ")")))
+            } else {
+              eval(parse(text=paste0("mae_across_freqs = rbind(mae_across_freqs, c(", paste(paste0("subdf$`mae_", q, "`[ix]"), collapse=", "), "))")))
+            }
+          }
+          mae_across_freqs = colMeans(mae_across_freqs)
+        } else {
+          eval(parse(text=paste0("mae_across_freqs = c(", paste(paste0("subdf$mae_", q, "[idx]"), collapse=", "), ")")))  
+        }
         idx = which(!is.na(mae_across_freqs))
         lines(x=q[idx], y=mae_across_freqs[idx], lwd=5*missing_rate, col=colour)
       }
       grid()
       if (algo == vec_algorithm[1]) {
-        legend("topleft", legend=c("Sparsity", vec_missing_rate[1:5]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[1:5])), lwd=c(0, 5*vec_missing_rate[1:5]), bty="n")
-        legend("top", legend=c("", vec_missing_rate[6:10]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[6:10])), lwd=c(0, 5*vec_missing_rate[6:10]), bty="n")
+        n0 = 1
+        n2 = length(unique(subdf$missing_rate))
+        n1 = floor(n2/2)
+        legend("topleft", legend=c("Sparsity", vec_missing_rate[n0:n1]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[n0:n1])), lwd=c(0, 5*vec_missing_rate[n0:n1]), bty="n")
+        legend("top", legend=c("", vec_missing_rate[(n1+1):n2]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[(n1+1):n2])), lwd=c(0, 5*vec_missing_rate[(n1+1):n2]), bty="n")
       }
       par(mar=c(5, 4, 4, 2) +0.1)
     }

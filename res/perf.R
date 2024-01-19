@@ -482,7 +482,7 @@ i = as.numeric(args[3])
 n_reps = as.numeric(args[4])
 n_threads = as.numeric(args[5])
 # fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
-# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=1; n_threads=32; strict_boundaries=FALSE; r=1
+# fname_vcf="/group/pasture/Jeff/imputef/misc/grape.vcf"; ploidy=2; i=19; n_reps=3; n_threads=32; strict_boundaries=FALSE; r=1
 # fname_vcf="grape.vcf"; ploidy=2; i=9; n_reps=1; n_threads=12; strict_boundaries=FALSE; r=1
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf) ### high-confidence genotype data: 154 pools X 124,151 loci
