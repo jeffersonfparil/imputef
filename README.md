@@ -1,6 +1,6 @@
 # imputef
 
-Reduce genotype data sparsity through imputation of genotype classes or allele frequencies of individual polyploids or pools of individuals or populations.
+Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|

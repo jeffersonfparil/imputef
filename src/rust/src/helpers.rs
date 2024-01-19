@@ -177,36 +177,6 @@ pub fn pearsons_correlation_pairwise_complete(
     Ok((sensible_round(r, 7), pval))
 }
 
-// Compute summary minimum, maximum and arithmetic mean of a vector
-pub fn summary_stats(x: &Vec<f64>) -> io::Result<(f64, f64, f64)> {
-    let x: Vec<f64> = x
-        .iter()
-        .filter(|&x| !x.is_nan())
-        .map(|&x| x.to_owned())
-        .collect();
-    if x.len() == 0 {
-        return Ok((f64::NAN, f64::NAN, f64::NAN))
-    }
-    let mut min = x[0];
-    let mut mean = x[0];
-    let mut max = x[0];
-    let mut n = 0.0;
-    for i in 0..x.len() {
-        if x[i].is_nan() == false {
-            if x[i] < min {
-                min = x[i]
-            }
-            if x[i] > max {
-                max = x[i]
-            }
-            mean += x[i];
-            n += 1.0;
-        }
-    }
-    mean = mean / n;
-    Ok((min, mean, max))
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #[cfg(test)]
 mod tests {
@@ -283,11 +253,5 @@ mod tests {
         assert!(corr1.1 < 0.0001);
         assert!(corr2.0 == 0.00);
         assert!(corr2.1 == 1.00);
-
-        let x: Vec<f64> = (0..10).map(|x| x as f64).collect();
-        let (min, mean, max) = summary_stats(&x).unwrap();
-        assert_eq!(min, 0.0);
-        assert_eq!(mean, 4.5);
-        assert_eq!(max, 9.0);
     }
 }

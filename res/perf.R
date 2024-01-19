@@ -278,8 +278,11 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
         max_pool_dist=0.1,
         min_l_loci=10,
         min_k_neighbours=5,
+        optimise_n_steps_min_loci_corr=10,
+        optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=1,
         optimise_max_k_neighbours=1,
+        restrict_linked_loci_per_chromosome=FALSE,
         n_threads=n_threads)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
     ### Adaptive LD-kNN imputation with optimisation for min_loci_corr, max_pool_dist, min_l_loci, and min_k_neighbours
@@ -287,33 +290,45 @@ fn_test_imputation = function(vcf, mat_genotypes, ploidy=4, maf=0.25, missing_ra
     time_ini = Sys.time()
     fname_out_aldknni_optim_cd = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("AOPTIMCD-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        min_loci_corr=0.0,
+        max_pool_dist=1.0,
+        min_l_loci=1,
+        min_k_neighbours=1,
         optimise_n_steps_min_loci_corr=10,
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=1,
         optimise_max_k_neighbours=1,
-        restrict_linked_loci_per_chromosome=TRUE,
+        restrict_linked_loci_per_chromosome=FALSE,
         n_threads=n_threads)
     duration_aldknni_optim_cd = difftime(Sys.time(), time_ini, units="mins")
 
     time_ini = Sys.time()
     fname_out_aldknni_optim_lk = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("AOPTIMLK-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        min_loci_corr=0.0,
+        max_pool_dist=1.0,
+        min_l_loci=1,
+        min_k_neighbours=1,
         optimise_n_steps_min_loci_corr=1,
         optimise_n_steps_max_pool_dist=1,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=TRUE,
+        restrict_linked_loci_per_chromosome=FALSE,
         n_threads=n_threads)
     duration_aldknni_optim_lk = difftime(Sys.time(), time_ini, units="mins")
     
     time_ini = Sys.time()
     fname_out_aldknni_optim_all = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("AOPTIMAL-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
+        min_loci_corr=0.0,
+        max_pool_dist=1.0,
+        min_l_loci=1,
+        min_k_neighbours=1,
         optimise_n_steps_min_loci_corr=10,
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=TRUE,
+        restrict_linked_loci_per_chromosome=FALSE,
         n_threads=n_threads)
     duration_aldknni_optim_all = difftime(Sys.time(), time_ini, units="mins")
 
@@ -493,6 +508,8 @@ for (r in c(1:n_reps)) {
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
     print("NOTE: Concordance will increase as maf increases if `strict_boundaries=TRUE`")
     df_perf = fn_test_imputation(vcf, mat_genotypes, ploidy=ploidy, maf=maf, missing_rate=missing_rate, strict_boundaries=strict_boundaries, n_threads=n_threads)
+    # source("res/perf.R")
+    # devtools::load_all(); df_perf = fn_test_imputation(vcf, mat_genotypes, ploidy=ploidy, maf=maf, missing_rate=missing_rate, strict_boundaries=strict_boundaries, n_threads=n_threads)
     df_perf$rep = rep(r, times=nrow(df_perf))
     if (r==1) {
         TESTS_OUTPUT = df_perf
