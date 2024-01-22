@@ -4,7 +4,9 @@ dir_ouput = args[1]
 setwd(dir_ouput)
 
 ### Plotting function per dataset
-plot_metrics = function(df, dataset) {
+plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concordance_classes"), vec_2_metrics_labels=c("Mean absolute error", "Concordance")) {
+  # vec_2_metrics = c("mae_frequencies", "concordance_classes")
+  # vec_2_metrics_labels = c("Mean absolute error", "Concordance")
   # Sort algorithms according to increasing complexity and with LinkImpute at the bottom as it will not be assessed for polyploid and pool datasets
   df$algorithm = as.character(df$algorithm)
   df$algorithm[df$algorithm=="mvi"] = "a"
@@ -35,31 +37,15 @@ plot_metrics = function(df, dataset) {
   print(paste(vec_algorithm, collapse=" | "))
   vec_maf = sort(unique(df$maf))
   vec_missing_rate = sort(unique(df$missing_rate))
-  # vec_colours = c("#b2df8a", "#33a02c", "#a6cee3", "#1f78b4")
-  # vec_colours = c("#d7191c", "#fdae61", "#abd9e9", "#2c7bb6")
   vec_colours = c("#88CCEE", "#44AA99", "#117733", "#CC6677", "#DDCC77", "#AA4499")
-  # vec_colours = c("#88CCEE", "#CC6677", "#44AA99", "#DDCC77", "#AA4499", "#117733")
-  # vec_colours = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854")
-  # vec_colours = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
-  # vec_colours = c("#00bf7d", "#00b4c5", "#0073e6", "#2546f0", "#5928ed", "#FFC20A")
-  # vec_colours = c("#b3c7f7", "#8babf1", "#0073e6", "#0461cf", "#054fb9", "#0C7BDC")
-  # vec_colours = c("#c44601", "#f57600", "#8babf1", "#0073e6", "#054fb9", "#994F00")
-  # vec_colours = c("#38A3A5", "#BDB76B", "#F4D03F", "#89CEDB", "#E0293F", "#333333")
-  # vec_colours = c("#0089BF", "#00B4C5", "#D2B48C", "#F06292", "#A29BDB", "#2546F0")
-  # vec_colours = c("#FDB400", "#E5603D", "#A4C139", "#00B2DF", "#9B97D3", "#62368F")
-  # vec_colours = c("#91D2BD", "#FBE9D1", "#F5E6CE", "#D8C092", "#A28F9D", "#E1F5FE")
-  # vec_colours = c("#FFC0A8", "#D3AEB4", "#E5C171", "#9BD6B0", "#789DA7", "#4D4D4F")
-  # vec_colours = c("#00B894", "#F27032", "#F06292", "#A4C139", "#A29BDB", "#001F3F")
-  # vec_colours = c("#001B43", "#13CFE9", "#A9D04F", "#F8B195", "#D3D3D3", "#2E343A")
   vec_colours = rep(vec_colours, times=ceiling(length(vec_algorithm)/length(vec_colours)))[1:length(vec_algorithm)]
-  vec_metrics = c("mae_frequencies", "concordance_classes")
-  vec_metrics_labels = c("Mean absolute error", "Concordance")
+  
   vec_fnames_svg = c()
   # n_plots = 2*length(vec_maf)
-  for (i in 1:length(vec_metrics)) {
-    # i = 2
-    metric = vec_metrics[i]
-    metric_label = vec_metrics_labels[i]
+  for (i in 1:length(vec_2_metrics)) {
+    # i = 1
+    metric = vec_2_metrics[i]
+    metric_label = vec_2_metrics_labels[i]
     if (grepl("mae", metric) | grepl("rmse", metric)) {
       eval(parse(text=paste0("ylim = c(0, max(df$", metric, ", na.rm=TRUE)+(2*sd(df$", metric, ", na.rm=TRUE)))")))
     } else {
@@ -87,6 +73,12 @@ plot_metrics = function(df, dataset) {
       agg_sd = agg_sd[idx_sort, ]
       eval(parse(text=paste0("mat_mu = matrix(agg_mu$", metric, ", nrow=length(unique(agg_mu$algorithm)), byrow=FALSE); rownames(mat_mu) = agg_mu$algorithm[1:length(unique(agg_mu$algorithm))]; colnames(mat_mu) = round(sort(unique(agg_mu$missing_rate)), 4)")))
       eval(parse(text=paste0("mat_sd = matrix(agg_sd$", metric, ", nrow=length(unique(agg_sd$algorithm)), byrow=FALSE); rownames(mat_sd) = agg_sd$algorithm[1:length(unique(agg_sd$algorithm))]; colnames(mat_sd) = round(sort(unique(agg_sd$missing_rate)), 4)")))
+      idx_sort = c()
+      for (i in 1:length(vec_algorithm)) {
+        idx_sort = c(idx_sort, which(rownames(mat_mu) == vec_algorithm[i]))
+      }
+      mat_mu = mat_mu[idx_sort, ]
+      mat_sd = mat_sd[idx_sort, ]
       ### Barplot
       par(xpd=TRUE) ### xpd=TRUE allows us to place the legend outside the plot area
       bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, border=NA, ylim=ylim, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
@@ -170,7 +162,7 @@ vec_fnames = vec_fnames[grepl("-missing_rate_", vec_fnames)]
 vec_fnames = vec_fnames[grepl(".csv$", vec_fnames)]
 vec_datasets = unique(unlist(lapply(strsplit(vec_fnames, "-"), FUN=function(x){x[[1]]})))
 for (dataset in vec_datasets) {
-  # dataset = vec_datasets[1]
+  # dataset = vec_datasets[3]
   vec_files = vec_fnames[grepl(paste0("^", dataset), vec_fnames)]
   for (i in 1:length(vec_files)) {
     df_tmp = read.csv(vec_files[i])
@@ -187,4 +179,8 @@ for (dataset in vec_datasets) {
   print(dataset)
   vec_fnames_svg = plot_metrics(df=df, dataset=dataset)
   print(vec_fnames_svg)
+  if (dataset == "lucerne") {
+    vec_fnames_svg = plot_metrics(df=df, dataset=dataset, vec_2_metrics=c("highConf_mae_frequencies", "highConf_concordance_classes"), vec_2_metrics_labels=c("Mean absolute error high confidence data", "Concordance high confidence data"))
+    print(vec_fnames_svg)
+  }
 }

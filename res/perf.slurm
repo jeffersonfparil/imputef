@@ -3,7 +3,7 @@
 #SBATCH --account="dbiopast2"
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=100G
+#SBATCH --mem=400G
 #SBATCH --time=7-0:0:00
 ### Load the conda environment
 module load Miniconda3/22.11.1-1
