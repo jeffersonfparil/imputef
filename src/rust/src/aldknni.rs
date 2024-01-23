@@ -7,25 +7,32 @@ use crate::optim::*;
 use crate::structs_and_traits::*;
 
 fn calculate_genomewide_ld(
-    intercept_and_allele_frequencies: &Array2<f64>,
+    genotypes_and_phenotypes: &GenotypesAndPhenotypes,
+    restrict_linked_loci_per_chromosome: bool
 ) -> io::Result<Vec<Vec<f64>>> {
+
     // Errors and f64::NAN are all converted into 0.0 for simplicity
-    let (_n, p) = intercept_and_allele_frequencies.dim();
+    let (_n, p) = genotypes_and_phenotypes.intercept_and_allele_frequencies.dim();
     let mut corr: Vec<Vec<f64>> = vec![vec![]; p - 1];
     Zip::indexed(&mut corr).par_for_each(|idx, c| {
+        let current_chromosome = genotypes_and_phenotypes.chromosome[idx].clone();
         for j in (idx + 1)..p {
-            let corr = match pearsons_correlation_pairwise_complete(
-                &intercept_and_allele_frequencies.column(idx),
-                &intercept_and_allele_frequencies.column(j),
-            ) {
-                Ok(x) => {
-                    if x.0.is_nan() {
-                        0.0
-                    } else {
-                        x.0
+            let corr = if restrict_linked_loci_per_chromosome & (genotypes_and_phenotypes.chromosome[j] != current_chromosome) {
+                f64::NAN
+            } else {
+                match pearsons_correlation_pairwise_complete(
+                    &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(idx),
+                    &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(j),
+                ) {
+                    Ok(x) => {
+                        if x.0.is_nan() {
+                            0.0
+                        } else {
+                            x.0
+                        }
                     }
+                    Err(_) => 0.0,
                 }
-                Err(_) => 0.0,
             };
             c.push(corr);
         }
@@ -407,7 +414,7 @@ pub fn impute_aldknni(
 
     // Calculate LD across the entire genome
     println!("Estimating linkage between loci across the entire genome.");
-    let corr = calculate_genomewide_ld(&genotypes_and_phenotypes.intercept_and_allele_frequencies)
+    let corr = calculate_genomewide_ld(&genotypes_and_phenotypes, restrict_linked_loci_per_chromosome)
         .expect("Error estimating pairwise linkage between loci across the entire genome.");
     println!("Optimising and/or estimating imputation accuracy.");
     let (
@@ -557,7 +564,7 @@ mod tests {
 
         // CORRELATION MATRIX CALCULATION
         let corr =
-            calculate_genomewide_ld(&frequencies_and_phenotypes.intercept_and_allele_frequencies)
+            calculate_genomewide_ld(&frequencies_and_phenotypes, false)
                 .unwrap();
         assert_eq!(
             corr.len(),

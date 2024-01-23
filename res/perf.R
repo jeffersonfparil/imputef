@@ -1,9 +1,9 @@
 ### Load imputef library
-library(imputef)
+# library(imputef)
 # system("conda activate rustenv")
-# devtools::load_all()
-# rextendr::document()
-# setwd("res/")
+devtools::load_all()
+rextendr::document()
+setwd("res/")
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
 fn_extract_allele_frequencies = function(vcf, min_depth=10, max_depth=200) {
@@ -296,6 +296,12 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     ### Define the actual number of missing loci after simulating missing data to account for cases when missingness (sparsity) is above 90% which is the maximum sparsity we have artificially set for computationally efficiency and to avoid errors due to too much sparsity
     n_missing = length(list_sim_missing$vec_missing_loci)
     rand_number_id = sample.int(1e9, 1)
+    ### Use all loci if the number of loci is less than 10k lco
+    if (ncol(mat_genotypes) < 1e4) {
+        restrict_linked_loci_per_chromosome = FALSE
+    } else {
+        restrict_linked_loci_per_chromosome = TRUE
+    }
     ### (1) Mean value imputation
     time_ini = Sys.time()
     fname_out_mvi = mvi(fname=list_sim_missing$fname_vcf,
@@ -314,7 +320,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=1,
         optimise_max_k_neighbours=1,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
     ### (3) Adaptive LD-kNN imputation with optimisation for min_loci_corr, and max_pool_dist
@@ -329,7 +335,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=1,
         optimise_max_k_neighbours=1,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_optim_cd = difftime(Sys.time(), time_ini, units="mins")
     ### (4) Adaptive LD-kNN imputation with optimisation for min_l_loci, and min_k_neighbours
@@ -344,7 +350,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         optimise_n_steps_max_pool_dist=1,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_optim_lk = difftime(Sys.time(), time_ini, units="mins")
     ### (5) Adaptive LD-kNN imputation with optimisation for min_l_loci, min_k_neighbours, min_l_loci, and min_k_neighbours
@@ -359,7 +365,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         optimise_n_steps_max_pool_dist=10,
         optimise_max_l_loci=100,
         optimise_max_k_neighbours=100,
-        restrict_linked_loci_per_chromosome=FALSE,
+        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_optim_all = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
