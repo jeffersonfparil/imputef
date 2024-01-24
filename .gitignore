@@ -13,6 +13,6 @@
 /res/*.sync
 /res/*.out
 /res/*.tmp
-/res/*.vcf
+/res/*.vcf*
 /res/*BK*
 /.vscode/

@@ -112,12 +112,13 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
               x1=agg_mu_sub[,2], y1=agg_mu_sub[,3]+agg_sd_sub[,3], length=0.05, angle=90, code=3)
       }
     }
-    ### Plot mae across expected freqs
+    ### Plot mae across expected freqs at 5% MAF
+    subdf = df[df$maf == 0.05, ]
     q = seq(0, 1, by=0.1)
     for (algo in vec_algorithm) {
       # algo = vec_algorithm[1]
       par(mar=c(5,5,1,1))
-      plot(x=c(0,1), y=c(0,1), type="n", xlab="Expected allele frequencies", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
+      plot(x=c(0,1), y=c(0,1), type="n", xlab="Expected allele frequencies (5% MAF)", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
       colour = vec_colours[vec_algorithm==algo]
       for (missing_rate in vec_missing_rate) {
         eval(parse(text=paste0("colour = rgb(", paste(as.vector(col2rgb(colour)), collapse = "/256,"), "/256, alpha=", missing_rate, ")")))
