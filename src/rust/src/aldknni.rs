@@ -8,22 +8,29 @@ use crate::structs_and_traits::*;
 
 fn calculate_genomewide_ld(
     genotypes_and_phenotypes: &GenotypesAndPhenotypes,
-    restrict_linked_loci_per_chromosome: bool
-) -> io::Result<Vec<Vec<f64>>> {
-
+    restrict_linked_loci_per_chromosome: bool,
+) -> io::Result<Vec<Vec<u8>>> {
     // Errors and f64::NAN are all converted into 0.0 for simplicity
-    let (_n, p) = genotypes_and_phenotypes.intercept_and_allele_frequencies.dim();
-    let mut corr: Vec<Vec<f64>> = vec![vec![]; p - 1];
+    let (_n, p) = genotypes_and_phenotypes
+        .intercept_and_allele_frequencies
+        .dim();
+    let mut corr: Vec<Vec<u8>> = vec![vec![]; p - 1];
     Zip::indexed(&mut corr).par_for_each(|idx, c| {
         let current_chromosome = genotypes_and_phenotypes.chromosome[idx].clone();
         for j in (idx + 1)..p {
-            if restrict_linked_loci_per_chromosome & (genotypes_and_phenotypes.chromosome[j] != current_chromosome) {
-                continue;
-                // c.push(f64::NAN);
+            if restrict_linked_loci_per_chromosome
+                & (genotypes_and_phenotypes.chromosome[j] != current_chromosome)
+            {
+                // We are breaking because we assume that the loci are sorted by chromosomes.
+                break;
             } else {
                 let corr = match pearsons_correlation_pairwise_complete(
-                    &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(idx),
-                    &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(j),
+                    &genotypes_and_phenotypes
+                        .intercept_and_allele_frequencies
+                        .column(idx),
+                    &genotypes_and_phenotypes
+                        .intercept_and_allele_frequencies
+                        .column(j),
                 ) {
                     Ok(x) => {
                         if x.0.is_nan() {
@@ -34,15 +41,9 @@ fn calculate_genomewide_ld(
                     }
                     Err(_) => 0.0,
                 };
-                c.push(corr);
+                c.push((corr * 255.0).round() as u8);
             }
         }
-        // assert_eq!(
-        //     c.len(),
-        //     (p - (1 + idx)),
-        //     "Error calculating genomewide allele frequency correlations at idx={}.",
-        //     idx
-        // )
     });
     Ok(corr)
 }
@@ -83,7 +84,7 @@ fn calculate_genetic_distances_between_pools(
 
 fn find_l_linked_loci(
     idx_col: usize,
-    corr: &Vec<Vec<f64>>,
+    corr: &Vec<Vec<u8>>,
     min_loci_corr: &f64,
     min_l_loci: usize,
     restrict_linked_loci_per_chromosome: bool,
@@ -106,7 +107,7 @@ fn find_l_linked_loci(
             // Skip if we are not on the same chromosome and we are restricting linked loci to be only within chromosomes
             continue;
         }
-        let c = corr[i][idx_col - (i + 1)]; // Less the current index as the length of the vectors decreases by 1 each time in addition to 1 less element representing the diagonal elements, i.e. itself
+        let c = (corr[i][idx_col - (i + 1)] as f64) / 255.0; // Less the current index as the length of the vectors decreases by 1 each time in addition to 1 less element representing the diagonal elements, i.e. itself
         if c >= *min_loci_corr {
             vec_idx.push(i);
         }
@@ -114,12 +115,14 @@ fn find_l_linked_loci(
     }
     // Across columns and at the idx_col row of the triangular matrix of correlations
     for j in 0..(p - idx_col) {
-        if restrict_linked_loci_per_chromosome & (chromosomes[idx_col + j + 1] != *current_chromosome) {
+        if restrict_linked_loci_per_chromosome
+            & (chromosomes[idx_col + j + 1] != *current_chromosome)
+        {
             // Skip if we are not on the same chromosome and we are restricting linked loci to be only within chromosomes
             // See comment below for the explanation for chromosomes[idx_col + j + 1]
             continue;
         }
-        let c = corr[idx_col][j];
+        let c = (corr[idx_col][j] as f64) / 255.0;
         if c >= *min_loci_corr {
             vec_idx.push(idx_col + j + 1); // Add the current index as the length of the vectors decreases by 1 each time plus skipping the locus requiring imputation as we did not calculate the correlation of each locus with itself
         }
@@ -313,7 +316,7 @@ impl GenotypesAndPhenotypes {
         min_l_loci: &u64,
         min_k_neighbours: &u64,
         loci_idx: &Vec<usize>,
-        corr: &Vec<Vec<f64>>,
+        corr: &Vec<Vec<u8>>,
         restrict_linked_loci_per_chromosome: bool,
     ) -> io::Result<&mut Self> {
         self.check().expect("Error self.check() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
@@ -415,8 +418,11 @@ pub fn impute_aldknni(
 
     // Calculate LD across the entire genome
     println!("Estimating linkage between loci across the entire genome.");
-    let corr = calculate_genomewide_ld(&genotypes_and_phenotypes, restrict_linked_loci_per_chromosome)
-        .expect("Error estimating pairwise linkage between loci across the entire genome.");
+    let corr = calculate_genomewide_ld(
+        &genotypes_and_phenotypes,
+        restrict_linked_loci_per_chromosome,
+    )
+    .expect("Error estimating pairwise linkage between loci across the entire genome.");
     println!("Optimising and/or estimating imputation accuracy.");
     let (
         optimum_min_loci_corr,
@@ -564,9 +570,7 @@ mod tests {
         assert_eq!(n_nan, 22_997);
 
         // CORRELATION MATRIX CALCULATION
-        let corr =
-            calculate_genomewide_ld(&frequencies_and_phenotypes, false)
-                .unwrap();
+        let corr = calculate_genomewide_ld(&frequencies_and_phenotypes, false).unwrap();
         assert_eq!(
             corr.len(),
             frequencies_and_phenotypes
