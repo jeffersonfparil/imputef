@@ -17,10 +17,11 @@ fn calculate_genomewide_ld(
     Zip::indexed(&mut corr).par_for_each(|idx, c| {
         let current_chromosome = genotypes_and_phenotypes.chromosome[idx].clone();
         for j in (idx + 1)..p {
-            let corr = if restrict_linked_loci_per_chromosome & (genotypes_and_phenotypes.chromosome[j] != current_chromosome) {
-                f64::NAN
+            if restrict_linked_loci_per_chromosome & (genotypes_and_phenotypes.chromosome[j] != current_chromosome) {
+                continue;
+                // c.push(f64::NAN);
             } else {
-                match pearsons_correlation_pairwise_complete(
+                let corr = match pearsons_correlation_pairwise_complete(
                     &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(idx),
                     &genotypes_and_phenotypes.intercept_and_allele_frequencies.column(j),
                 ) {
@@ -32,16 +33,16 @@ fn calculate_genomewide_ld(
                         }
                     }
                     Err(_) => 0.0,
-                }
-            };
-            c.push(corr);
+                };
+                c.push(corr);
+            }
         }
-        assert_eq!(
-            c.len(),
-            (p - (1 + idx)),
-            "Error calculating genomewide allele frequency correlations at idx={}.",
-            idx
-        )
+        // assert_eq!(
+        //     c.len(),
+        //     (p - (1 + idx)),
+        //     "Error calculating genomewide allele frequency correlations at idx={}.",
+        //     idx
+        // )
     });
     Ok(corr)
 }
@@ -113,14 +114,14 @@ fn find_l_linked_loci(
     }
     // Across columns and at the idx_col row of the triangular matrix of correlations
     for j in 0..(p - idx_col) {
-        if restrict_linked_loci_per_chromosome & (chromosomes[idx_col + j] != *current_chromosome) {
+        if restrict_linked_loci_per_chromosome & (chromosomes[idx_col + j + 1] != *current_chromosome) {
             // Skip if we are not on the same chromosome and we are restricting linked loci to be only within chromosomes
-            // See comment below for the explanation for chromosomes[idx_col + j]
+            // See comment below for the explanation for chromosomes[idx_col + j + 1]
             continue;
         }
         let c = corr[idx_col][j];
         if c >= *min_loci_corr {
-            vec_idx.push(idx_col + j); // Add the current index as the length of the vectors decreases by 1 each time
+            vec_idx.push(idx_col + j + 1); // Add the current index as the length of the vectors decreases by 1 each time plus skipping the locus requiring imputation as we did not calculate the correlation of each locus with itself
         }
         vec_corr.push(c);
     }
