@@ -60,11 +60,11 @@ fn calculate_genetic_distances_between_pools(
         .select(Axis(0), linked_loci_idx);
     let mut distances: Array1<f64> = Array1::from_elem(n, 1.0);
     Zip::indexed(&mut distances).par_for_each(|i, d| {
-        *d = if i != idx_row {
+        if i != idx_row {
             let q1: Array1<f64> = intercept_and_allele_frequencies
                 .row(i)
                 .select(Axis(0), linked_loci_idx);
-            match (&q - &q1)
+            *d = match (&q - &q1)
                 .into_iter()
                 .filter(|&x| !x.is_nan())
                 .collect::<Array1<f64>>()
@@ -73,10 +73,8 @@ fn calculate_genetic_distances_between_pools(
             {
                 Some(x) => x,
                 None => 1.00,
-            }
-        } else {
-            1.00
-        };
+            };
+        }
     });
     Ok(distances)
 }
