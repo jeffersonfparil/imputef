@@ -58,9 +58,8 @@ fn calculate_genetic_distances_between_pools(
     let q: Array1<f64> = intercept_and_allele_frequencies
         .row(idx_row)
         .select(Axis(0), linked_loci_idx);
-    let idx: Vec<usize> = (0..n).collect();
     let mut distances: Array1<f64> = Array1::from_elem(n, 1.0);
-    Zip::from(&mut distances).and(&idx).par_for_each(|d, &i| {
+    Zip::indexed(&mut distances).par_for_each(|i, d| {
         *d = if i != idx_row {
             let q1: Array1<f64> = intercept_and_allele_frequencies
                 .row(i)
