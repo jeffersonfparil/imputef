@@ -323,7 +323,7 @@ time Rscript summary_plot.R \
 
 Using a single small chromosome from the Lucerne dataset we will explore the entire parameter spaces across sparsity and marker density. We will test all possible combinations of the 4 parameters (minimum loci correlation, maximum pool distance, minimum number of linked loci, and minimum number of k-nearest neighbours).
 
-We'll start with subsetting `lucerne.vcf` so that we only arbitrarily include chromome 1 loci (chromsome ID: chr1.4):
+We'll start with subsetting `lucerne.vcf` so that we only arbitrarily include chromome 1 loci (chromsome ID: chr1.4) and population 2:
 
 ```shell
 DIR=/group/pasture/Jeff/imputef/misc
@@ -332,37 +332,40 @@ cd $DIR
 echo "Looking at the number of loci covered per chromosome:"
 for i in $(seq 1 8)
 do
-echo "##############################"
 N=$(grep "chr${i}.4" ${VCF} | wc -l)
 echo CHR${i}: ${N}
 done
 echo "Extracting chromosome 1 loci:"
-head -n6 $VCF > ${DIR}/lucerne_chromosome1.vcf ### header lines
-grep -m1 "#CHR" $VCF >> ${DIR}/lucerne_chromosome1.vcf ### column labels including sample names
-grep "chr1.4" ${VCF} | grep -v "^##contig" >> ${DIR}/lucerne_chromosome1.vcf
-wc -l ${DIR}/lucerne_chromosome1.vcf
-# bat -l tsv --wrap never ${DIR}/lucerne_chromosome1.vcf
+head -n6 $VCF > ${DIR}/lucerne_chromosome1_population2.vcf.tmp ### header lines
+grep -m1 "#CHR" $VCF >> ${DIR}/lucerne_chromosome1_population2.vcf.tmp ### column labels including sample names
+grep "chr1.4" ${VCF} | grep -v "^##contig" >> ${DIR}/lucerne_chromosome1_population2.vcf.tmp
+echo "Extracting populations 2 samples:"
+for i in $(seq 1 7)
+do
+N=$(grep -m1 "^#CHR" ${DIR}/lucerne_chromosome1_population2.vcf.tmp | sed -z "s/\t/\n/g" | grep "DB-MS-31-22-00${i}" | wc -l)
+echo POP_${i}: ${N}
+done
+IDX=$(echo 1-9,$(grep -m1 "^#CHR" ${DIR}/lucerne_chromosome1_population2.vcf.tmp | sed -z "s/\t/\n/g" | grep -n "DB-MS-31-22-002" | cut -d':' -f1 | sed -z 's/\n/,/g' | sed 's/,$//g'))
+cut -f${IDX} ${DIR}/lucerne_chromosome1_population2.vcf.tmp > ${DIR}/lucerne_chromosome1_population2.vcf
+rm ${DIR}/lucerne_chromosome1_population2.vcf.tmp
+wc -l ${DIR}/lucerne_chromosome1_population2.vcf
+bat -l tsv --wrap never ${DIR}/lucerne_chromosome1_population2.vcf
 ```
 
-Now, we will filter this dataset by 5% minor allele frequency:
+Now, we will assess imputation accuracy across various combinations of the 4 parameters, as well as across 10 sparsity levels, and 10 marker density levels:
 
-```R
-# dir = dirname(sys.frame(1)$ofile)
-dir = "/group/pasture/Jeff/imputef/res"
-source(paste0(dir, "/perf_functions.R"))
-fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne_chromosome1.vcf"
-vcf = vcfR::read.vcfR(fname_vcf)
-list_genotypes = fn_extract_allele_frequencies(vcf)
-mat_genotypes = list_genotypes$mat_genotypes
-mean_allele_freqs = rowMeans(mat_genotypes, na.rm=TRUE)
-idx = which((mean_allele_freqs>=0.01) & ((1-mean_allele_freqs)>=0.01))
-vcf = vcf[idx, , ]
-mat_genotypes = mat_genotypes[idx, ]
+```shell
+DIR=/group/pasture/Jeff/imputef/res
+cd $DIR
+sbatch perf_misc.slurm
 
-```
-
-Then, we will assess imputation accuracy across every combination of the 4 parameters, each with 10 levels and across 11 sparsity levels, and 10 marker density levels:
-
-```R
-
+### Monitoring:
+conda activate rustenv
+DIR=/group/pasture/Jeff/imputef/res
+cd $DIR
+squeue -u jp3h | sort
+SLURMOUT=slurm-23988147.out
+grep -n -i "err" ${SLURMOUT} | grep -v "mean absolute"
+wc -l ${DIR}/sensitivity_analysis_output.csv
+bat --wrap never ${DIR}/sensitivity_analysis_output.csv
 ```

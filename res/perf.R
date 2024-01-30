@@ -27,7 +27,6 @@ maf = df_variables$maf[i]
 missing_rate = df_variables$missing_rate[i]
 strict_boundaries=FALSE
 
-
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf)
 list_genotypes = fn_extract_allele_frequencies(vcf)
