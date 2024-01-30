@@ -294,10 +294,10 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ## Execution
 
 ```shell
-### Submit jobs as an array where each job refer to a maf x sparsity combination:
+### Submit jobs as an array where each job refer to a dataset x maf x sparsity combination:
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
-sbatch --array=1-20 perf.slurm
+sbatch --array=1-60 perf.slurm
 
 ### Monitor the jobs
 conda activate rustenv
@@ -310,7 +310,7 @@ ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
 # scancel -u jp3h
-# rm slurm-* soybean-* lucerne-* zucchini-* apple-* grape*-* LINKIMPUTE* ALDKNNI*-maf0.* MVI-maf0.* LUKES_LDKNNI_INPUT-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
+# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
 
 ### After all jobs have finished, move the output and plot:
 mkdir output
@@ -319,3 +319,50 @@ time Rscript summary_plot.R \
     ${DIR}/output
 ```
 
+## Miscellaneous: sensitivity analysis
+
+Using a single small chromosome from the Lucerne dataset we will explore the entire parameter spaces across sparsity and marker density. We will test all possible combinations of the 4 parameters (minimum loci correlation, maximum pool distance, minimum number of linked loci, and minimum number of k-nearest neighbours).
+
+We'll start with subsetting `lucerne.vcf` so that we only arbitrarily include chromome 1 loci (chromsome ID: chr1.4):
+
+```shell
+DIR=/group/pasture/Jeff/imputef/misc
+VCF=${DIR}/lucerne.vcf
+cd $DIR
+echo "Looking at the number of loci covered per chromosome:"
+for i in $(seq 1 8)
+do
+echo "##############################"
+N=$(grep "chr${i}.4" ${VCF} | wc -l)
+echo CHR${i}: ${N}
+done
+echo "Extracting chromosome 1 loci:"
+head -n6 $VCF > ${DIR}/lucerne_chromosome1.vcf ### header lines
+grep -m1 "#CHR" $VCF >> ${DIR}/lucerne_chromosome1.vcf ### column labels including sample names
+grep "chr1.4" ${VCF} | grep -v "^##contig" >> ${DIR}/lucerne_chromosome1.vcf
+wc -l ${DIR}/lucerne_chromosome1.vcf
+# bat -l tsv --wrap never ${DIR}/lucerne_chromosome1.vcf
+```
+
+Now, we will filter this dataset by 5% minor allele frequency:
+
+```R
+# dir = dirname(sys.frame(1)$ofile)
+dir = "/group/pasture/Jeff/imputef/res"
+source(paste0(dir, "/perf_functions.R"))
+fname_vcf="/group/pasture/Jeff/imputef/misc/lucerne_chromosome1.vcf"
+vcf = vcfR::read.vcfR(fname_vcf)
+list_genotypes = fn_extract_allele_frequencies(vcf)
+mat_genotypes = list_genotypes$mat_genotypes
+mean_allele_freqs = rowMeans(mat_genotypes, na.rm=TRUE)
+idx = which((mean_allele_freqs>=0.01) & ((1-mean_allele_freqs)>=0.01))
+vcf = vcf[idx, , ]
+mat_genotypes = mat_genotypes[idx, ]
+
+```
+
+Then, we will assess imputation accuracy across every combination of the 4 parameters, each with 10 levels and across 11 sparsity levels, and 10 marker density levels:
+
+```R
+
+```
