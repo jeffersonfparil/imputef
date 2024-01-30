@@ -1,7 +1,14 @@
+### Parse Rscript arguments
+args = commandArgs(trailingOnly=TRUE)
+# args = c("19", "/group/pasture/Jeff/imputef/res", "/group/pasture/Jeff/imputef/misc", "3", "32")
+i = as.numeric(args[1])
+dir_src = args[2]
+dir_data = args[3]
+n_reps = as.numeric(args[4])
+n_threads = as.numeric(args[5])
+
 ### Load functions
-dir = dirname(sys.frame(1)$ofile)
-# dir = "/group/pasture/Jeff/imputef/res"
-source(paste0(dir, "/perf_functions.R"))
+source(paste0(dir_src, "/perf_functions.R"))
 
 ### Define variable combinations
 df_variables = expand.grid(dataset=c("grape", "lucerne", "soybean"), 
@@ -14,17 +21,12 @@ df_variables = df_variables[order(df_variables$maf, decreasing=TRUE), ]
 df_variables = df_variables[order(df_variables$dataset), ]
 
 ### Load input variables
-args = commandArgs(trailingOnly=TRUE)
-# args = c("/group/pasture/Jeff/imputef/misc", "19", "3", "32", "FALSE", "1")
-dir_data = args[1]
-i = as.numeric(args[2])
-n_reps = as.numeric(args[3])
-n_threads = as.numeric(args[4])
 fname_vcf = paste0(dir_data, "/", df_variables$dataset[i], ".vcf")
 ploidy = df_variables$ploidy[i]
 maf = df_variables$maf[i]
 missing_rate = df_variables$missing_rate[i]
 strict_boundaries=FALSE
+
 
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf)

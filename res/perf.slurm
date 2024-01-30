@@ -17,17 +17,11 @@ cd $DIR
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 echo ${SLURM_ARRAY_TASK_ID}
 time \
-for i in $(seq 1 $(cat ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp | wc -l))
-do
-    # i=4; NREPS=1; SLURM_ARRAY_TASK_ID=40; SLURM_CPUS_PER_TASK=32
-    time \
-    Rscript perf.R \
-        ${DIR_DATA} \
-        ${SLURM_ARRAY_TASK_ID} \
-        ${NREPS} \
-        ${SLURM_CPUS_PER_TASK}
-done
-rm ploidy_vcf-${SLURM_ARRAY_TASK_ID}.tmp
-
+Rscript perf.R \
+    ${SLURM_ARRAY_TASK_ID} \
+    ${DIR} \
+    ${DIR_DATA} \
+    ${NREPS} \
+    ${SLURM_CPUS_PER_TASK}
 ### Execute:
-# sbatch --array=1-44 perf.slurm
+# sbatch --array=1-60 perf.slurm
