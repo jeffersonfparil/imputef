@@ -460,6 +460,12 @@ str(VARIMP)
 print(VARIMP)
 txtplot::txtplot(VARIMP)
 
+### TESTING partykit::cforest
+# tmp_testing_cforest.R
+# tmp_testing_cforest.slurm
+# DIR=/group/pasture/Jeff/imputef/res
+# cd $DIR
+# cat slurm-24309500.out
 
 # rf = randomForest::randomForest(mae_frequencies ~ ., data=train, proximity=TRUE)
 # print(rf)
@@ -499,6 +505,7 @@ for (dataset in vec_dataset_combinations) {
 
 
     ### Describe the parameter spaces
+    ### Are the trends in MAE of a parameter the same across levels of all other parameters? Not likely!
     vec_min_loci_corr = sort(unique(subdf$min_loci_corr))
     vec_max_pool_dist = sort(unique(subdf$max_pool_dist))
     vec_min_l_loci = sort(unique(subdf$min_l_loci))
@@ -517,6 +524,8 @@ for (dataset in vec_dataset_combinations) {
             }
         }
     }
+
+    ### Despite these, maybe the current output is too granular, and maybe as we get more info it all smooths out and the parameter spaces become more or less smooth and unimodal?
     
 
     ### Find the very best parameter combination at the current dataset
