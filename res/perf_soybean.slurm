@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name="imputef"
+#SBATCH --job-name="soyImp"
 #SBATCH --account="dbiopast2"
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=250G
-#SBATCH --time=10-0:0:00
+#SBATCH --mem=200G
+#SBATCH --time=7-0:0:00
 ### Load the conda environment
 module load Miniconda3/22.11.1-1
 conda init bash

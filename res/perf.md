@@ -294,22 +294,49 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ## Execution
 
 ```shell
-### Submit jobs as an array where each job refer to a maf x sparsity combination:
+### Submit array jobs for each dataset using specific memory and time limits
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
-sbatch --array=1-20 perf.slurm
+for DATASET in "grape" "lucerne" "soybean"
+do
+    if [ $DATASET == "grape" ]
+    then
+        INI=1
+        FIN=20
+        sed 's/--job-name="imputef"/--job-name="grapeImp"/g' perf.slurm | \
+            sed 's/--mem=250G/--mem=100G/g' | \
+            sed 's/--time=10-0:0:00/--time=1-0:0:00/g' > perf_${DATASET}.slurm
+    elif [ $DATASET == "lucerne" ]
+    then
+        INI=21
+        FIN=40
+        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm > perf_${DATASET}.slurm
+    else
+        INI=41
+        FIN=60
+        sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
+            sed 's/--mem=250G/--mem=200G/g' | \
+            sed 's/--time=10-0:0:00/--time=7-0:0:00/g' > perf_${DATASET}.slurm
+    fi
+    echo ${DATASET}: ${INI}-${FIN}
+    sbatch --array=${INI}-${FIN} perf_${DATASET}.slurm
+done
 
 ### Monitor the jobs
+conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-grep -n -i "err" slurm-*.out | grep -v "mean absolute"
-tail slurm-*.out
+SLURMOUT_GRAPE=slurm-23989551_*.out
+SLURMOUT_LUCERNE=slurm-23989552_*.out
+SLURMOUT_SOYBEAN=slurm-23989553_*.out
+grep -n -i "err" slurm-2398955*_*.out | grep -v "mean absolute"
+tail slurm-2398955*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
-time Rscript summary_plot.R ${DIR}
+time Rscript perf_plot.R ${DIR}
 # scancel -u jp3h
-# rm slurm-* soybean-* lucerne-* zucchini-* apple-* grape*-* LINKIMPUTE* ALDKNNI*-maf0.* MVI-maf0.* LUKES_LDKNNI_INPUT-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
+# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
 
 ### After all jobs have finished, move the output and plot:
 mkdir output
@@ -317,4 +344,424 @@ mv *-performance_assessment-maf_*-missing_rate_*.csv output/
 time Rscript summary_plot.R \
     ${DIR}/output
 ```
+
+## Miscellaneous: sensitivity analysis
+
+Using a single small chromosome from the Lucerne dataset we will explore the entire parameter spaces across sparsity and marker density. We will test all possible combinations of the 4 parameters (minimum loci correlation, maximum pool distance, minimum number of linked loci, and minimum number of k-nearest neighbours).
+
+We'll start with subsetting `lucerne.vcf` so that we only arbitrarily include *chromome 1* loci (chromsome ID: chr1.4) and *population 2*:
+
+```shell
+DIR=/group/pasture/Jeff/imputef/misc
+VCF=${DIR}/lucerne.vcf
+cd $DIR
+echo "Looking at the number of loci covered per chromosome:"
+for i in $(seq 1 8)
+do
+N=$(grep "chr${i}.4" ${VCF} | wc -l)
+echo CHR${i}: ${N}
+done
+echo "Extracting chromosome 1 loci:"
+head -n6 $VCF > ${DIR}/lucerne_chromosome1_population2.vcf.tmp ### header lines
+grep -m1 "#CHR" $VCF >> ${DIR}/lucerne_chromosome1_population2.vcf.tmp ### column labels including sample names
+grep "chr1.4" ${VCF} | grep -v "^##contig" >> ${DIR}/lucerne_chromosome1_population2.vcf.tmp
+echo "Extracting populations 2 samples:"
+for i in $(seq 1 7)
+do
+N=$(grep -m1 "^#CHR" ${DIR}/lucerne_chromosome1_population2.vcf.tmp | sed -z "s/\t/\n/g" | grep "DB-MS-31-22-00${i}" | wc -l)
+echo POP_${i}: ${N}
+done
+IDX=$(echo 1-9,$(grep -m1 "^#CHR" ${DIR}/lucerne_chromosome1_population2.vcf.tmp | sed -z "s/\t/\n/g" | grep -n "DB-MS-31-22-002" | cut -d':' -f1 | sed -z 's/\n/,/g' | sed 's/,$//g'))
+cut -f${IDX} ${DIR}/lucerne_chromosome1_population2.vcf.tmp > ${DIR}/lucerne_chromosome1_population2.vcf
+rm ${DIR}/lucerne_chromosome1_population2.vcf.tmp
+wc -l ${DIR}/lucerne_chromosome1_population2.vcf
+bat -l tsv --wrap never ${DIR}/lucerne_chromosome1_population2.vcf
+```
+
+Now, we will assess imputation accuracy across various combinations of the 4 parameters, as well as across 10 sparsity levels, and 10 marker density levels:
+
+```shell
+DIR=/group/pasture/Jeff/imputef/res
+cd $DIR
+sbatch perf_misc.slurm
+
+### Monitoring:
+conda activate rustenv
+DIR=/group/pasture/Jeff/imputef/res
+cd $DIR
+squeue -u jp3h | sort
+SLURMOUT=slurm-23988147.out
+grep -n -i "err" ${SLURMOUT} | grep -v "mean absolute"
+wc -l ${DIR}/sensitivity_analysis_output.csv
+bat --wrap never ${DIR}/sensitivity_analysis_output.csv
+```
+
+### Questions we wish to anwer:
+
+1. Is the 4D parameter space (*min_loci_corr*, *max_pool_dist*, *min_l_loci*, and *min_k_neighbours*) actually smooth and unimodal?
+2. How does *marker_density* affect imputation accuracy?
+3. How does *marker_density* affect the optimum parameters?
+4. Is there a single combination of parameters which yields reasonably high imputation accuracy across marker density and sparsity levels?
+
+```R
+dir = "/group/pasture/Jeff/imputef/res"
+setwd(dir)
+df = read.csv("sensitivity_analysis_output.csv")
+str(df)
+
+### Evaluate the data
+summary(df)
+sum(is.na(df))
+sum(is.na(df[, grepl("mae_q", colnames(df))]))
+sum(is.na(df[, !grepl("mae_q", colnames(df))]))
+
+### Linear modelling
+mod = lm(mae_frequencies ~ marker_density + sparsity + min_loci_corr + max_pool_dist + min_l_loci + min_k_neighbours, data=df)
+summary(mod)
+mod_complete = lm(mae_frequencies ~ marker_density * sparsity * min_loci_corr * max_pool_dist * min_l_loci * min_k_neighbours, data=df)
+summary(mod_complete)
+mod_null = lm(mae_frequencies ~ 1, data=df)
+summary(mod_null)
+
+anova(mod_null, mod, mod_complete)
+
+txtplot::txtplot(x=df$marker_density, y=df$mae_frequencies, xlab="marker_density", ylab="mae_frequencies")
+txtplot::txtplot(x=df$sparsity, y=df$mae_frequencies, xlab="sparsity", ylab="mae_frequencies")
+txtplot::txtplot(x=df$min_loci_corr, y=df$mae_frequencies, xlab="min_loci_corr", ylab="mae_frequencies")
+
+### Random forest
+data = data.frame(mae_frequencies=df$mae_frequencies, 
+                  marker_density=df$marker_density, 
+                  sparsity=df$sparsity, 
+                  min_loci_corr=df$min_loci_corr, 
+                  max_pool_dist=df$max_pool_dist, 
+                  min_l_loci=df$min_l_loci, 
+                  min_k_neighbours=df$min_k_neighbours)
+# data$marker_density_X_sparsity = as.factor(paste0(data$marker_density, "_X_", data$sparsity))
+data$marker_density_X_sparsity = data$marker_density * data$sparsity
+
+data$min_loci_corr_X_max_pool_dist = data$min_loci_corr * data$max_pool_dist
+data$min_l_loci_X_min_k_neighbours = data$min_l_loci * data$min_k_neighbours
+
+data$min_loci_corr_X_min_k_neighbours = data$min_loci_corr * data$min_k_neighbours
+data$min_l_loci_X_max_pool_dist = data$min_l_loci * data$max_pool_dist
+
+data$min_loci_corr_X_min_l_loci = data$min_loci_corr * data$min_l_loci
+data$max_pool_dist_X_min_k_neighbours = data$max_pool_dist * data$min_k_neighbours
+
+data$min_loci_corr_X_max_pool_dist_X_min_l_loci_X_min_k_neighbours = data$min_loci_corr * data$max_pool_dist * data$min_l_loci * data$min_k_neighbours
+
+rf = partykit::cforest(mae_frequencies ~ ., data=data, trace=TRUE, cores=32)
+summary(rf)
+VARIMP = partykit::varimp(rf, conditional=TRUE, cores=2) ### uses mclapply - hence will be cloning stuff and eating a lot of RAM - therefore reduces the number of cores as required
+
+summary(VARIMP)
+str(VARIMP)
+print(VARIMP)
+txtplot::txtplot(VARIMP)
+
+
+# rf = randomForest::randomForest(mae_frequencies ~ ., data=train, proximity=TRUE)
+# print(rf)
+# p1 = predict(rf, train)
+# cor(train$mae_frequencies, p1)
+# txtplot::txtplot(x=train$mae_frequencies, y=p1)
+# p2 = predict(rf, test)
+# cor(test$mae_frequencies, p2)
+# txtplot::txtplot(x=test$mae_frequencies, y=p2)
+
+# random_forest_output = randomForest::randomForest(mae_frequencies ~ ., data=data, proximity=TRUE)
+# str(random_forest_output)
+# IMPORTANCE = random_forest_output$importance[order(random_forest_output$importance, decreasing=TRUE), , drop=FALSE]
+# print(IMPORTANCE)
+
+print("The choice of the nearest neighbours appears to be the most important variables, i.e. max_pool_dist and min_k_neighbours.")
+print("This is followed by the dataset marker density and sparsity combination.")
+print("Then by the correlation-by-distance threshold combinations and minimum l-by-k combinations.")
+
+print("Question 2: How does marker density affect imputation accuracy?")
+print("Answer 2: Marker density per se has the least effect on imputation accuracy. 
+       However, the combination of marker density and sparsity has a magnitude greater effect on imputation accuracy than marker density alone.")
+
+### For each combination of marker density and sparsity levels ...
+###     assess imputation accuracy modality across the 4 parameter spaces, and ...
+###     identify the optimum parameter combination.
+vec_dataset_combinations = sort(unique(paste0(df$marker_density, "_X_", df$sparsity)))
+for (dataset in vec_dataset_combinations) {
+    # dataset = vec_dataset_combinations[1]
+    marker_density = as.numeric(unlist(strsplit(dataset, "_X_"))[1])
+    sparsity = as.numeric(unlist(strsplit(dataset, "_X_"))[2])
+    subdf = df[(df$marker_density==marker_density) & (df$sparsity==sparsity), ]
+    txtplot::txtplot(x=df$min_loci_corr, y=df$mae_frequencies, xlab="min_loci_corr", ylab="mae")
+    txtplot::txtplot(x=df$max_pool_dist, y=df$mae_frequencies, xlab="max_pool_dist", ylab="mae")
+    txtplot::txtplot(x=df$min_l_loci, y=df$mae_frequencies, xlab="min_l_loci", ylab="mae")
+    txtplot::txtplot(x=df$min_k_neighbours, y=df$mae_frequencies, xlab="min_k_neighbours", ylab="mae")
+
+
+    ### Describe the parameter spaces
+    vec_min_loci_corr = sort(unique(subdf$min_loci_corr))
+    vec_max_pool_dist = sort(unique(subdf$max_pool_dist))
+    vec_min_l_loci = sort(unique(subdf$min_l_loci))
+    vec_min_k_neighbours = sort(unique(subdf$min_k_neighbours))
+    for (min_loci_corr in vec_min_loci_corr) {
+        for (max_pool_dist in vec_max_pool_dist) {
+            for (min_l_loci in vec_min_l_loci) {
+                # min_loci_corr=0.7; max_pool_dist=0.8; min_l_loci=3
+                idx = which((subdf$min_loci_corr==min_loci_corr) & (subdf$max_pool_dist==max_pool_dist) & (subdf$min_l_loci==min_l_loci))
+                if (length(idx)==0) {
+                    next
+                }
+                dat = subdf[idx, ]
+                txtplot::txtplot(x=dat$min_k_neighbours, y=dat$mae_frequencies, xlab="min_k_neighbours", ylab="MAE")
+                agg = aggregate(mae_frequencies ~ min_k_neighbours, data=dat, FUN=mean)
+            }
+        }
+    }
+    
+
+    ### Find the very best parameter combination at the current dataset
+    agg = aggregate(mae_frequencies ~ min_loci_corr + max_pool_dist + min_l_loci + min_k_neighbours, data=subdf, FUN=mean)
+    agg = agg[order(agg$mae_frequencies, decreasing=FALSE), ]
+    optim = data.frame(marker_density=marker_density, sparsity=sparsity, agg[1, ])
+    if (dataset == vec_dataset_combinations[1]) {
+        df_best_params = optim
+    } else {
+        df_best_params = rbind(df_best_params, optim)
+    }
+    agg_min_loci_corr = aggregate(mae_frequencies ~ min_loci_corr, data=subdf, FUN=mean)
+    txtplot::txtplot(x=agg_min_loci_corr$min_loci_corr, y=agg_min_loci_corr$mae_frequencies, xlab="min_loci_corr", ylab="mae")
+    agg_max_pool_dist = aggregate(mae_frequencies ~ max_pool_dist, data=subdf, FUN=mean)
+    txtplot::txtplot(x=agg_max_pool_dist$max_pool_dist, y=agg_max_pool_dist$mae_frequencies, xlab="max_pool_dist", ylab="mae")
+    agg_min_l_loci = aggregate(mae_frequencies ~ min_l_loci, data=subdf, FUN=mean)
+    txtplot::txtplot(x=agg_min_l_loci$min_l_loci, y=agg_min_l_loci$mae_frequencies, xlab="min_l_loci", ylab="mae")
+    agg_min_k_neighbours = aggregate(mae_frequencies ~ min_k_neighbours, data=subdf, FUN=mean)
+    txtplot::txtplot(x=agg_min_k_neighbours$min_k_neighbours, y=agg_min_k_neighbours$mae_frequencies, xlab="min_k_neighbours", ylab="mae")
+}
+
+print("Question 1: Is MAE smooth and/or unimodal per parameter space?")
+print("Answer 1: No. The parameter spaces are neither smooth nor unimodal. The parameter spaces are complex with some local minima far from the global minimum.")
+
+print(df_best_params)
+
+txtplot::txtplot(x=df_best_params$marker_density, y=df_best_params$mae_frequencies, xlab="marker_density", ylab="mae")
+agg_marker_density = aggregate(mae_frequencies ~ marker_density, data=df_best_params, FUN=mean)
+print(agg_marker_density[order(agg_marker_density$mae_frequencies, decreasing=FALSE), ])
+
+print("Question 3: How does marker density affect the optimum parameter combinations?")
+print("Answer 3: On average using the best imputation accuracy per marker-density-by-sparsity dataset, higher marker density improves imputation accuracy.")
+
+txtplot::txtdensity(df_best_params$min_loci_corr, xlab="min_loci_corr")
+txtplot::txtdensity(df_best_params$max_pool_dist, xlab="max_pool_dist")
+txtplot::txtdensity(df_best_params$min_l_loci, xlab="min_l_loci")
+txtplot::txtdensity(df_best_params$min_k_neighbours, xlab="min_k_neighbours")
+
+mean_optim_params = as.data.frame(t(apply(df_best_params, MAR=2, FUN=mean)))
+print(mean_optim_params)
+pred_optim_min_loci_corr = round(mean_optim_params$min_loci_corr, 1)
+pred_optim_max_pool_dist = round(mean_optim_params$max_pool_dist, 1)
+
+vec_min_l_loci = sort(unique(df$min_l_loci))
+delta_min_l_loci = abs(vec_min_l_loci - round(mean_optim_params$min_l_loci))
+pred_optim_min_l_loci = vec_min_l_loci[which(delta_min_l_loci == min(delta_min_l_loci))]
+
+vec_min_k_neighbours = sort(unique(df$min_k_neighbours))
+delta_min_k_neighbours = abs(vec_min_k_neighbours - round(mean_optim_params$min_k_neighbours))
+pred_optim_min_k_neighbours = vec_min_k_neighbours[which(delta_min_k_neighbours == min(delta_min_k_neighbours))]
+
+idx = which((df$min_loci_corr == pred_optim_min_loci_corr) & (df$max_pool_dist == pred_optim_max_pool_dist) & (df$min_l_loci == pred_optim_min_l_loci) & (df$min_k_neighbours == pred_optim_min_k_neighbours))
+
+df[idx, ]
+
+print("Question 4: Is there a single combination of parameters which performs reasonably well across datasets?")
+print("Answer 4: We are not certain yet as we are only capturing a single dataset for which the predicted optimum parameter combination is present. 
+       However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem.")
+
+```
+
+### Preliminary results (20240201)
+
+*Answers to [question](#questions-we-wish-to-anwer), possible consequences and follow-up questions:*
+
+1. No. The parameter spaces are neither smooth nor unimodal (*Figure 1*). The parameter spaces are complex with some local minima far from the global minimum. This means we have to improve our optimisation algorithm in [`optim.rs`](../src/rust/src/optim.rs). Also, note that the choice of the nearest neighbours (`max_pool_dist_X_min_k_neighbours`) appears to be the most important set of variables in terms imputation accuracy (*Table 1*). Will this mean that we can set `min_loci_corr` to some low value and likewise `min_l_loci` to an arbitrary value that is not too high as low minimum correlation should capture sufficiently numerous loci for genetic distance estimation; and then just optimise for `min_k_neighbours` and `max_pool_dist`?
+2. Marker density per se has the least effect on imputation accuracy (*Table 1*). However, the combination of marker density and sparsity has a magnitude greater effect on imputation accuracy than marker density alone. But what does this mean? Are they antagonistic, i.e. low sparsity but high density means better accuracy and vice-versa as expected? What is the accuracy in the middle, i.e. medium sparsity and medium density? How about when both are high or both are low?
+3. On average using the best imputation accuracy per marker-density-by-sparsity dataset, higher marker density improves imputation accuracy (*Table 2*).
+4. We are not certain yet as we are only capturing a single dataset for which the predicted optimum parameter combination is present. However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem. For the current findings, please see *Table 3* for the mean optimum parameter values across datasets (marker-density-by-sparsity combinations).
+
+
+*Table 1*. Variable importance based on random forest regression
+
+| Variable                                                        | Importance  |
+| :-------------------------------------------------------------- | ----------: |
+| max_pool_dist_X_min_k_neighbours                                | 0.058613063 |
+| min_k_neighbours                                                | 0.038643309 |
+| max_pool_dist                                                   | 0.035782306 |
+| min_loci_corr_X_min_k_neighbours                                | 0.023709804 |
+| marker_density_X_sparsity                                       | 0.016431124 |
+| min_loci_corr_X_max_pool_dist                                   | 0.014462863 |
+| min_l_loci_X_min_k_neighbours                                   | 0.007870009 |
+| min_loci_corr                                                   | 0.007014149 |
+| min_loci_corr_X_min_l_loci                                      | 0.006842891 |
+| min_l_loci_X_max_pool_dist                                      | 0.006793837 |
+| sparsity                                                        | 0.004732896 |
+| min_loci_corr_X_max_pool_dist_X_min_l_loci_X_min_k_neighbours   | 0.004610137 |
+| min_l_loci                                                      | 0.004595450 |
+| marker_density                                                  | 0.001893720 |
+
+
+*Table 2*. Effect of marker density on imputation accuracy (measured by mean absolute error, MAE)
+
+| marker_density | mae_frequencies |
+| :------------: | --------------: |
+|            1.0 |      0.06718490 |
+|            0.8 |      0.06766566 |
+|            0.2 |      0.06786764 |
+|            0.6 |      0.06796051 |
+|            0.4 |      0.06828012 |
+
+
+*Table 3*. Mean optimum parameter values across datasets, i.e. marker-density-by-sparsity combinations
+
+| Variable          | Optimum value |
+| :---------------- | ------------: |
+| marker_density    |           0.4 |
+| sparsity          |           0.3 |
+| min_loci_corr     |           0.4 |
+| max_pool_dist     |           0.4 |
+| min_l_loci        |            17 |
+| min_k_neighbours  |            17 |
+
+
+*Figure 1*. Representative parameter spaces across datasets (marker-density-by-sparsity combinations)
+
+```
+         +-+---------+---------+---------+---------+--------+--+        |               +-+---------+---------+---------+---------+---------+--+
+   0.071 + *                                                   +        |         0.074 +                                                   *  +
+         |                                                     |        |               | *                                                    |
+         |                                                     |        |               |                                                      |
+  0.0705 +                                                     +        |         0.073 +                                                      +
+         |           *                             *           |        |               |                                              *       |
+m        |                                                  *  |        |       m       |                                                      |
+a   0.07 +                               *                     +        |       a       |                                                      |
+e        |                *         *                          |        |       e 0.072 +                                         *            +
+         |      *                                       *      |        |               |           *    *                                     |
+  0.0695 +                                    *                +        |               |      *                                               |
+         |                                                     |        |         0.071 +                                    *                 +
+         |                     *                               |        |               |                     *    *    *                      |
+   0.069 +-+---------+---------+---------+---------+--------+--+        |               +-+---------+---------+---------+---------+---------+--+
+           0        0.2       0.4       0.6       0.8       1           |                 0        0.2       0.4       0.6       0.8        1   
+                              min_loci_corr                             |                                     min_loci_corr                     
+        +-+---------+---------+---------+---------+---------+--+        |               +-+---------+---------+---------+---------+---------+--+
+        | *                                                 *  |        |               |                                                   *  |
+  0.073 +                                                      +        |         0.076 +                                                      +
+        |                                                      |        |               |                                                      |
+  0.072 +                                                      +        |         0.075 + *                                                    +
+        |                                                      |        |               |                                                      |
+m       |                                                      |        |       m 0.074 +                                                      +
+a 0.071 +                                                      +        |       a       |                                                      |
+e       |                                                      |        |       e 0.073 +                                                      +
+   0.07 +                                                      +        |               |                                                      |
+        |                *    *    *    *    *    *    *       |        |         0.072 +                                                      +
+  0.069 +           *                                          +        |               |                *    *    *    *         *            |
+        |      *                                               |        |         0.071 +      *    *                        *         *       +
+        +-+---------+---------+---------+---------+---------+--+        |               +-+---------+---------+---------+---------+---------+--+
+          0        0.2       0.4       0.6       0.8        1           |                 0        0.2       0.4       0.6       0.8        1   
+                              max_pool_dist                             |                                     max_pool_dist                     
+         ++---------+---------+---------+---------+---------+--+        |                ++---------+---------+---------+---------+---------+--+
+   0.071 +    *                                                +        |                |  *                                                  |
+         |                                                     |        |                |                            *                        |
+  0.0705 +                                                     +        |         0.0725 +                                                     +
+         |   *                                                 |        |                |                                                     |
+         |     *                      *                     *  |        |                |                                                     |
+m   0.07 +                                                     +        |       m        |      *                                              |
+a        |      *          *                     *             |        |       a  0.072 + *               *                                *  +
+e 0.0695 +                                                     +        |       e        |    *                                                |
+         |  *                                                  |        |                |   *                                                 |
+         |                                                     |        |         0.0715 +                                                     +
+   0.069 +                                                     +        |                |                                                     |
+         | *                                                   |        |                |     *                                 *             |
+  0.0685 ++---------+---------+---------+---------+---------+--+        |                ++---------+---------+---------+---------+---------+--+
+          0        10        20        30        40        50           |                 0        10        20        30        40        50   
+                               min_l_loci                               |                                      min_l_loci                       
+  0.0725 ++---------+---------+---------+---------+---------+--+        |               ++----------+---------+---------+---------+---------+--+
+         | *                                                   |        |         0.075 + *                                                    +
+   0.072 +                                                     +        |               |                                                      |
+         |                                                     |        |               |                                                      |
+  0.0715 +                                                     +        |         0.074 +                                                      +
+         |                                                     |        |               |                                                      |
+m  0.071 +                                                     +        |       m 0.073 +                                                      +
+a        |  *                                                  |        |       a       |                                                      |
+e 0.0705 +                                                     +        |       e       |   *                                                  |
+         |                                                     |        |         0.072 +    **                                                +
+    0.07 +     *                                            *  +        |               |      *                                               |
+  0.0695 +   ** *                                              +        |         0.071 +       *                     *                        +
+         |                 *          *          *             |        |               |                  *                     *          *  |
+         ++---------+---------+---------+---------+---------+--+        |               ++----------+---------+---------+---------+---------+--+
+          0        10        20        30        40        50           |                0         10        20        30        40        50   
+                            min_k_neighbours                            |                                   min_k_neighbours
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

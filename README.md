@@ -1,6 +1,6 @@
 # imputef
 
-Reduce genotype data sparsity through imputation of genotype classes or allele frequencies of individual polyploids or pools of individuals or populations.
+Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|
@@ -68,8 +68,6 @@ Exclusive to `aldknni`:
 - **restrict_linked_loci_per_chromosome**: restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
 - **optimise_n_steps_min_loci_corr**: number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
 - **optimise_n_steps_max_pool_dist**: number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-- **optimise_n_steps_min_l_loci**: number of steps requested for the values of minimum number of linked loci to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-- **optimise_n_steps_min_k_neighbours**: number of steps requested for the values of minimum number of nearest neighbours to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
 - **optimise_max_l_loci**: maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. [Default=100]
 - **optimise_max_k_neighbours**: maximum number of k-nearest neighbours to be tested, if optimising for the best number of nearest neighbours to include in imputation. Minimum value of 2. [Default=50]
 - **optimise_n_reps**: number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance, and/or minimum number of linked loci, and/or minimum number of k-nearest neighbours. Minimum value of 1. [Default=1]
