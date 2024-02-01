@@ -95,7 +95,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
         text_pos[text_pos < 0.1] = 0.1 ### So that the labels are still visible
       }
       par(xpd=TRUE)
-      text((bplot-0.25), text_pos, labels=round(mat_mu,2), cex=0.9, srt=90, pos=4)
+      text((bplot-0.25), text_pos, labels=round(mat_mu,4), cex=0.9, srt=90, pos=4)
       par(xpd=FALSE)
       ### Line plot
       plot(x=range(agg_mu[,2], na.rm=TRUE), y=range(agg_mu[,3]+(2*agg_sd[,3]), na.rm=TRUE), 
