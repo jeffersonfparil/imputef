@@ -214,9 +214,9 @@ fn impute(
                 header.pop();
             }
         }
-        let vec_header: Vec<&str> = header.split("\t").collect();
+        let vec_header: Vec<&str> = header.split('\t').collect();
         let vec_header: Vec<&str> = if vec_header.len() == 1 {
-            header.split(",").collect()
+            header.split(',').collect()
         } else {
             vec_header
         };
