@@ -15,4 +15,5 @@
 /res/*.tmp
 /res/*.vcf*
 /res/*BK*
+/res/tmp_*
 /.vscode/
