@@ -327,11 +327,11 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-23989551_*.out
-SLURMOUT_LUCERNE=slurm-23989552_*.out
-SLURMOUT_SOYBEAN=slurm-23989553_*.out
-grep -n -i "err" slurm-2398955*_*.out | grep -v "mean absolute"
-tail slurm-2398955*_*.out
+SLURMOUT_GRAPE=slurm-24312088_*.out
+SLURMOUT_LUCERNE=slurm-24312089_*.out
+SLURMOUT_SOYBEAN=slurm-24312090_*.out
+grep -n -i "err" slurm-243120*_*.out | grep -v "mean absolute"
+tail slurm-243120*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -587,7 +587,7 @@ print("Answer 4: We are not certain yet as we are only capturing a single datase
 
 ```
 
-### Preliminary results (20240201)
+### Preliminary results (20240201) --> being addressed with the most recent changes/merge which should improve optimisation where we move forwards then backwards across the parameter spaces (2024/02/02)
 
 *Answers to [question](#questions-we-wish-to-anwer), possible consequences and follow-up questions:*
 
