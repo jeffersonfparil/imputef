@@ -327,11 +327,11 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-24312088_*.out
-SLURMOUT_LUCERNE=slurm-24312089_*.out
-SLURMOUT_SOYBEAN=slurm-24312090_*.out
-grep -n -i "err" slurm-243120*_*.out | grep -v "mean absolute"
-tail slurm-243120*_*.out
+SLURMOUT_GRAPE=slurm-24312164_*.out
+SLURMOUT_LUCERNE=slurm-24312165_*.out
+SLURMOUT_SOYBEAN=slurm-24312166_*.out
+grep -n -i "err" slurm-2431216*_*.out | grep -v "mean absolute"
+tail slurm-2431216*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -390,7 +390,7 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT=slurm-23988147.out
+SLURMOUT=slurm-24312170.out
 grep -n -i "err" ${SLURMOUT} | grep -v "mean absolute"
 wc -l ${DIR}/sensitivity_analysis_output.csv
 bat --wrap never ${DIR}/sensitivity_analysis_output.csv
