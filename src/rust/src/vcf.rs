@@ -234,7 +234,7 @@ pub fn vcf_to_sync(vcf_line: &mut VcfLine, filter_stats: &FilterStats) -> Option
     let n = locus_counts.matrix.nrows();
 
     // Setup the A:T:C:G:DEL:N allele counts per pool (where DEL refers to an indel where we are limited to a single class, i.e. multiple different indels at a locus are currently all just classified as if they were a single type of variant class)
-    let expected_alleles = ["A", "T", "C", "G", "N", "D"]
+    let expected_alleles = ["A", "T", "C", "G", "D", "N"]
         .iter()
         .map(|&x| x.to_owned())
         .collect::<Vec<String>>();
