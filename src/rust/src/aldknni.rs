@@ -6,7 +6,7 @@ use crate::helpers::*;
 use crate::optim::*;
 use crate::structs_and_traits::*;
 
-fn calculate_genomewide_ld(
+pub fn calculate_genomewide_ld(
     genotypes_and_phenotypes: &GenotypesAndPhenotypes,
     restrict_linked_loci_per_chromosome: bool,
 ) -> io::Result<Vec<Vec<u8>>> {
@@ -81,16 +81,13 @@ fn calculate_genetic_distances_between_pools(
             let q1: Array1<f64> = intercept_and_allele_frequencies
                 .row(i)
                 .select(Axis(0), linked_loci_idx);
-            *d = match (&q - &q1)
+            *d = (&q - &q1)
                 .into_iter()
                 .filter(|&x| !x.is_nan())
                 .collect::<Array1<f64>>()
                 .map(|x| x.abs())
                 .mean()
-            {
-                Some(x) => x,
-                None => 1.00,
-            };
+                .unwrap_or(1.00);
         }
     });
     Ok(distances)
@@ -204,15 +201,12 @@ fn find_k_nearest_neighbours(
     // Are we filtering by maximum distance?
     if *max_pool_dist < 1.00 {
         for i in indices.clone().into_iter() {
-            let bool_dist_nan = distances[i].is_nan() == false;
+            let bool_dist_nan = !distances[i].is_nan();
             let bool_dist_thresh = distances[i] <= *max_pool_dist;
-            let bool_freq_nan =
-                intercept_and_allele_frequencies[(i, idx_col)].is_nan() == false;
-            if bool_dist_nan {
-                if bool_dist_thresh & bool_freq_nan {
-                    idx.push(i);
-                    dist.push(distances[i]);
-                }
+            let bool_freq_nan = !intercept_and_allele_frequencies[(i, idx_col)].is_nan();
+            if bool_dist_nan & bool_dist_thresh & bool_freq_nan {
+                idx.push(i);
+                dist.push(distances[i]);
             }
         }
     }
@@ -223,9 +217,8 @@ fn find_k_nearest_neighbours(
         idx = vec![];
         dist = vec![];
         for i in indices.clone().into_iter() {
-            let bool_dist_nan = distances[i].is_nan() == false;
-            let bool_freq_nan =
-                intercept_and_allele_frequencies[(i, idx_col)].is_nan() == false;
+            let bool_dist_nan = !distances[i].is_nan();
+            let bool_freq_nan = !intercept_and_allele_frequencies[(i, idx_col)].is_nan();
             if idx.len() == min_k_neighbours {
                 break;
             }
@@ -252,7 +245,7 @@ fn impute_allele_frequencies(
     let n = frequencies.len();
     for i in 0..n {
         assert!(
-            frequencies[i].is_nan() == false,
+            !frequencies[i].is_nan(),
             "Error: There should be no missing allele frequencies here."
         );
     }
@@ -345,8 +338,7 @@ impl GenotypesAndPhenotypes {
                                 1.00 - self.intercept_and_allele_frequencies[(i, idx_locus_ini)]
                         } else {
                             for k in idx_locus_ini..idx_locus_fin {
-                                self.intercept_and_allele_frequencies[(i, k)] =
-                                    self.intercept_and_allele_frequencies[(i, k)] / sum;
+                                self.intercept_and_allele_frequencies[(i, k)] /= sum;
                             }
                         }
                     }

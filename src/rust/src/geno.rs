@@ -13,9 +13,9 @@ impl Parse<LocusFrequencies> for String {
         if self.as_bytes()[0] == 35_u8 {
             return Err(Error::new(ErrorKind::Other, "Commented out line"));
         }
-        let vec_line: Vec<&str> = self.split("\t").collect();
+        let vec_line: Vec<&str> = self.split('\t').collect();
         let vec_line: Vec<&str> = if vec_line.len() == 1 {
-            self.split(",").collect()
+            self.split(',').collect()
         } else {
             vec_line
         };
@@ -43,11 +43,10 @@ impl Parse<LocusFrequencies> for String {
             vec_line[3..l]
                 .iter()
                 .map(|x| {
-                    let out = match x.parse::<f64>() {
+                    match x.parse::<f64>() {
                         Ok(x) => x,
                         Err(_) => f64::NAN,
-                    };
-                    out
+                    }
                 })
                 .collect::<Vec<f64>>(),
         )
@@ -201,9 +200,9 @@ impl LoadAll for FileGeno {
                 header.pop();
             }
         }
-        let vec_header: Vec<&str> = header.split("\t").collect();
+        let vec_header: Vec<&str> = header.split('\t').collect();
         let vec_header: Vec<&str> = if vec_header.len() == 1 {
-            header.split(",").collect()
+            header.split(',').collect()
         } else {
             vec_header
         };
