@@ -252,7 +252,7 @@ impl Filter for LocusCounts {
                 ))
             }
         };
-        //// Next account for pool sizes to get the proper minmum allele frequency across all pools
+        //// Next account for pool sizes to get the proper minimum allele frequency across all pools
         let n = allele_frequencies.matrix.nrows();
         let mut p = allele_frequencies.matrix.ncols();
         assert!(
@@ -505,11 +505,9 @@ impl Sort for LocusFrequencies {
         } else {
             idx.sort_by(|&a, &b| column_sums[a].partial_cmp(&column_sums[b]).expect("Error sorting (increasing) mean allele frequencies across pools within the sort_by_allele_freq() method for LocusFrequencies struct."));
         }
-        for i in 0..p {
-            sorted_matrix
-                .column_mut(i)
-                .assign(&self.matrix.column(idx[i]));
-            sorted_alleles_vector.push(self.alleles_vector[idx[i]].clone());
+        for (i, j) in idx.into_iter().enumerate() {
+            sorted_matrix.column_mut(i).assign(&self.matrix.column(j));
+            sorted_alleles_vector.push(self.alleles_vector[j].clone());
         }
         self.matrix = sorted_matrix;
         self.alleles_vector = sorted_alleles_vector;

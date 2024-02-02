@@ -5,7 +5,7 @@
 #' @usage
 #' mvi(fname, 
 #'        min_coverage=0,
-#'        min_allele_frequency=0.0001,
+#'        min_allele_frequency=0.0,
 #'        max_missingness_rate_per_locus=1.00,
 #'        pool_sizes=c(100),
 #'        min_depth_below_which_are_missing=1,
@@ -19,7 +19,7 @@
 #' @param min_coverage
 #' minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
 #' @param min_allele_frequency
-#' minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0001]
+#' minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0]
 #' @param max_missingness_rate_per_locus
 #' maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default=1.00]
 #' @param pool_sizes
@@ -62,7 +62,7 @@
 #' @export
 mvi = function(fname, 
                 min_coverage=0,
-                min_allele_frequency=0.0001,
+                min_allele_frequency=0.0,
                 max_missingness_rate_per_locus=1.00,
                 pool_sizes=c(100),
                 min_depth_below_which_are_missing=1,
@@ -103,7 +103,7 @@ mvi = function(fname,
 #' @usage
 #' aldknni(fname, 
 #'         min_coverage=0,
-#'         min_allele_frequency=0.0001,
+#'         min_allele_frequency=0.0,
 #'         max_missingness_rate_per_locus=1.00,
 #'         pool_sizes=c(100),
 #'         min_depth_below_which_are_missing=1,
@@ -127,7 +127,7 @@ mvi = function(fname,
 #' @param min_coverage
 #' minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
 #' @param min_allele_frequency
-#' minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0001]
+#' minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0]
 #' @param max_missingness_rate_per_locus
 #' maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default=1.00]
 #' @param pool_sizes
@@ -196,7 +196,7 @@ mvi = function(fname,
 #' @export
 aldknni = function(fname, 
                     min_coverage=0,
-                    min_allele_frequency=0.0001,
+                    min_allele_frequency=0.0,
                     max_missingness_rate_per_locus=1.00,
                     pool_sizes=c(100),
                     min_depth_below_which_are_missing=1,

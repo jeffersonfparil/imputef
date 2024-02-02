@@ -279,10 +279,7 @@ pub fn optimise_params_and_estimate_accuracy(
     };
     let vec_min_l_loci: Vec<u64> = if *optimise_max_l_loci > *min_l_loci {
         let step_size = 1;
-        (1..=*optimise_max_l_loci)
-            .step_by(step_size)
-            .map(|x| x as u64)
-            .collect()
+        (1..=*optimise_max_l_loci).step_by(step_size).collect()
     } else {
         vec![*min_l_loci]
     };
@@ -326,10 +323,7 @@ pub fn optimise_params_and_estimate_accuracy(
     let mut min_l_loci = vec![];
     let mut min_k_neighbours = vec![];
     let mut mae = vec![];
-
-    // let optimise_n_reps = 3;
-
-    if all_parameters_are_fixed == false {
+    if !all_parameters_are_fixed {
         println!("-----------------------------------------------");
         if optimise_n_reps > 1 {
             println!("rep\tmin_k_neighbours\tmax_pool_dist\tmin_l_loci\tmin_loci_corr\tmae");
@@ -382,173 +376,116 @@ pub fn optimise_params_and_estimate_accuracy(
             )
             .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
         if all_parameters_are_fixed == false {
-            for l in 0..vec_min_k_neighbours.len() {
-                let (_, mae) = genotype_data_for_optimisation
-                                .estimate_expected_mae_in_aldknni(
-                                    self_clone,
-                                    &optimum_min_loci_corr,
-                                    &optimum_max_pool_dist,
-                                    &optimum_min_l_loci,
-                                    &vec_min_k_neighbours[l],
-                                    loci_idx,
-                                    corr,
-                                    restrict_linked_loci_per_chromosome,
-                                    &vec_masked_loci_idx,
-                                    &vec_vec_masked_alleles_freqs,
-                                )
-                                .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
-                if optimise_n_reps > 1 {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}\t{}",
-                        r,
-                        vec_min_k_neighbours[l],
-                        optimum_max_pool_dist,
-                        optimum_min_l_loci,
-                        optimum_min_loci_corr,
-                        mae
-                    );
-                } else {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}",
-                        vec_min_k_neighbours[l],
-                        optimum_max_pool_dist,
-                        optimum_min_l_loci,
-                        optimum_min_loci_corr,
-                        mae
-                    );
+            let mut vec_idx_c_d_l_k = vec![0; 4];
+            let vec_len_c_d_l_k = vec![
+                vec_min_loci_corr.len(),
+                vec_max_pool_dist.len(),
+                vec_min_l_loci.len(),
+                vec_min_k_neighbours.len(),
+            ];
+            // Step forwards to find the optimum parameters
+            for ix in vec![3,1,2,0].into_iter() {
+                let mut opt_idx = 0;
+                for l in 0..vec_len_c_d_l_k[ix] {
+                    vec_idx_c_d_l_k[ix] = l;
+                    let (_, mae) = genotype_data_for_optimisation
+                                    .estimate_expected_mae_in_aldknni(
+                                        self_clone,
+                                        &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                                        &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                                        &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                                        &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                                        loci_idx,
+                                        corr,
+                                        restrict_linked_loci_per_chromosome,
+                                        &vec_masked_loci_idx,
+                                        &vec_vec_masked_alleles_freqs,
+                                    )
+                                    .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
+                    if optimise_n_reps > 1 {
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}\t{}",
+                            r,
+                            &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                            &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                            &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                            &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                            mae
+                        );
+                    } else {
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}",
+                            &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                            &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                            &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                            &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                            mae
+                        );
+                    }
+                    if mae < optimum_mae {
+                        optimum_mae = mae;
+                        optimum_min_loci_corr = vec_min_loci_corr[vec_idx_c_d_l_k[0]];
+                        optimum_max_pool_dist = vec_max_pool_dist[vec_idx_c_d_l_k[1]];
+                        optimum_min_l_loci = vec_min_l_loci[vec_idx_c_d_l_k[2]];
+                        optimum_min_k_neighbours = vec_min_k_neighbours[vec_idx_c_d_l_k[3]];
+                        opt_idx = vec_idx_c_d_l_k[ix];
+                    } else if (mae - optimum_mae) > f64::EPSILON {
+                        break;
+                    }
                 }
-                if mae < optimum_mae {
-                    optimum_min_k_neighbours = vec_min_k_neighbours[l];
-                    optimum_mae = mae;
-                } else if (mae - optimum_mae) > f64::EPSILON {
-                    break;
-                }
+                vec_idx_c_d_l_k[ix] = opt_idx;
             }
-            for j in 0..vec_max_pool_dist.len() {
-                let (_, mae) = genotype_data_for_optimisation
-                                .estimate_expected_mae_in_aldknni(
-                                    self_clone,
-                                    &optimum_min_loci_corr,
-                                    &vec_max_pool_dist[j],
-                                    &optimum_min_l_loci,
-                                    &optimum_min_k_neighbours,
-                                    loci_idx,
-                                    corr,
-                                    restrict_linked_loci_per_chromosome,
-                                    &vec_masked_loci_idx,
-                                    &vec_vec_masked_alleles_freqs,
-                                )
-                                .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
-                if optimise_n_reps > 1 {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}\t{}",
-                        r,
-                        optimum_min_k_neighbours,
-                        vec_max_pool_dist[j],
-                        optimum_min_l_loci,
-                        optimum_min_loci_corr,
-                        mae
-                    );
-                } else {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}",
-                        optimum_min_k_neighbours,
-                        vec_max_pool_dist[j],
-                        optimum_min_l_loci,
-                        optimum_min_loci_corr,
-                        mae
-                    );
+            // Step backwards to find the optimum parameters
+            for ix in vec![3,1,2,0].into_iter() {
+                let mut opt_idx = 0;
+                for l in (0..vec_len_c_d_l_k[ix]).rev() {
+                    vec_idx_c_d_l_k[ix] = l;
+                    let (_, mae) = genotype_data_for_optimisation
+                                    .estimate_expected_mae_in_aldknni(
+                                        self_clone,
+                                        &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                                        &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                                        &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                                        &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                                        loci_idx,
+                                        corr,
+                                        restrict_linked_loci_per_chromosome,
+                                        &vec_masked_loci_idx,
+                                        &vec_vec_masked_alleles_freqs,
+                                    )
+                                    .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
+                    if optimise_n_reps > 1 {
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}\t{}",
+                            r,
+                            &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                            &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                            &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                            &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                            mae
+                        );
+                    } else {
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}",
+                            &vec_min_loci_corr[vec_idx_c_d_l_k[0]],
+                            &vec_max_pool_dist[vec_idx_c_d_l_k[1]],
+                            &vec_min_l_loci[vec_idx_c_d_l_k[2]],
+                            &vec_min_k_neighbours[vec_idx_c_d_l_k[3]],
+                            mae
+                        );
+                    }
+                    if mae < optimum_mae {
+                        optimum_mae = mae;
+                        optimum_min_loci_corr = vec_min_loci_corr[vec_idx_c_d_l_k[0]];
+                        optimum_max_pool_dist = vec_max_pool_dist[vec_idx_c_d_l_k[1]];
+                        optimum_min_l_loci = vec_min_l_loci[vec_idx_c_d_l_k[2]];
+                        optimum_min_k_neighbours = vec_min_k_neighbours[vec_idx_c_d_l_k[3]];
+                        opt_idx = vec_idx_c_d_l_k[ix];
+                    } else if (mae - optimum_mae) > f64::EPSILON {
+                        break;
+                    }
                 }
-                if mae < optimum_mae {
-                    optimum_max_pool_dist = vec_max_pool_dist[j];
-                    optimum_mae = mae;
-                } else if (mae - optimum_mae) > f64::EPSILON {
-                    break;
-                }
-            }
-            for k in 0..vec_min_l_loci.len() {
-                let (_, mae) = genotype_data_for_optimisation
-                                .estimate_expected_mae_in_aldknni(
-                                    self_clone,
-                                    &optimum_min_loci_corr,
-                                    &optimum_max_pool_dist,
-                                    &vec_min_l_loci[k],
-                                    &optimum_min_k_neighbours,
-                                    loci_idx,
-                                    corr,
-                                    restrict_linked_loci_per_chromosome,
-                                    &vec_masked_loci_idx,
-                                    &vec_vec_masked_alleles_freqs,
-                                )
-                                .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
-                if optimise_n_reps > 1 {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}\t{}",
-                        r,
-                        optimum_min_k_neighbours,
-                        optimum_max_pool_dist,
-                        vec_min_l_loci[k],
-                        optimum_min_loci_corr,
-                        mae
-                    );
-                } else {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}",
-                        optimum_min_k_neighbours,
-                        optimum_max_pool_dist,
-                        vec_min_l_loci[k],
-                        optimum_min_loci_corr,
-                        mae
-                    );
-                }
-                if mae < optimum_mae {
-                    optimum_min_l_loci = vec_min_l_loci[k];
-                    optimum_mae = mae;
-                } else if (mae - optimum_mae) > f64::EPSILON {
-                    break;
-                }
-            }
-            for i in 0..vec_min_loci_corr.len() {
-                let (_, mae) = genotype_data_for_optimisation
-                                .estimate_expected_mae_in_aldknni(
-                                    self_clone,
-                                    &vec_min_loci_corr[i],
-                                    &optimum_max_pool_dist,
-                                    &optimum_min_l_loci,
-                                    &optimum_min_k_neighbours,
-                                    loci_idx,
-                                    corr,
-                                    restrict_linked_loci_per_chromosome,
-                                    &vec_masked_loci_idx,
-                                    &vec_vec_masked_alleles_freqs,
-                                )
-                                .expect("Error calling estimate_expected_mae_in_aldknni() method within optimise_params_and_estimate_accuracy().");
-                if optimise_n_reps > 1 {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}\t{}",
-                        r,
-                        optimum_min_k_neighbours,
-                        optimum_max_pool_dist,
-                        optimum_min_l_loci,
-                        vec_min_loci_corr[i],
-                        mae
-                    );
-                } else {
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}",
-                        optimum_min_k_neighbours,
-                        optimum_max_pool_dist,
-                        optimum_min_l_loci,
-                        vec_min_loci_corr[i],
-                        mae
-                    );
-                }
-                if mae < optimum_mae {
-                    optimum_min_loci_corr = vec_min_loci_corr[i];
-                    optimum_mae = mae;
-                } else if (mae - optimum_mae) > f64::EPSILON {
-                    break;
-                }
+                vec_idx_c_d_l_k[ix] = opt_idx;
             }
         }
         // Append parameters
@@ -558,7 +495,7 @@ pub fn optimise_params_and_estimate_accuracy(
         min_l_loci.push(optimum_min_l_loci);
         min_k_neighbours.push(optimum_min_k_neighbours);
     }
-    if all_parameters_are_fixed == false {
+    if !all_parameters_are_fixed {
         println!("-----------------------------------------------");
     }
     Ok((
@@ -574,6 +511,8 @@ pub fn optimise_params_and_estimate_accuracy(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::aldknni::*;
+
     #[test]
     fn test_optim() {
         let file_sync = FileSync {
@@ -654,9 +593,40 @@ mod tests {
         );
         assert!(vec_vec_imputed_mask[0][0].is_nan());
         assert!(vec_vec_imputed_mask[vec_vec_imputed_mask.len() - 1][0].is_nan());
-        let _vec_vec_imputed_mask = frequencies_and_phenotypes
+
+        let restrict_linked_loci_per_chromosome = false;
+        let (loci_idx, _loci_chr, _loci_pos) = frequencies_and_phenotypes.count_loci().unwrap();
+        let corr = calculate_genomewide_ld(
+            &frequencies_and_phenotypes,
+            restrict_linked_loci_per_chromosome,
+        )
+        .unwrap();
+        let frequencies_and_phenotypes_clone = frequencies_and_phenotypes.clone();
+        let (min_loci_corr, max_pool_dist, min_l_loci, min_k_neighbours, mae) =
+            optimise_params_and_estimate_accuracy(
+                &frequencies_and_phenotypes,
+                &frequencies_and_phenotypes_clone,
+                &0.0,
+                &1.0,
+                &1,
+                &1,
+                &loci_idx,
+                &corr,
+                restrict_linked_loci_per_chromosome,
+                &10,
+                &10,
+                &50,
+                &50,
+                &1,
+            )
+            .unwrap();
+
+        println!("min_loci_corr={}, max_pool_dist={}, min_l_loci={}, min_k_neighbours={}, mae={}", min_loci_corr, max_pool_dist, min_l_loci, min_k_neighbours, mae);
+
+        let vec_vec_imputed_mask = frequencies_and_phenotypes
             .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx)
             .unwrap();
+        // println!("vec_vec_imputed_mask={:?}", vec_vec_imputed_mask);
         // assert_eq!(0, 1);
     }
 }
