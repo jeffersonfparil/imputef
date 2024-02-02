@@ -465,7 +465,7 @@ txtplot::txtplot(VARIMP)
 # tmp_testing_cforest.slurm
 # DIR=/group/pasture/Jeff/imputef/res
 # cd $DIR
-# cat slurm-24309500.out
+# cat slurm-24309707.out
 
 # rf = randomForest::randomForest(mae_frequencies ~ ., data=train, proximity=TRUE)
 # print(rf)
