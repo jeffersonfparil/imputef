@@ -373,7 +373,7 @@ pub fn impute_aldknni(
     let (loci_idx, _loci_chr, _loci_pos) = genotypes_and_phenotypes.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
 
     // Clone
-    let self_clone = genotypes_and_phenotypes.clone();
+    let mut self_clone = genotypes_and_phenotypes.clone();
 
     // Calculate LD across the entire genome
     println!("Estimating linkage between loci across the entire genome.");
@@ -426,9 +426,9 @@ pub fn impute_aldknni(
     );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes
+    self_clone
         .adaptive_ld_knn_imputation(
-            &self_clone,
+            &genotypes_and_phenotypes,
             &optimum_min_loci_corr,
             &optimum_max_pool_dist,
             &optimum_min_l_loci,
@@ -442,27 +442,27 @@ pub fn impute_aldknni(
     let duration = end.duration_since(start).expect("Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().");
     println!(
         "Adaptive LD-kNN imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-        genotypes_and_phenotypes.coverages.nrows(),
-        genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
+        self_clone.coverages.nrows(),
+        self_clone.coverages.ncols(),
+        self_clone.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
         duration.as_secs()
     );
     // Remove 100% of the loci with missing data
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes
+    self_clone
         .filter_out_top_missing_loci(&1.00)
         .expect("Error calling filter_out_top_missing_loci() method within impute_aldknni().");
     let end = std::time::SystemTime::now();
     let duration = end.duration_since(start).expect("Error measuring the duration of running filter_out_top_missing_loci() within impute_aldknni().");
     println!(
         "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-        genotypes_and_phenotypes.coverages.nrows(),
-        genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
+        self_clone.coverages.nrows(),
+        self_clone.coverages.ncols(),
+        self_clone.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
         duration.as_secs()
     );
     // Output
-    let out = genotypes_and_phenotypes
+    let out = self_clone
         .write_csv(filter_stats, false, out, n_threads)
         .expect(
             "Error writing the output file using the write_csv() method within impute_aldknni().",
