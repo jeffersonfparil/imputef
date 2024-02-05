@@ -305,7 +305,7 @@ do
         FIN=20
         sed 's/--job-name="imputef"/--job-name="grapeImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=100G/g' | \
-            sed 's/--time=10-0:0:00/--time=1-0:0:00/g' > perf_${DATASET}.slurm
+            sed 's/--time=14-0:0:00/--time=0-0:30:00/g' > perf_${DATASET}.slurm
     elif [ $DATASET == "lucerne" ]
     then
         INI=21
@@ -316,7 +316,7 @@ do
         FIN=60
         sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=200G/g' | \
-            sed 's/--time=10-0:0:00/--time=7-0:0:00/g' > perf_${DATASET}.slurm
+            sed 's/--time=14-0:0:00/--time=7-0:0:00/g' > perf_${DATASET}.slurm
     fi
     echo ${DATASET}: ${INI}-${FIN}
     sbatch --array=${INI}-${FIN} perf_${DATASET}.slurm
@@ -327,11 +327,11 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-24316861_*.out
-SLURMOUT_LUCERNE=slurm-24316862_*.out
-SLURMOUT_SOYBEAN=slurm-24316863_*.out
-grep -n -i "err" slurm-2431686*_*.out | grep -v "mean absolute"
-tail slurm-2431686*_*.out
+SLURMOUT_GRAPE=slurm-24317042_*.out
+SLURMOUT_LUCERNE=slurm-??????_*.out
+SLURMOUT_SOYBEAN=slurm-24317065_*.out
+grep -n -i "err" slurm-24317065*_*.out | grep -v "mean absolute"
+tail slurm-24317065*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -599,7 +599,7 @@ print("Answer 4: We are not certain yet as we are only capturing a single datase
 1. No. The parameter spaces are neither smooth nor unimodal (*Figure 1*). The parameter spaces are complex with some local minima far from the global minimum. This means we have to improve our optimisation algorithm in [`optim.rs`](../src/rust/src/optim.rs). Also, note that the choice of the nearest neighbours (`max_pool_dist_X_min_k_neighbours`) appears to be the most important set of variables in terms imputation accuracy (*Table 1*). Will this mean that we can set `min_loci_corr` to some low value and likewise `min_l_loci` to an arbitrary value that is not too high as low minimum correlation should capture sufficiently numerous loci for genetic distance estimation; and then just optimise for `min_k_neighbours` and `max_pool_dist`?
 2. Marker density per se has the least effect on imputation accuracy (*Table 1*). However, the combination of marker density and sparsity has a magnitude greater effect on imputation accuracy than marker density alone. But what does this mean? Are they antagonistic, i.e. low sparsity but high density means better accuracy and vice-versa as expected? What is the accuracy in the middle, i.e. medium sparsity and medium density? How about when both are high or both are low?
 3. On average using the best imputation accuracy per marker-density-by-sparsity dataset, higher marker density improves imputation accuracy (*Table 2*).
-4. We are not certain yet as we are only capturing a single dataset for which the predicted optimum parameter combination is present. However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem. For the current findings, please see *Table 3* for the mean optimum parameter values across datasets (marker-density-by-sparsity combinations).
+4. We are not certain yet as we are only capturing a single dataset for which the predicted optimum parameter combination is present. However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem. For the current findings, please see *Table 3* for the mean optimum parameter values across datasets (marker-density-by-sparsity combinations).  But wait, look at *Figure 2* and notice some unimodality in `min_loci_corr` centered on 0.5, and bimodalities in the rest, i.e., `max_pool_dist` near both extremes, `min_l_loci` at <10 and ~17, and `min_k_neighbours` at ~5 and ~17. These are very curiosome indeed!
 
 
 *Table 1*. Variable importance based on random forest regression
@@ -714,7 +714,74 @@ e 0.0705 +                                                     +        |       
                             min_k_neighbours                            |                                   min_k_neighbours
 ```
 
+*Figure 2*. Distribution of the best parameters across datasets (marker-density-by-sparsity combinations)
 
+```
+    +--+---------+----------+----------+---------+----------+--+
+    |                          *******                         |
+    |                       ***       **                       |
+1.5 +                     ***          ***                     +
+    |                    **              **                    |
+    |                  **                 ***                  |
+    |                 **                    **                 |
+  1 +               ***                      ***               +
+    |              **                          ***             |
+    |             **                             ***           |
+0.5 +            **                                *****       +
+    |          ***                                     ******  |
+    |  *********                                               |
+    +--+---------+----------+----------+---------+----------+--+
+       0        0.2        0.4        0.6       0.8         1   
+                            min_loci_corr                       
+    +--+---------+----------+----------+---------+----------+--+
+    |    *******                                               |
+    |   **     **                                              |
+1.5 +  **       **                                             +
+    |            **                                            |
+    |              **                                          |
+    |               **                                         |
+  1 +                **                                        +
+    |                 ***                                      |
+    |                   ***                                    |
+    |                     ***                          *****   |
+0.5 +                       *****                *******   **  +
+    |                           ******************             |
+    +--+---------+----------+----------+---------+----------+--+
+       0        0.2        0.4        0.6       0.8         1   
+                            max_pool_dist                       
+     +-+---------+----------+----------+----------+---------+--+
+0.15 +  **                                                     +
+     |  ***                                                    |
+     |    *                                                    |
+     |     *                                                   |
+ 0.1 +     *                                                   +
+     |     **                                                  |
+     |      *                                                  |
+     |      **                                                 |
+0.05 +       *                                                 +
+     |       **          *                                     |
+     |        *        ****        ****                        |
+   0 +         *********   *********  ***********************  +
+     +-+---------+----------+----------+----------+---------+--+
+       0        10         20         30         40        50   
+                             min_l_loci                         
+     +-+---------+----------+----------+----------+---------+--+
+0.04 +   *****                                                 +
+     |  **   **        ****                                    |
+     |  *     **      **   *                                   |
+0.03 +         **   ***     *                                  +
+     |          *****       **                                 |
+     |                       **                                |
+0.02 +                        **                               +
+     |                         ***                             |
+     |                           *****                         |
+0.01 +                               ****                      +
+     |                                  ****                   |
+     |                                     ******************  |
+     +-+---------+----------+----------+----------+---------+--+
+       0        10         20         30         40        50   
+                          min_k_neighbours                      
+```
 
 
 

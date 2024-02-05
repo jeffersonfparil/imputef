@@ -327,9 +327,9 @@ pub fn optimise_params_and_estimate_accuracy(
     if !all_parameters_are_fixed {
         println!("-----------------------------------------------");
         if optimise_n_reps > 1 {
-            println!("rep\tmin_k_neighbours\tmax_pool_dist\tmin_l_loci\tmin_loci_corr\tmae");
+            println!("rep\tmin_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae");
         } else {
-            println!("min_k_neighbours\tmax_pool_dist\tmin_l_loci\tmin_loci_corr\tmae");
+            println!("min_loci_corr\tmax_pool_dist\tmin_l_loci\tmin_k_neighbours\tmae");
         }
     }
     // Assumes smooth unimodal parameter spaces (which is probably wrong!)
