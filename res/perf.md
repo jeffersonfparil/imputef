@@ -327,11 +327,11 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-24312164_*.out
-SLURMOUT_LUCERNE=slurm-24312165_*.out
-SLURMOUT_SOYBEAN=slurm-24312166_*.out
-grep -n -i "err" slurm-2431216*_*.out | grep -v "mean absolute"
-tail slurm-2431216*_*.out
+SLURMOUT_GRAPE=slurm-24316861_*.out
+SLURMOUT_LUCERNE=slurm-24316862_*.out
+SLURMOUT_SOYBEAN=slurm-24316863_*.out
+grep -n -i "err" slurm-2431686*_*.out | grep -v "mean absolute"
+tail slurm-2431686*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -451,35 +451,37 @@ data$max_pool_dist_X_min_k_neighbours = data$max_pool_dist * data$min_k_neighbou
 
 data$min_loci_corr_X_max_pool_dist_X_min_l_loci_X_min_k_neighbours = data$min_loci_corr * data$max_pool_dist * data$min_l_loci * data$min_k_neighbours
 
-rf = partykit::cforest(mae_frequencies ~ ., data=data, trace=TRUE, cores=32)
-summary(rf)
-VARIMP = partykit::varimp(rf, conditional=TRUE, cores=2) ### uses mclapply - hence will be cloning stuff and eating a lot of RAM - therefore reduces the number of cores as required
+# rf = partykit::cforest(mae_frequencies ~ ., data=data, trace=TRUE, cores=32)
+# summary(rf)
+# VARIMP = partykit::varimp(rf, conditional=TRUE, cores=2) ### uses mclapply - hence will be cloning stuff and eating a lot of RAM - therefore reduces the number of cores as required
 
-summary(VARIMP)
-str(VARIMP)
-print(VARIMP)
-txtplot::txtplot(VARIMP)
+# summary(VARIMP)
+# str(VARIMP)
+# print(VARIMP)
+# txtplot::txtplot(VARIMP)
 
-### TESTING partykit::cforest
-# tmp_testing_cforest.R
-# tmp_testing_cforest.slurm
-# DIR=/group/pasture/Jeff/imputef/res
-# cd $DIR
-# cat slurm-24309707.out
+# ### TESTING partykit::cforest
+# # tmp_testing_cforest.R
+# # tmp_testing_cforest.slurm
+# # DIR=/group/pasture/Jeff/imputef/res
+# # cd $DIR
+# # cat slurm-24309707.out
 
-# rf = randomForest::randomForest(mae_frequencies ~ ., data=train, proximity=TRUE)
-# print(rf)
-# p1 = predict(rf, train)
-# cor(train$mae_frequencies, p1)
-# txtplot::txtplot(x=train$mae_frequencies, y=p1)
-# p2 = predict(rf, test)
-# cor(test$mae_frequencies, p2)
-# txtplot::txtplot(x=test$mae_frequencies, y=p2)
+# # rf = randomForest::randomForest(mae_frequencies ~ ., data=train, proximity=TRUE)
+# # print(rf)
+# # p1 = predict(rf, train)
+# # cor(train$mae_frequencies, p1)
+# # txtplot::txtplot(x=train$mae_frequencies, y=p1)
+# # p2 = predict(rf, test)
+# # cor(test$mae_frequencies, p2)
+# # txtplot::txtplot(x=test$mae_frequencies, y=p2)
 
-# random_forest_output = randomForest::randomForest(mae_frequencies ~ ., data=data, proximity=TRUE)
-# str(random_forest_output)
-# IMPORTANCE = random_forest_output$importance[order(random_forest_output$importance, decreasing=TRUE), , drop=FALSE]
-# print(IMPORTANCE)
+random_forest_output = randomForest::randomForest(mae_frequencies ~ ., data=data, proximity=TRUE)
+cor(data$mae_frequencies, predict(random_forest_output, data))
+str(random_forest_output)
+
+IMPORTANCE = random_forest_output$importance[order(random_forest_output$importance, decreasing=TRUE), , drop=FALSE]
+print(IMPORTANCE)
 
 print("The choice of the nearest neighbours appears to be the most important variables, i.e. max_pool_dist and min_k_neighbours.")
 print("This is followed by the dataset marker density and sparsity combination.")
@@ -495,14 +497,15 @@ print("Answer 2: Marker density per se has the least effect on imputation accura
 vec_dataset_combinations = sort(unique(paste0(df$marker_density, "_X_", df$sparsity)))
 for (dataset in vec_dataset_combinations) {
     # dataset = vec_dataset_combinations[1]
+    print("#######################################################")
+    print(dataset)
     marker_density = as.numeric(unlist(strsplit(dataset, "_X_"))[1])
     sparsity = as.numeric(unlist(strsplit(dataset, "_X_"))[2])
     subdf = df[(df$marker_density==marker_density) & (df$sparsity==sparsity), ]
-    txtplot::txtplot(x=df$min_loci_corr, y=df$mae_frequencies, xlab="min_loci_corr", ylab="mae")
-    txtplot::txtplot(x=df$max_pool_dist, y=df$mae_frequencies, xlab="max_pool_dist", ylab="mae")
-    txtplot::txtplot(x=df$min_l_loci, y=df$mae_frequencies, xlab="min_l_loci", ylab="mae")
-    txtplot::txtplot(x=df$min_k_neighbours, y=df$mae_frequencies, xlab="min_k_neighbours", ylab="mae")
-
+    # txtplot::txtplot(x=df$min_loci_corr, y=df$mae_frequencies, xlab="min_loci_corr", ylab="mae")
+    # txtplot::txtplot(x=df$max_pool_dist, y=df$mae_frequencies, xlab="max_pool_dist", ylab="mae")
+    # txtplot::txtplot(x=df$min_l_loci, y=df$mae_frequencies, xlab="min_l_loci", ylab="mae")
+    # txtplot::txtplot(x=df$min_k_neighbours, y=df$mae_frequencies, xlab="min_k_neighbours", ylab="mae")
 
     ### Describe the parameter spaces
     ### Are the trends in MAE of a parameter the same across levels of all other parameters? Not likely!
@@ -519,7 +522,7 @@ for (dataset in vec_dataset_combinations) {
                     next
                 }
                 dat = subdf[idx, ]
-                txtplot::txtplot(x=dat$min_k_neighbours, y=dat$mae_frequencies, xlab="min_k_neighbours", ylab="MAE")
+                # txtplot::txtplot(x=dat$min_k_neighbours, y=dat$mae_frequencies, xlab="min_k_neighbours", ylab="MAE")
                 agg = aggregate(mae_frequencies ~ min_k_neighbours, data=dat, FUN=mean)
             }
         }
@@ -583,7 +586,9 @@ df[idx, ]
 
 print("Question 4: Is there a single combination of parameters which performs reasonably well across datasets?")
 print("Answer 4: We are not certain yet as we are only capturing a single dataset for which the predicted optimum parameter combination is present. 
-       However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem.")
+       However, given the complexity of the parameter spaces, this is unlikely. Again, blame the no-free-lunch theorem.
+       But wait! Some unimodality in min_loci_corr is starting to show centered on 0.5, and bimodalities in the rest, i.e.,
+       max_pool_dist near both extremes, min_l_loci at <10 and ~17, and min_k_neighbours at ~5 and ~17. These are very curiosome indeed!")
 
 ```
 

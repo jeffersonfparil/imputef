@@ -302,11 +302,12 @@ pub fn optimise_params_and_estimate_accuracy(
     };
     // Optimisation via coordinate-descent-like algorithm starting with the strictest parameters
     // Parameter optimisation order:
-    //       (1) k-neighbours (from low to high)
+    //       (1) minimum loci correlation (from high to low)
     //       (2) maximum pool distances (from low to high)
     //       (3) l loci (from low to high)
-    //       (4) minimum loci correlation (from high to low)
-    // As we explore the parameter space one at a time at decreasing stringency,
+    //       (4) k-neighbours (from low to high)
+    // As we explore the parameter space one at a time,
+    // first at decreasing stringency then at increasing stringency,
     // we replace the optimum parameter if mae decreases, and
     // break if mae increases so that we are more computationally efficient.
     let all_parameters_are_fixed = (vec_min_loci_corr.len() == 1)
@@ -387,12 +388,17 @@ pub fn optimise_params_and_estimate_accuracy(
             // for ix in vec![3,1,2,0,1,3].into_iter() {
             for ix in vec![0,1,2,3].into_iter() {
                 let mut opt_idx = 0;
-                // Forwards and backwards steps across each parameter space
+                // Forwards and backwards steps from end to end, then from middle to end across each parameter space
+                let ini = 0;
+                let mid = vec_len_c_d_l_k[ix] / 2;
+                let fin = vec_len_c_d_l_k[ix];
                 let vec_vec_params_idx = vec![
-                    (0..vec_len_c_d_l_k[ix]).collect::<Vec<usize>>(), 
-                    (0..vec_len_c_d_l_k[ix]).rev().collect::<Vec<usize>>()
+                    (ini..fin).collect::<Vec<usize>>(), 
+                    (ini..fin).rev().collect::<Vec<usize>>(),
+                    (mid..fin).collect::<Vec<usize>>(), 
+                    (ini..mid).rev().collect::<Vec<usize>>(), 
                 ];
-                for iy in 0..2 {
+                for iy in 0..vec_vec_params_idx.len() {
                     for l in vec_vec_params_idx[iy].clone().into_iter() {
                         vec_idx_c_d_l_k[ix] = l;
                         let (_, mae) = genotype_data_for_optimisation
