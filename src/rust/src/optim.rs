@@ -1,4 +1,6 @@
 use rand::prelude::IteratorRandom;
+use rand::{Rng,SeedableRng};
+use rand::rngs::StdRng;
 use std::io;
 
 use crate::structs_and_traits::*;
@@ -8,6 +10,7 @@ impl GenotypesAndPhenotypes {
         &mut self,
         loci_idx: &Vec<usize>,
         max_sparsity: &f64,
+        rep: &usize
     ) -> io::Result<(&mut Self, f64, Vec<usize>, Vec<f64>, Vec<Vec<f64>>)> {
         self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         let (n, l) = self.coverages.dim();
@@ -21,7 +24,8 @@ impl GenotypesAndPhenotypes {
         // Define the number of loci to mask
         let n_masked = (((n * l) as f64) * max_sparsity).floor() as usize;
         // Sample random loci
-        let mut rng = rand::thread_rng();
+        // let mut rng = rand::thread_rng();
+        let mut rng = StdRng::seed_from_u64(*rep as u64);
         let mut vec_masked_loci_idx_tmp = (0..(n * l)).choose_multiple(&mut rng, n_masked);
         vec_masked_loci_idx_tmp.sort();
         // Mask and extract the masked information
@@ -194,7 +198,7 @@ impl GenotypesAndPhenotypes {
             _vec_masked_coverages,
             vec_vec_masked_alleles_freqs,
         ) = genotype_data_for_optimisation
-            .simulate_missing(&loci_idx, &missing_rate_sim)
+            .simulate_missing(&loci_idx, &missing_rate_sim, &0)
             .expect("Error calling simulate_missing() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
         assert_eq!(
             max_sparsity, missing_rate_sim,
@@ -351,7 +355,7 @@ pub fn optimise_params_and_estimate_accuracy(
             _vec_masked_coverages,
             vec_vec_masked_alleles_freqs,
         ) = genotype_data_for_optimisation
-            .simulate_missing(loci_idx, &missing_rate_sim)
+            .simulate_missing(loci_idx, &missing_rate_sim, &r)
             .expect("Error calling simulate_missing() method within optimise_params_and_estimate_accuracy().");
         assert_eq!(
             max_sparsity, missing_rate_sim,
@@ -384,16 +388,14 @@ pub fn optimise_params_and_estimate_accuracy(
                 vec_min_l_loci.len(),
                 vec_min_k_neighbours.len(),
             ];
-            // Step across all four parameter spaces from corr, dist, l, and k forwards and backwards
-            // for ix in vec![3,1,2,0,1,3].into_iter() {
-            for ix in vec![0,1,2,3].into_iter() {
+            // Step across all four parameter spaces twice, where within each parameter space we move forwards and backwards from end to end and from middle to both ends
+            for ix in vec![0,1,2,3,0,1,2,3].into_iter() {
                 let mut opt_idx = 0;
-                // Forwards and backwards steps from end to end, then from middle to end across each parameter space
                 let ini = 0;
-                let mid = vec_len_c_d_l_k[ix] / 2;
+                let mid = (vec_len_c_d_l_k[ix]) / 2;
                 let fin = vec_len_c_d_l_k[ix];
                 let vec_vec_params_idx = vec![
-                    (ini..fin).collect::<Vec<usize>>(), 
+                    (ini..fin).collect::<Vec<usize>>(),
                     (ini..fin).rev().collect::<Vec<usize>>(),
                     (mid..fin).collect::<Vec<usize>>(), 
                     (ini..mid).rev().collect::<Vec<usize>>(), 
@@ -442,14 +444,12 @@ pub fn optimise_params_and_estimate_accuracy(
                             optimum_min_l_loci = vec_min_l_loci[vec_idx_c_d_l_k[2]];
                             optimum_min_k_neighbours = vec_min_k_neighbours[vec_idx_c_d_l_k[3]];
                             opt_idx = vec_idx_c_d_l_k[ix];
-                        } else if (mae - optimum_mae) > f64::EPSILON {
+                        } else if (mae - optimum_mae) > 0.0001 {
                             break;
-                        } // else if (mae - optimum_mae).abs() <= f64::EPSILON {
-                        //     break;
-                        // }
+                        }
                     } // Across the parameter space
                     vec_idx_c_d_l_k[ix] = opt_idx;
-                } // Forwards then backwards across parameter space
+                } // Forwards and backwards from end to end and from the middle to both ends of the parameter space
             } // For each parameter
         }
         // Append parameters
@@ -518,7 +518,7 @@ mod tests {
             _vec_masked_coverages,
             vec_vec_masked_alleles_freqs,
         ) = frequencies_and_phenotypes
-            .simulate_missing(&loci_idx, &0.25)
+            .simulate_missing(&loci_idx, &0.25, &42)
             .unwrap();
         println!(
             "After simulating missing data:\n{:?}",
