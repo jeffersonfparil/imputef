@@ -1,6 +1,6 @@
 use rand::prelude::IteratorRandom;
-use rand::{Rng,SeedableRng};
 use rand::rngs::StdRng;
+use rand::{SeedableRng};
 use std::io;
 
 use crate::structs_and_traits::*;
@@ -10,7 +10,7 @@ impl GenotypesAndPhenotypes {
         &mut self,
         loci_idx: &Vec<usize>,
         max_sparsity: &f64,
-        rep: &usize
+        rep: &usize,
     ) -> io::Result<(&mut Self, f64, Vec<usize>, Vec<f64>, Vec<Vec<f64>>)> {
         self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         let (n, l) = self.coverages.dim();
@@ -389,7 +389,7 @@ pub fn optimise_params_and_estimate_accuracy(
                 vec_min_k_neighbours.len(),
             ];
             // Step across all four parameter spaces twice, where within each parameter space we move forwards and backwards from end to end and from middle to both ends
-            for ix in vec![0,1,2,3,0,1,2,3].into_iter() {
+            for ix in vec![0, 1, 2, 3, 0, 1, 2, 3].into_iter() {
                 let mut opt_idx = 0;
                 let ini = 0;
                 let mid = (vec_len_c_d_l_k[ix]) / 2;
@@ -397,8 +397,8 @@ pub fn optimise_params_and_estimate_accuracy(
                 let vec_vec_params_idx = vec![
                     (ini..fin).collect::<Vec<usize>>(),
                     (ini..fin).rev().collect::<Vec<usize>>(),
-                    (mid..fin).collect::<Vec<usize>>(), 
-                    (ini..mid).rev().collect::<Vec<usize>>(), 
+                    (mid..fin).collect::<Vec<usize>>(),
+                    (ini..mid).rev().collect::<Vec<usize>>(),
                 ];
                 for iy in 0..vec_vec_params_idx.len() {
                     for l in vec_vec_params_idx[iy].clone().into_iter() {
@@ -585,9 +585,12 @@ mod tests {
             )
             .unwrap();
 
-        println!("min_loci_corr={}, max_pool_dist={}, min_l_loci={}, min_k_neighbours={}, mae={}", min_loci_corr, max_pool_dist, min_l_loci, min_k_neighbours, mae);
+        println!(
+            "min_loci_corr={}, max_pool_dist={}, min_l_loci={}, min_k_neighbours={}, mae={}",
+            min_loci_corr, max_pool_dist, min_l_loci, min_k_neighbours, mae
+        );
 
-        let vec_vec_imputed_mask = frequencies_and_phenotypes
+        let _vec_vec_imputed_mask = frequencies_and_phenotypes
             .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx)
             .unwrap();
         // println!("vec_vec_imputed_mask={:?}", vec_vec_imputed_mask);
