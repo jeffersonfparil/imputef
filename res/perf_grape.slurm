@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=100G
-#SBATCH --time=1-0:0:00
+#SBATCH --time=0-0:30:00
 ### Load the conda environment
 module load Miniconda3/22.11.1-1
 conda init bash

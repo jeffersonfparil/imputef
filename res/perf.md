@@ -327,11 +327,11 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-24317042_*.out
-SLURMOUT_LUCERNE=slurm-??????_*.out
-SLURMOUT_SOYBEAN=slurm-24317065_*.out
-grep -n -i "err" slurm-24317065*_*.out | grep -v "mean absolute"
-tail slurm-24317065*_*.out
+SLURMOUT_GRAPE=slurm-24396122_*.out
+SLURMOUT_LUCERNE=slurm24396123_*.out
+SLURMOUT_SOYBEAN=slurm-24396124_*.out
+grep -n -i "err" slurm-2439612*_*.out | grep -v "mean absolute"
+tail slurm-2439612*_*.out
 ls -lh *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -344,6 +344,14 @@ mv *-performance_assessment-maf_*-missing_rate_*.csv output/
 time Rscript summary_plot.R \
     ${DIR}/output
 ```
+
+## Take-home message
+
+The adaptive LD-kNN imputation algorithm works reasonably well even across the entire range of sparsity levels (0.1% to 90% missing data).
+
+Note that the discrepancy between our imputation algorithm and LinkImpute's algorithm in the context of imputing binary genotypes is attributed to 2 differences:
+- the use of mean weighted allele frequencies in our case and weighted mode genotype class in LinkImpute, and
+- the use of mean absolute error to measure accuracy in our case and concordance in LinkImpute.
 
 ## Miscellaneous: sensitivity analysis
 

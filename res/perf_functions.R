@@ -141,12 +141,12 @@ fn_simulate_missing_data = function(vcf, mat_genotypes, maf=0.25, missing_rate=0
 
 ### Subsample loci to artificially reduce marker density
 fn_simulate_marker_density_reduction = function(vcf, mat_genotypes, reduction_rate=0.5) {
-    n = dim(vcf)[1]
-    if (n != nrow(mat_genotypes)) {
+    p = dim(vcf)[1]
+    if (p != nrow(mat_genotypes)) {
         print("The vcfR object and the matrix of genotypes have incompatible dimensions.")
         return(0)
     }
-    idx = sort(sample(c(1:n), size=min(c(n, round(n*reduction_rate))), replace=FALSE))
+    idx = sort(sample(c(1:p), size=min(c(p, round(p*reduction_rate))), replace=FALSE))
     return(list(vcf=vcf[idx, ], mat_genotypes=mat_genotypes[idx, ]))
 }
 
