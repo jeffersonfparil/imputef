@@ -1,8 +1,8 @@
 ### Load imputef library
-library(imputef)
+# library(imputef)
 # system("conda activate rustenv")
-# devtools::load_all()
-# rextendr::document()
+devtools::load_all()
+rextendr::document()
 
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles

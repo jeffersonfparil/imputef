@@ -295,24 +295,22 @@ impl GenotypesAndPhenotypes {
         };
 
 
-        let vec_min_loci_corr: Vec<f64> = (0..=10).rev().map(|x| x as f64 / 10.0).collect();
-        let vec_max_pool_dist: Vec<f64> = (0..=10).map(|x| x as f64 / 10.0).collect();
+        let vec_min_loci_corr: Vec<f64> = (0..=20).rev().map(|x| x as f64 / 20.0).collect();
+        let vec_max_pool_dist: Vec<f64> = (0..=20).map(|x| x as f64 / 20.0).collect();
         let min_l_loci: usize = 1;
         let min_k_neighbours: usize = 1;
         let n_reps = 5;
 
+        // Set 0: u8 as missing
+        let mut mae_u8: Array2<u8> = Array::from_elem(self.intercept_and_allele_frequencies.dim(), 0);
 
         Zip::indexed(&mut self.intercept_and_allele_frequencies)
-        .par_for_each(|(i, j), q| {
+        .and(&mut mae_u8)
+        .par_for_each(|(i, j), q, mu8| {
             if q.is_nan() {
                 let current_chromosome = self_clone.chromosome[j].to_owned();
                 let vec_q: ArrayView1<f64> = self_clone.intercept_and_allele_frequencies.column(j);
                 let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
-                // let vec_min_loci_corr: Vec<f64> = (0..=10).rev().map(|x| x as f64 / 10.0).collect();
-                // let vec_max_pool_dist: Vec<f64> = (0..=10).map(|x| x as f64 / 10.0).collect();
-                // let min_l_loci: usize = 1;
-                // let min_k_neighbours: usize = 1;
-                // let n_reps = 5;
                 let n_reps = if n_reps <= n_non_missing {
                     n_reps
                 } else {
@@ -323,7 +321,7 @@ impl GenotypesAndPhenotypes {
                 let mut optimum_mae = 1.0;
                 let mut optimum_min_loci_corr = 0.0;
                 let mut optimum_max_pool_dist = 1.0;
-                // Across l
+                // Across minimum loci correlation thresholds
                 for min_loci_corr in vec_min_loci_corr.iter() {
                     // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
                     let (linked_loci_idx, _correlations) =
@@ -331,7 +329,7 @@ impl GenotypesAndPhenotypes {
                             restrict_linked_loci_per_chromosome,
                             &current_chromosome,
                             &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                    // Across k
+                    // Across maximum pool distance thresholds
                     for max_pool_dist in vec_max_pool_dist.iter() {
                         // Across reps
                         let mut mae = 0.0;
@@ -367,6 +365,8 @@ impl GenotypesAndPhenotypes {
                         }
                     }
                 }
+                // We use 254 instead of 255 and add 1 because we set 0 as missing above
+                *mu8 = (optimum_mae * 254.0).round() as u8 + 1;
                 // Impute actual missing data point (ith pool and jth locus)
                 // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
                 let (linked_loci_idx, _correlations) =
@@ -392,9 +392,21 @@ impl GenotypesAndPhenotypes {
                     .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
                 // Impute missing allele frequencies at the current locus
                 *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
+                // println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
             }
         });
+        // Extract average MAE across loci and pools (Note that we used 0: u8 as missing)
+        let mut predicted_mae = 0.0;
+        let mut n_missing = 0.0;
+        for mu8 in mae_u8.into_iter() {
+            if mu8 > 0 {
+                predicted_mae += (mu8 as f64 - 1.0) / 255.0;
+                n_missing += 1.0;
+            }
+        }
+        predicted_mae = predicted_mae / n_missing;
+        println!("An over-estimated prediction of mean absolute error = {}", predicted_mae);
+
         // Correct for allele frequency over- and under-flows if we have more than 1 allele representing each locus
         for j in 0..(loci_idx.len() - 1) {
             let idx_locus_ini = loci_idx[j];
