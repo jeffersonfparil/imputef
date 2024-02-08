@@ -98,7 +98,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
       text((bplot-0.25), text_pos, labels=round(mat_mu,4), cex=0.9, srt=90, pos=4)
       par(xpd=FALSE)
       ### Line plot
-      plot(x=range(agg_mu[,2], na.rm=TRUE), y=range(agg_mu[,3]+(2*agg_sd[,3]), na.rm=TRUE), 
+      plot(x=range(agg_mu[,2], na.rm=TRUE), y=range(c(agg_mu[,3]-(2*agg_sd[,3]), agg_mu[,3]+(2*agg_sd[,3])), na.rm=TRUE), 
         main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1, type="n")
       grid()
       for (algo in vec_algorithm) {
