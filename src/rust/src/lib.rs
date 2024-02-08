@@ -9,7 +9,6 @@ mod filter_missing;
 mod geno;
 mod helpers;
 mod mvi;
-mod optim;
 mod phen;
 mod structs_and_traits;
 mod sync;
@@ -31,16 +30,12 @@ fn impute(
     max_depth_above_which_are_missing: f64,
     frac_top_missing_pools: f64,
     frac_top_missing_loci: f64,
+    n_reps: u64,
     min_loci_corr: f64,
     max_pool_dist: f64,
     min_l_loci: u64,
     min_k_neighbours: u64,
     restrict_linked_loci_per_chromosome: bool,
-    optimise_n_steps_min_loci_corr: u64,
-    optimise_n_steps_max_pool_dist: u64,
-    optimise_max_l_loci: u64,
-    optimise_max_k_neighbours: u64,
-    optimise_n_reps: u64,
     n_threads: u64,
     fname_out_prefix: String,
     // ) -> String {
@@ -321,6 +316,17 @@ fn impute(
         println!("###################################################################################################");
         println!("aldknni: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data");
         println!("###################################################################################################");
+        // Handling NA conversion into Rust's f64:NAN
+        let min_loci_corr = if min_loci_corr < 0.0 {
+            f64::NAN
+        } else {
+            min_loci_corr
+        };
+        let max_pool_dist = if max_pool_dist < 0.0 {
+            f64::NAN
+        } else {
+            max_pool_dist
+        };
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
@@ -329,11 +335,7 @@ fn impute(
             &min_l_loci,
             &min_k_neighbours,
             restrict_linked_loci_per_chromosome,
-            &(optimise_n_steps_min_loci_corr as usize),
-            &(optimise_n_steps_max_pool_dist as usize),
-            &optimise_max_l_loci,
-            &optimise_max_k_neighbours,
-            &(optimise_n_reps as usize),
+            &(n_reps as usize),
             &(n_threads as usize),
             &fname_out,
         )

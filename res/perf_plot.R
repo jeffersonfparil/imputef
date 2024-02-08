@@ -11,17 +11,13 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
   df$algorithm = as.character(df$algorithm)
   df$algorithm[df$algorithm=="mvi"] = "a"
   df$algorithm[df$algorithm=="aldknni_fixed"] = "b"
-  df$algorithm[df$algorithm=="aldknni_optim_cd"] = "c"
-  df$algorithm[df$algorithm=="aldknni_optim_lk"] = "d"
-  df$algorithm[df$algorithm=="aldknni_optim_all"] = "e"
-  df$algorithm[df$algorithm=="linkimpute"] = "f"
+  df$algorithm[df$algorithm=="aldknni_optim"] = "c"
+  df$algorithm[df$algorithm=="linkimpute"] = "d"
   df$algorithm = as.factor(df$algorithm)
   levels(df$algorithm)[levels(df$algorithm)=="a"] = "MVI"
   levels(df$algorithm)[levels(df$algorithm)=="b"] = "AFIXED"
-  levels(df$algorithm)[levels(df$algorithm)=="c"] = "AOPTIMCD"
-  levels(df$algorithm)[levels(df$algorithm)=="d"] = "AOPTIMLK"
-  levels(df$algorithm)[levels(df$algorithm)=="e"] = "AOPTIMAL"
-  levels(df$algorithm)[levels(df$algorithm)=="f"] = "LINKIMPUTE"
+  levels(df$algorithm)[levels(df$algorithm)=="c"] = "AOPTIM"
+  levels(df$algorithm)[levels(df$algorithm)=="d"] = "LINKIMPUTE"
 
   # agg_concordance = aggregate(concordance_classes ~ algorithm + maf + missing_rate, data=df, FUN=mean)
   agg_concordance = aggregate(concordance_classes ~ algorithm, data=df, FUN=mean)
@@ -37,11 +33,10 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
   print(paste(vec_algorithm, collapse=" | "))
   vec_maf = sort(unique(df$maf))
   vec_missing_rate = sort(unique(df$missing_rate))
-  vec_colours = c("#88CCEE", "#44AA99", "#117733", "#CC6677", "#DDCC77", "#AA4499")
+  vec_colours = c("#b2df8a", "#33a02c", "#1f78b4", "#a6cee3")
   vec_colours = rep(vec_colours, times=ceiling(length(vec_algorithm)/length(vec_colours)))[1:length(vec_algorithm)]
   
   vec_fnames_svg = c()
-  # n_plots = 2*length(vec_maf)
   for (i in 1:length(vec_2_metrics)) {
     # i = 1
     metric = vec_2_metrics[i]
@@ -54,8 +49,6 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
     fname_svg = paste0(dataset, "-", gsub(" ", "_", metric_label), ".svg")
     vec_fnames_svg = c(vec_fnames_svg, fname_svg)
     svg(fname_svg, width=15, height=7)
-    # mat_layout_base = matrix(1:n_plots, nrow=(n_plots/2), byrow=TRUE)
-    # layout(cbind(mat_layout_base[,1], mat_layout_base[,1], mat_layout_base))
     layout(matrix(c(1, 1, 1, 1, 2,  2,
                     3, 3, 3, 3, 4,  4,
                     5, 6, 7, 8, 9, 10), byrow=TRUE, ncol=6))
@@ -98,7 +91,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
       text((bplot-0.25), text_pos, labels=round(mat_mu,4), cex=0.9, srt=90, pos=4)
       par(xpd=FALSE)
       ### Line plot
-      plot(x=range(agg_mu[,2], na.rm=TRUE), y=range(agg_mu[,3]+(2*agg_sd[,3]), na.rm=TRUE), 
+      plot(x=range(agg_mu[,2], na.rm=TRUE), y=range(c(agg_mu[,3]-(2*agg_sd[,3]), agg_mu[,3]+(2*agg_sd[,3])), na.rm=TRUE), 
         main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1, type="n")
       grid()
       for (algo in vec_algorithm) {

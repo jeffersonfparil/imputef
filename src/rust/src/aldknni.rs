@@ -2,6 +2,7 @@ use ndarray::{prelude::*, Zip};
 use rand::prelude::IteratorRandom;
 use std::cmp::Ordering;
 use std::io;
+use std::sync::{Arc, Mutex};
 
 use crate::helpers::*;
 
@@ -239,10 +240,8 @@ fn find_k_nearest_neighbours(
 
 fn impute_allele_frequencies(
     frequencies: &Array1<f64>,
-    // frequencies: &Array2<f64>,
     distances: &Vec<f64>,
 ) -> io::Result<f64> {
-    // ) -> io::Result<Vec<f64>> {
     let n = frequencies.len();
     for i in 0..n {
         assert!(
@@ -272,182 +271,483 @@ impl GenotypesAndPhenotypes {
     pub fn adaptive_ld_knn_imputation(
         &mut self,
         self_clone: &GenotypesAndPhenotypes,
-        _min_loci_corr: &f64,
-        _max_pool_dist: &f64,
+        min_loci_corr: &f64,
+        max_pool_dist: &f64,
         min_l_loci: &u64,
         min_k_neighbours: &u64,
         loci_idx: &Vec<usize>,
         corr: &Vec<Vec<u8>>,
         restrict_linked_loci_per_chromosome: bool,
-    ) -> io::Result<&mut Self> {
+        n_reps: &usize,
+    ) -> io::Result<(&mut Self, f64)> {
         self.check().expect("Error self.check() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
+        //      - Input vcf file will have all alleles per locus extracted.
+        //      - Similarly, input sync file will have all alleles per locus extracted.
+        //      - Finally, input allele frequency table file which can be represented by all alleles or one less allele per locus will be appended with the alternative allele if the sum of allele frequencies per locus do not add up to one.
+        // Define fixed linkage and distance thresholds, i.e. the minimum number of loci to use in estimating genetic distances, and the minimum number of nearest neighbours to include in imputation
         let (n, p) = self.intercept_and_allele_frequencies.dim();
-        let _min_l_loci = if *min_l_loci >= (p as u64) {
+        let min_l_loci = if *min_l_loci >= (p as u64) {
             p - 1
         } else {
             *min_l_loci as usize
         };
-        let _min_k_neighbours = if *min_k_neighbours >= (n as u64) {
+        let min_k_neighbours = if *min_k_neighbours >= (n as u64) {
             n - 1
         } else {
             *min_k_neighbours as usize
         };
+        // Define the range of minimum loci correlation and maximum pool distance thresholds to be used for optimisation.
+        // However, if the user-supplied values are non-missing then that user-supplied fixed threshold will be used without optimisation
+        let vec_min_loci_corr: Vec<f64> = if min_loci_corr.is_nan() {
+            (0..=20).rev().map(|x| x as f64 / 20.0).collect()
+        } else {
+            vec![*min_loci_corr]
+        };
+        let vec_max_pool_dist: Vec<f64> = if max_pool_dist.is_nan() {
+            (0..=20).map(|x| x as f64 / 20.0).collect()
+        } else {
+            vec![*max_pool_dist]
+        };
+        // // Define the 2D array used for storing the minimum mean absolute error (MAE) estimates across all missing data across pools and loci.
+        // // We encode the MAE as u8 for memory efficiency, where we set 0: u8 as missing.
+        // let mut mae_u8: Array2<u8> =
+        //     Array::from_elem(self.intercept_and_allele_frequencies.dim(), 0);
+        // // Optimise for the minimum loci correlation and maximum pool distance which minimises MAE per locus, and use these optimum threshold to impute missing allele frequency across pools and loci
+        // Zip::indexed(&mut self.intercept_and_allele_frequencies)
+        // .and(&mut mae_u8)
+        // .par_for_each(|(i, j), q, mu8| {
+        //     if q.is_nan() {
+        //         let current_chromosome = self_clone.chromosome[j].to_owned();
+        //         let vec_q: ArrayView1<f64> = self_clone.intercept_and_allele_frequencies.column(j);
+        //         let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
+        //         let n_reps = if *n_reps <= n_non_missing {
+        //             *n_reps
+        //         } else {
+        //             n_non_missing
+        //         };
+        //         let mut rng = rand::thread_rng();
+        //         let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
+        //         let mut optimum_mae = 1.0;
+        //         let mut optimum_min_loci_corr = 0.0;
+        //         let mut optimum_max_pool_dist = 1.0;
+        //         // Across minimum loci correlation thresholds
+        //         for min_loci_corr in vec_min_loci_corr.iter() {
+        //             // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+        //             let (linked_loci_idx, _correlations) =
+        //                 find_l_linked_loci(j, corr, min_loci_corr, min_l_loci,
+        //                     restrict_linked_loci_per_chromosome,
+        //                     &current_chromosome,
+        //                     &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //             // Across maximum pool distance thresholds
+        //             for max_pool_dist in vec_max_pool_dist.iter() {
+        //                 // Across reps
+        //                 let mut mae = 0.0;
+        //                 for idx_i in idx_random_pools.iter() {
+        //                     // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+        //                     let distances_all_loci = calculate_genetic_distances_between_pools(
+        //                         *idx_i,
+        //                         &linked_loci_idx,
+        //                         &self_clone.intercept_and_allele_frequencies)
+        //                         .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //                     // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+        //                     let (distances, frequencies) =
+        //                         find_k_nearest_neighbours(
+        //                             &distances_all_loci,
+        //                             max_pool_dist,
+        //                             min_k_neighbours,
+        //                             j,
+        //                             &self_clone.intercept_and_allele_frequencies,
+        //                         )
+        //                         .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //                     // Impute and find the error
+        //                     mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.")
+        //                     ).abs();
+        //                 }
+        //                 mae /= n_reps as f64;
+        //                 if (mae <= f64::EPSILON) | (mae > optimum_mae) {
+        //                     break;
+        //                 }
+        //                 if mae < optimum_mae {
+        //                     optimum_mae = mae;
+        //                     optimum_min_loci_corr = *min_loci_corr;
+        //                     optimum_max_pool_dist = *max_pool_dist;
+        //                 }
+        //             }
+        //         }
+        //         // Take note of the minimum MAE which we code are u8 for memory efficiency
+        //         // We use 254 instead of 255 and add 1 because we set 0 as missing above
+        //         *mu8 = (optimum_mae * 254.0).round() as u8 + 1;
+        //         // Impute actual missing data point (ith pool and jth locus)
+        //         // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+        //         let (linked_loci_idx, _correlations) =
+        //             find_l_linked_loci(j, corr, &optimum_min_loci_corr, min_l_loci,
+        //                 restrict_linked_loci_per_chromosome,
+        //                 &current_chromosome,
+        //                 &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //         // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+        //         let distances_all_loci = calculate_genetic_distances_between_pools(
+        //             i,
+        //             &linked_loci_idx,
+        //             &self_clone.intercept_and_allele_frequencies)
+        //             .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //         // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+        //         let (distances, frequencies) =
+        //             find_k_nearest_neighbours(
+        //                 &distances_all_loci,
+        //                 &optimum_max_pool_dist,
+        //                 min_k_neighbours,
+        //                 j,
+        //                 &self_clone.intercept_and_allele_frequencies,
+        //             )
+        //             .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //         // Impute missing allele frequencies at the current locus
+        //         *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+        //         // println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
+        //     }
+        // });
 
 
-        let vec_min_loci_corr: Vec<f64> = (0..=20).rev().map(|x| x as f64 / 20.0).collect();
-        let vec_max_pool_dist: Vec<f64> = (0..=20).map(|x| x as f64 / 20.0).collect();
-        let min_l_loci: usize = 1;
-        let min_k_neighbours: usize = 1;
-        let n_reps = 5;
 
-        // Set 0: u8 as missing
-        let mut mae_u8: Array2<u8> = Array::from_elem(self.intercept_and_allele_frequencies.dim(), 0);
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Testing a different way of parallelisation
 
-        Zip::indexed(&mut self.intercept_and_allele_frequencies)
-        .and(&mut mae_u8)
-        .par_for_each(|(i, j), q, mu8| {
-            if q.is_nan() {
-                let current_chromosome = self_clone.chromosome[j].to_owned();
-                let vec_q: ArrayView1<f64> = self_clone.intercept_and_allele_frequencies.column(j);
-                let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
-                let n_reps = if n_reps <= n_non_missing {
-                    n_reps
-                } else {
-                    n_non_missing
-                };
-                let mut rng = rand::thread_rng();
-                let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
-                let mut optimum_mae = 1.0;
-                let mut optimum_min_loci_corr = 0.0;
-                let mut optimum_max_pool_dist = 1.0;
-                // Across minimum loci correlation thresholds
-                for min_loci_corr in vec_min_loci_corr.iter() {
-                    // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
-                    let (linked_loci_idx, _correlations) =
-                        find_l_linked_loci(j, corr, min_loci_corr, min_l_loci,
-                            restrict_linked_loci_per_chromosome,
-                            &current_chromosome,
-                            &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                    // Across maximum pool distance thresholds
-                    for max_pool_dist in vec_max_pool_dist.iter() {
-                        // Across reps
-                        let mut mae = 0.0;
-                        for idx_i in idx_random_pools.iter() {
-                            // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
-                            let distances_all_loci = calculate_genetic_distances_between_pools(
-                                *idx_i,
-                                &linked_loci_idx,
-                                &self_clone.intercept_and_allele_frequencies)
-                                .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                            // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
-                            let (distances, frequencies) =
-                                find_k_nearest_neighbours(
-                                    &distances_all_loci,
-                                    max_pool_dist,
-                                    min_k_neighbours,
-                                    j,
-                                    &self_clone.intercept_and_allele_frequencies,
-                                )
-                                .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                            // Impute and find the error
-                            mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.")
-                            ).abs();
-                        }
-                        mae /= n_reps as f64;
-                        if (mae <= f64::EPSILON) | (mae > optimum_mae) {
-                            break;
-                        }
-                        if mae < optimum_mae {
-                            optimum_mae = mae;
-                            optimum_min_loci_corr = *min_loci_corr;
-                            optimum_max_pool_dist = *max_pool_dist;
-                        }
-                    }
-                }
-                // We use 254 instead of 255 and add 1 because we set 0 as missing above
-                *mu8 = (optimum_mae * 254.0).round() as u8 + 1;
-                // Impute actual missing data point (ith pool and jth locus)
-                // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
-                let (linked_loci_idx, _correlations) =
-                    find_l_linked_loci(j, corr, &optimum_min_loci_corr, min_l_loci,
-                        restrict_linked_loci_per_chromosome,
-                        &current_chromosome,
-                        &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
-                let distances_all_loci = calculate_genetic_distances_between_pools(
-                    i,
-                    &linked_loci_idx,
-                    &self_clone.intercept_and_allele_frequencies)
-                    .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
-                let (distances, frequencies) =
-                    find_k_nearest_neighbours(
-                        &distances_all_loci,
-                        &optimum_max_pool_dist,
-                        min_k_neighbours,
-                        j,
-                        &self_clone.intercept_and_allele_frequencies,
-                    )
-                    .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                // Impute missing allele frequencies at the current locus
-                *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
-                // println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
-            }
-        });
-        // Extract average MAE across loci and pools (Note that we used 0: u8 as missing)
-        let mut predicted_mae = 0.0;
-        let mut n_missing = 0.0;
-        for mu8 in mae_u8.into_iter() {
-            if mu8 > 0 {
-                predicted_mae += (mu8 as f64 - 1.0) / 255.0;
-                n_missing += 1.0;
-            }
+
+        // let p = 10_013;
+        let mut n_chunks = 10; // Should be equal to the number of threads because std::thread::scope will wait for other threads to finish before starting with another thread once it finishes
+        let chunk_size = p / n_chunks;
+        let vec_idx_ini: Vec<usize> = (0..(p-chunk_size)).step_by(chunk_size).collect();
+        let mut vec_idx_fin: Vec<usize> = (chunk_size..p).step_by(chunk_size).collect();
+        let idx_fin = vec_idx_fin[vec_idx_fin.len()-1];
+        if idx_fin != p {
+            vec_idx_fin.pop();
+            vec_idx_fin.push(p);
         }
-        predicted_mae = predicted_mae / n_missing;
-        println!("An over-estimated prediction of mean absolute error = {}", predicted_mae);
+        assert_eq!(vec_idx_ini.len(), vec_idx_fin.len());
+        n_chunks = vec_idx_ini.len();
+        // Instantiate thread object for parallel execution
+        let mut thread_objects = Vec::new();
+        // Vector holding all returns from pileup2sync_chunk()
+        let thread_ouputs_freq: Arc<Mutex<Vec<LocusFrequencies>>> =
+            Arc::new(Mutex::new(Vec::new())); // Mutated within each thread worker
+                                              // Mutated within each thread worker
+        let thread_ouputs_cnts: Arc<Mutex<Vec<LocusCounts>>> = Arc::new(Mutex::new(Vec::new()));
+        for i in 0..n_chunks {
+            let idx_ini = vec_idx_ini[i];
+            let idx_fin = vec_idx_fin[i];
+            let thread = std::thread::scope(|scope| {
+                
 
-        // Correct for allele frequency over- and under-flows if we have more than 1 allele representing each locus
-        for j in 0..(loci_idx.len() - 1) {
-            let idx_locus_ini = loci_idx[j];
-            let idx_locus_fin = loci_idx[j + 1];
-            for i in 0..n {
-                if self_clone.intercept_and_allele_frequencies[(i, idx_locus_ini)].is_nan() {
-                    let sum = self
-                        .intercept_and_allele_frequencies
-                        .slice(s![i, idx_locus_ini..idx_locus_fin])
-                        .sum();
-                    if sum != 1.0 {
-                        if (idx_locus_fin - idx_locus_ini) == 2 {
-                            self.intercept_and_allele_frequencies[(i, idx_locus_ini + 1)] =
-                                1.00 - self.intercept_and_allele_frequencies[(i, idx_locus_ini)]
+                let mut allele_frequencies: Array2<f64> = self_clone.intercept_and_allele_frequencies.slice(s![.., idx_ini..idx_fin]).to_owned();
+
+                // let mut vec_mae: Vec<f64> = vec![];
+                
+                // for j in idx_ini..idx_fin {
+                //     let current_chromosome = self_clone.chromosome[j].to_owned();
+                //     let vec_q: ArrayView1<f64> = self_clone.intercept_and_allele_frequencies.column(j);
+                //     let vec_idx_missing = (0..vec_q.len()).filter(|&i| !vec_q[i].is_nan()).collect::<Vec<usize>>();
+                //     if vec_idx_missing.len() > 0 {
+                //         let n_non_missing = vec_idx_missing.len();
+                //         let n_reps = if *n_reps <= n_non_missing {
+                //             *n_reps
+                //         } else {
+                //             n_non_missing
+                //         };
+                //         let mut rng = rand::thread_rng();
+                //         let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
+                //         let mut optimum_mae = 1.0;
+                //         let mut optimum_min_loci_corr = 0.0;
+                //         let mut optimum_max_pool_dist = 1.0;
+                //         for i in vec_idx_missing.into_iter() {
+                //             // Across minimum loci correlation thresholds
+                //             for min_loci_corr in vec_min_loci_corr.iter() {
+                //                 // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+                //                 let (linked_loci_idx, _correlations) =
+                //                     find_l_linked_loci(j, corr, min_loci_corr, min_l_loci,
+                //                         restrict_linked_loci_per_chromosome,
+                //                         &current_chromosome,
+                //                         &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //                 // Across maximum pool distance thresholds
+                //                 for max_pool_dist in vec_max_pool_dist.iter() {
+                //                     // Across reps
+                //                     let mut mae = 0.0;
+                //                     for idx_i in idx_random_pools.iter() {
+                //                         // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+                //                         let distances_all_loci = calculate_genetic_distances_between_pools(
+                //                             *idx_i,
+                //                             &linked_loci_idx,
+                //                             &self_clone.intercept_and_allele_frequencies)
+                //                             .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //                         // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+                //                         let (distances, frequencies) =
+                //                             find_k_nearest_neighbours(
+                //                                 &distances_all_loci,
+                //                                 max_pool_dist,
+                //                                 min_k_neighbours,
+                //                                 j,
+                //                                 &self_clone.intercept_and_allele_frequencies,
+                //                             )
+                //                             .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //                         // Impute and find the error
+                //                         mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.")
+                //                         ).abs();
+                //                     }
+                //                     mae /= n_reps as f64;
+                //                     if (mae <= f64::EPSILON) | (mae > optimum_mae) {
+                //                         break;
+                //                     }
+                //                     if mae < optimum_mae {
+                //                         optimum_mae = mae;
+                //                         optimum_min_loci_corr = *min_loci_corr;
+                //                         optimum_max_pool_dist = *max_pool_dist;
+                //                     }
+                //                 }
+                //             }
+                //             // Take note of the minimum MAE
+                //             vec_mae.push(optimum_mae);
+                //             // Impute actual missing data point (ith pool and jth locus)
+                //             // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+                //             let (linked_loci_idx, _correlations) =
+                //                 find_l_linked_loci(j, corr, &optimum_min_loci_corr, min_l_loci,
+                //                     restrict_linked_loci_per_chromosome,
+                //                     &current_chromosome,
+                //                     &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //             // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+                //             let distances_all_loci = calculate_genetic_distances_between_pools(
+                //                 i,
+                //                 &linked_loci_idx,
+                //                 &self_clone.intercept_and_allele_frequencies)
+                //                 .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //             // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+                //             let (distances, frequencies) =
+                //                 find_k_nearest_neighbours(
+                //                     &distances_all_loci,
+                //                     &optimum_max_pool_dist,
+                //                     min_k_neighbours,
+                //                     j,
+                //                     &self_clone.intercept_and_allele_frequencies,
+                //                 )
+                //                 .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //             // Impute missing allele frequencies at the current locus
+                //             allele_frequencies[(i, j-idx_ini)] = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                //             // println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
+                //         }
+                //     }
+                // }
+
+                // println!("allele_frequencies={:?}", allele_frequencies);
+                // println!("vec_mae[0..10].to_owned()={:?}", vec_mae[0..10].to_owned());
+
+                // Define the 2D array used for storing the minimum mean absolute error (MAE) estimates across all missing data across pools and loci.
+                // We encode the MAE as u8 for memory efficiency, where we set 0: u8 as missing.
+                let mut mae_u8: Array2<u8> = Array::from_elem(allele_frequencies.dim(), 0);
+
+                Zip::indexed(&mut allele_frequencies)
+                .and(&mut mae_u8)
+                .par_for_each(|(i, j), q, mu8| {
+                    if q.is_nan() {
+                        let current_chromosome = self_clone.chromosome[j].to_owned();
+                        let vec_q: ArrayView1<f64> = self_clone.intercept_and_allele_frequencies.column(j);
+                        let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
+                        let n_reps = if *n_reps <= n_non_missing {
+                            *n_reps
                         } else {
-                            for k in idx_locus_ini..idx_locus_fin {
-                                self.intercept_and_allele_frequencies[(i, k)] /= sum;
+                            n_non_missing
+                        };
+                        let mut rng = rand::thread_rng();
+                        let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
+                        let mut optimum_mae = 1.0;
+                        let mut optimum_min_loci_corr = 0.0;
+                        let mut optimum_max_pool_dist = 1.0;
+                        // Across minimum loci correlation thresholds
+                        for min_loci_corr in vec_min_loci_corr.iter() {
+                            // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+                            let (linked_loci_idx, _correlations) =
+                                find_l_linked_loci(j, corr, min_loci_corr, min_l_loci,
+                                    restrict_linked_loci_per_chromosome,
+                                    &current_chromosome,
+                                    &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                            // Across maximum pool distance thresholds
+                            for max_pool_dist in vec_max_pool_dist.iter() {
+                                // Across reps
+                                let mut mae = 0.0;
+                                for idx_i in idx_random_pools.iter() {
+                                    // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+                                    let distances_all_loci = calculate_genetic_distances_between_pools(
+                                        *idx_i,
+                                        &linked_loci_idx,
+                                        &self_clone.intercept_and_allele_frequencies)
+                                        .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                                    // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+                                    let (distances, frequencies) =
+                                        find_k_nearest_neighbours(
+                                            &distances_all_loci,
+                                            max_pool_dist,
+                                            min_k_neighbours,
+                                            j,
+                                            &self_clone.intercept_and_allele_frequencies,
+                                        )
+                                        .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                                    // Impute and find the error
+                                    mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.")
+                                    ).abs();
+                                }
+                                mae /= n_reps as f64;
+                                if (mae <= f64::EPSILON) | (mae > optimum_mae) {
+                                    break;
+                                }
+                                if mae < optimum_mae {
+                                    optimum_mae = mae;
+                                    optimum_min_loci_corr = *min_loci_corr;
+                                    optimum_max_pool_dist = *max_pool_dist;
+                                }
                             }
                         }
+                        // Take note of the minimum MAE which we code are u8 for memory efficiency
+                        // We use 254 instead of 255 and add 1 because we set 0 as missing above
+                        *mu8 = (optimum_mae * 254.0).round() as u8 + 1;
+                        // Impute actual missing data point (ith pool and jth locus)
+                        // Find loci most correlated to the major allele of the current locus, i.e. the first allele of the locus as they were sorted by decreasing allele frequency (see Sort trait)
+                        let (linked_loci_idx, _correlations) =
+                            find_l_linked_loci(j, corr, &optimum_min_loci_corr, min_l_loci,
+                                restrict_linked_loci_per_chromosome,
+                                &current_chromosome,
+                                &self_clone.chromosome).expect("Error calling find_l_linked_loci() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                        // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
+                        let distances_all_loci = calculate_genetic_distances_between_pools(
+                            i,
+                            &linked_loci_idx,
+                            &self_clone.intercept_and_allele_frequencies)
+                            .expect("Error calling calculate_genetic_distances_between_pools() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                        // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
+                        let (distances, frequencies) =
+                            find_k_nearest_neighbours(
+                                &distances_all_loci,
+                                &optimum_max_pool_dist,
+                                min_k_neighbours,
+                                j,
+                                &self_clone.intercept_and_allele_frequencies,
+                            )
+                            .expect("Error calling find_k_nearest_neighbours() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                        // Impute missing allele frequencies at the current locus
+                        *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes trait.");
+                        // println!("q={:?}; mae={:?}; corr={}; dist={}", q, optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist);
                     }
-                    self.coverages[(i, j)] = f64::INFINITY;
-                }
-            }
+                });
+
+                println!("allele_frequencies={:?}", allele_frequencies);
+
+
+                // Write-out intermediate file
+                // let vec_chr: Vec<String> = self_clone.chromosome[idx_ini..idx_fin].to_owned();
+                // let vec_pos: Vec<u64> = self_clone.position[idx_ini..idx_fin].to_owned();
+                // let vec_all: Vec<String> = self_clone.allele[idx_ini..idx_fin].to_owned();
+                let fname_intermediate_file: String = "intermediate_output-".to_owned() + &idx_ini.to_string() + &idx_fin.to_string() + ".csv";
+
+                
+                let output = GenotypesAndPhenotypes{
+                    chromosome: self_clone.chromosome[idx_ini..idx_fin].to_owned(),
+                    position: self_clone.position[idx_ini..idx_fin].to_owned(),
+                    allele: self_clone.allele[idx_ini..idx_fin].to_owned(),
+                    intercept_and_allele_frequencies: allele_frequencies,
+                    phenotypes: self_clone.phenotypes.clone(),
+                    pool_names: self_clone.pool_names.clone(),
+                    coverages: self_clone.coverages.slice(s![.., 0..10]).to_owned(),
+                };
+                let dummy_filter_stats = FilterStats {
+                    remove_ns: false,
+                    min_quality: 0.0,
+                    min_coverage: 0,
+                    min_allele_frequency: 0.0,
+                    max_missingness_rate: 0.0,
+                    pool_sizes: vec![0.0],
+                };
+                let dummy_keep_p_minus_1 = false;
+                let dummy_n_threads = 1;
+                output.write_csv(&dummy_filter_stats, dummy_keep_p_minus_1, &fname_intermediate_file, &dummy_n_threads).expect("Error: failed to save intermediate file.");
+
+
+
+            });
+            thread_objects.push(thread);
         }
-        Ok(self)
+        // // Waiting for all threads to finish
+        // for thread in thread_objects {
+        //     thread.join().expect("Unknown thread error occured.");
+        // }
+        // // Extract output filenames from each thread into a vector and sort them
+        // let mut freq: Vec<LocusFrequencies> = Vec::new();
+        // let mut cnts: Vec<LocusCounts> = Vec::new();
+        // for x in thread_ouputs_freq.lock().expect("Error unlocking the threads after multi-threaded execution to extract allele frequencies within the load() method for FileSyncPhen struct.").iter() {
+        //     freq.push(x.clone());
+        // }
+        // for x in thread_ouputs_cnts.lock().expect("Error unlocking the threads after multi-threaded execution to extract allele counts within the load() method for FileSyncPhen struct.").iter() {
+        //     cnts.push(x.clone());
+        // }
+
+
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+        // Extract average minimum MAE across loci and pools (Note that we used 0: u8 as missing)
+        // let mut predicted_mae = 0.0;
+        // let mut n_missing = 0.0;
+        // for mu8 in mae_u8.into_iter() {
+        //     if mu8 > 0 {
+        //         predicted_mae += (mu8 as f64 - 1.0) / 255.0;
+        //         n_missing += 1.0;
+        //     }
+        // }
+        // predicted_mae = predicted_mae / n_missing;
+        // // println!(
+        // //     "An over-estimated prediction of mean absolute error = {}",
+        // //     predicted_mae
+        // // );
+        // // Correct for allele frequency over- and under-flows, as we are assuming all loci are represented by all of its alleles (see assumptions above)
+        // for j in 0..(loci_idx.len() - 1) {
+        //     let idx_locus_ini = loci_idx[j];
+        //     let idx_locus_fin = loci_idx[j + 1];
+        //     for i in 0..n {
+        //         if self_clone.intercept_and_allele_frequencies[(i, idx_locus_ini)].is_nan() {
+        //             let sum = self
+        //                 .intercept_and_allele_frequencies
+        //                 .slice(s![i, idx_locus_ini..idx_locus_fin])
+        //                 .sum();
+        //             if sum != 1.0 {
+        //                 if (idx_locus_fin - idx_locus_ini) == 2 {
+        //                     self.intercept_and_allele_frequencies[(i, idx_locus_ini + 1)] =
+        //                         1.00 - self.intercept_and_allele_frequencies[(i, idx_locus_ini)]
+        //                 } else {
+        //                     for k in idx_locus_ini..idx_locus_fin {
+        //                         self.intercept_and_allele_frequencies[(i, k)] /= sum;
+        //                     }
+        //                 }
+        //             }
+        //             self.coverages[(i, j)] = f64::INFINITY;
+        //         }
+        //     }
+        // }
+        // Ok((self, predicted_mae))
+        Ok((self, 0.0))
     }
 }
 
 pub fn impute_aldknni(
     genotypes_and_phenotypes: GenotypesAndPhenotypes,
     filter_stats: &FilterStats,
-    _min_loci_corr: &f64,
-    _max_pool_dist: &f64,
-    _min_l_loci: &u64,
-    _min_k_neighbours: &u64,
+    min_loci_corr: &f64,
+    max_pool_dist: &f64,
+    min_l_loci: &u64,
+    min_k_neighbours: &u64,
     restrict_linked_loci_per_chromosome: bool,
-    _optimise_n_steps_min_loci_corr: &usize,
-    _optimise_n_steps_max_pool_dist: &usize,
-    _optimise_max_l_loci: &u64,
-    _optimise_max_k_neighbours: &u64,
-    _optimise_n_reps: &usize,
+    n_reps: &usize,
     n_threads: &usize,
     out: &String,
 ) -> io::Result<String> {
@@ -467,68 +767,33 @@ pub fn impute_aldknni(
         restrict_linked_loci_per_chromosome,
     )
     .expect("Error estimating pairwise linkage between loci across the entire genome.");
-    // println!("Optimising and/or estimating imputation accuracy.");
-    // let (
-    //     optimum_min_loci_corr,
-    //     optimum_max_pool_dist,
-    //     optimum_min_l_loci,
-    //     optimum_min_k_neighbours,
-    //     optimum_mae,
-    // ) = optimise_params_and_estimate_accuracy(
-    //     &genotypes_and_phenotypes,
-    //     &self_clone,
-    //     min_loci_corr,
-    //     max_pool_dist,
-    //     min_l_loci,
-    //     min_k_neighbours,
-    //     &loci_idx,
-    //     &corr,
-    //     restrict_linked_loci_per_chromosome,
-    //     optimise_n_steps_min_loci_corr,
-    //     optimise_n_steps_max_pool_dist,
-    //     optimise_max_l_loci,
-    //     optimise_max_k_neighbours,
-    //     optimise_n_reps,
-    // )
-    // .expect("Error calling optimise_params_and_estimate_accuracy() in impute_aldknni().");
-    // println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    // println!(
-    //     "Minimum loci correlation threshold: {}",
-    //     optimum_min_loci_corr
-    // );
-    // println!(
-    //     "Maximum neighbour distance threshold: {}",
-    //     optimum_max_pool_dist
-    // );
-    // println!("Minimum number of linked loci: {}", optimum_min_l_loci);
-    // println!(
-    //     "Minimum number of k-nearest neighbours: {}",
-    //     optimum_min_k_neighbours
-    // );
-    // println!(
-    //     "Estimated imputation accuracy in terms of mean absolute error: {}",
-    //     optimum_mae
-    // );
-    // println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    let optimum_min_loci_corr = 0.0;
-    let optimum_max_pool_dist = 1.0;
-    let optimum_min_l_loci = 1;
-    let optimum_min_k_neighbours = 1;
+    if min_loci_corr.is_nan() | max_pool_dist.is_nan() {
+        println!("Optimising and estimating imputation accuracy.");
+    } else {
+        println!("Estimating imputation accuracy.");
+    }
     let start = std::time::SystemTime::now();
-    self_clone
+    let (_self, mae) = self_clone
         .adaptive_ld_knn_imputation(
             &genotypes_and_phenotypes,
-            &optimum_min_loci_corr,
-            &optimum_max_pool_dist,
-            &optimum_min_l_loci,
-            &optimum_min_k_neighbours,
+            min_loci_corr,
+            max_pool_dist,
+            min_l_loci,
+            min_k_neighbours,
             &loci_idx,
             &corr,
             restrict_linked_loci_per_chromosome,
+            n_reps,
         )
         .expect("Error calling adaptive_ld_knn_imputation() within impute_aldknni().");
     let end = std::time::SystemTime::now();
     let duration = end.duration_since(start).expect("Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().");
+    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    println!(
+        "Expected imputation accuracy in terms of mean absolute error: {}",
+        mae
+    );
+    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     println!(
         "Adaptive LD-kNN imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         self_clone.coverages.nrows(),
@@ -694,40 +959,34 @@ mod tests {
         println!("imputed_freq={:?}", imputed_freq);
         assert_eq!(imputed_freq, 0.2249532554929301);
 
-        let _frac_top_missing_pools = 0.0;
-        let _frac_top_missing_loci = 0.2;
-        let min_loci_corr = 0.9;
-        let max_pool_dist = 0.1;
-        let min_l_loci = 10;
-        let min_k_neighbours = 10;
-        let restrict_linked_loci_per_chromosome = true;
-
-        let optimise_n_steps_min_loci_corr = 1;
-        let optimise_n_steps_max_pool_dist = 1;
-        let optimise_max_l_loci = 100;
-        let optimise_max_k_neighbours = 50;
-
-        let optimise_n_reps = 1;
-
         let (loci_idx, _loci_chr, _loci_pos) = frequencies_and_phenotypes.count_loci().unwrap();
         let frequencies_and_phenotypes_clone = frequencies_and_phenotypes.clone();
+        let n_reps = 5;
+        let min_loci_corr = f64::NAN;
+        let max_pool_dist = f64::NAN;
+        let min_l_loci = 10;
+        let min_k_neighbours = 10;
+        let restrict_linked_loci_per_chromosome = false;
 
-        let _ = frequencies_and_phenotypes
+        let (_self, mae) = frequencies_and_phenotypes
             .adaptive_ld_knn_imputation(
-                &frequencies_and_phenotypes_clone,
-                &min_loci_corr,
-                &max_pool_dist,
-                &min_l_loci,
-                &min_k_neighbours,
-                &loci_idx,
-                &corr,
-                false,
+
+        &frequencies_and_phenotypes_clone,
+        &min_loci_corr,
+        &max_pool_dist,
+        &min_l_loci,
+        &min_k_neighbours,
+        &loci_idx,
+        &corr,
+        restrict_linked_loci_per_chromosome,
+        &n_reps,
             )
             .unwrap();
         println!(
             "After imputation:\n{:?}",
             frequencies_and_phenotypes.intercept_and_allele_frequencies
         );
+        println!("Estimated MAE={}", mae);
         assert_eq!(0, 1)
         // let n_nan = frequencies_and_phenotypes
         //     .intercept_and_allele_frequencies
