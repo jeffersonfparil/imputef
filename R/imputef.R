@@ -86,11 +86,7 @@ mvi = function(fname,
         min_l_loci=0,
         min_k_neighbours=0,
         restrict_linked_loci_per_chromosome=FALSE,
-        optimise_n_steps_min_loci_corr=0,
-        optimise_n_steps_max_pool_dist=0,
-        optimise_max_l_loci=0,
-        optimise_max_k_neighbours=0,
-        optimise_n_reps=0,
+        n_reps=0,
         n_threads=n_threads,
         fname_out_prefix=fname_out_prefix)
     return(out)
@@ -112,14 +108,10 @@ mvi = function(fname,
 #'         frac_top_missing_loci=0.0,
 #'         min_loci_corr=0.9,
 #'         max_pool_dist=0.1,
-#'         min_l_loci=10,
-#'         min_k_neighbours=5,
+#'         min_l_loci=1,
+#'         min_k_neighbours=1,
 #'         restrict_linked_loci_per_chromosome=TRUE,
-#'         optimise_n_steps_min_loci_corr=1,
-#'         optimise_n_steps_max_pool_dist=1,
-#'         optimise_max_l_loci=100,
-#'         optimise_max_k_neighbours=50,
-#'         optimise_n_reps=1,
+#'         n_reps=5,
 #'         n_threads=2,
 #'         fname_out_prefix="")
 #' @param fname
@@ -141,25 +133,17 @@ mvi = function(fname,
 #' @param frac_top_missing_loci
 #' fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default=0.0]
 #' @param min_loci_corr
-#' Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. [Default=0.9]
+#' Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
 #' @param max_pool_dist
-#' Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. [Default=0.1]
+#' Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
 #' @param min_l_loci
 #' Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. [Default=1]
 #' @param min_k_neighbours
 #' Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. [Default=1]
 #' @param restrict_linked_loci_per_chromosome
 #' Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
-#' @param optimise_n_steps_min_loci_corr
-#' Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-#' @param optimise_n_steps_max_pool_dist
-#' Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. [Default=1]
-#' @param optimise_max_l_loci
-#' Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. [Default=100]
-#' @param optimise_max_k_neighbours
-#' Maximum number of k-nearest neighbours to be tested, if optimising for the best number of nearest neighbours to include in imputation. Minimum value of 2. [Default=50]
-#' @param optimise_n_reps
-#' Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance, and/or minimum number of linked loci, and/or minimum number of k-nearest neighbours. Minimum value of 1. [Default=1]
+#' @param n_reps
+#' Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=5]
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
@@ -203,18 +187,21 @@ aldknni = function(fname,
                     max_depth_above_which_are_missing=1000000,
                     frac_top_missing_pools=0.0,
                     frac_top_missing_loci=0.0,
-                    min_loci_corr=0.9,
-                    max_pool_dist=0.1,
-                    min_l_loci=10,
-                    min_k_neighbours=5,
+                    min_loci_corr=NA,
+                    max_pool_dist=NA,
+                    min_l_loci=1,
+                    min_k_neighbours=1,
                     restrict_linked_loci_per_chromosome=TRUE,
-                    optimise_n_steps_min_loci_corr=1,
-                    optimise_n_steps_max_pool_dist=1,
-                    optimise_max_l_loci=100,
-                    optimise_max_k_neighbours=50,
-                    optimise_n_reps=1,
+                    n_reps=5,
                     n_threads=2,
                     fname_out_prefix="") {
+    ### Handling NA conversion into Rust's f64:NAN
+    if (is.na(min_loci_corr)) {
+        min_loci_corr = -1.0
+    }
+    if (is.na(max_pool_dist)) {
+        max_pool_dist = -1.0
+    }
     out = impute(fname=fname,
         imputation_method="aLDkNNi",
         min_coverage=min_coverage,
@@ -230,11 +217,7 @@ aldknni = function(fname,
         min_l_loci=min_l_loci,
         min_k_neighbours=min_k_neighbours,
         restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
-        optimise_n_steps_min_loci_corr=optimise_n_steps_min_loci_corr,
-        optimise_n_steps_max_pool_dist=optimise_n_steps_max_pool_dist,
-        optimise_max_l_loci=optimise_max_l_loci,
-        optimise_max_k_neighbours=optimise_max_k_neighbours,
-        optimise_n_reps=optimise_n_reps,
+        n_reps=n_reps,
         n_threads=n_threads,
         fname_out_prefix=fname_out_prefix)
     return(out)

@@ -15,14 +15,10 @@ aldknni(fname,
         frac_top_missing_loci=0.0,
         min_loci_corr=0.9,
         max_pool_dist=0.1,
-        min_l_loci=10,
-        min_k_neighbours=5,
+        min_l_loci=1,
+        min_k_neighbours=1,
         restrict_linked_loci_per_chromosome=TRUE,
-        optimise_n_steps_min_loci_corr=1,
-        optimise_n_steps_max_pool_dist=1,
-        optimise_max_l_loci=100,
-        optimise_max_k_neighbours=50,
-        optimise_n_reps=1,
+        n_reps=5,
         n_threads=2,
         fname_out_prefix="")
 }
@@ -45,9 +41,9 @@ aldknni(fname,
 
 \item{frac_top_missing_loci}{fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. \link{Default=0.0}}
 
-\item{min_loci_corr}{Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. \link{Default=0.9}}
+\item{min_loci_corr}{Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=NA}}
 
-\item{max_pool_dist}{Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. \link{Default=0.1}}
+\item{max_pool_dist}{Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=NA}}
 
 \item{min_l_loci}{Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. \link{Default=1}}
 
@@ -55,15 +51,7 @@ aldknni(fname,
 
 \item{restrict_linked_loci_per_chromosome}{Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? \link{Default=TRUE}}
 
-\item{optimise_n_steps_min_loci_corr}{Number of steps requested for the values of minimum linked loci correlation to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
-
-\item{optimise_n_steps_max_pool_dist}{Number of steps requested for the values of maximum genetic distance to be used in optimisation. Note that this is an approximate number of steps because it can be more or less, depending on how even the range of possible values can be divided. If set to the default of 1, then no optimisation will be performed. \link{Default=1}}
-
-\item{optimise_max_l_loci}{Maximum number of linked loci to be tested, if optimising for the best number of linked loci to include in imputation. Minimum value of 2. \link{Default=100}}
-
-\item{optimise_max_k_neighbours}{Maximum number of k-nearest neighbours to be tested, if optimising for the best number of nearest neighbours to include in imputation. Minimum value of 2. \link{Default=50}}
-
-\item{optimise_n_reps}{Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance, and/or minimum number of linked loci, and/or minimum number of k-nearest neighbours. Minimum value of 1. \link{Default=1}}
+\item{n_reps}{Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. \link{Default=5}}
 
 \item{n_threads}{number of computing threads or processor cores to use in the computations. \link{Default=2}}
 
