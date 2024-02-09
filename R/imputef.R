@@ -111,7 +111,7 @@ mvi = function(fname,
 #'         min_l_loci=1,
 #'         min_k_neighbours=1,
 #'         restrict_linked_loci_per_chromosome=TRUE,
-#'         n_reps=5,
+#'         n_reps=20,
 #'         n_threads=2,
 #'         fname_out_prefix="")
 #' @param fname
@@ -143,7 +143,7 @@ mvi = function(fname,
 #' @param restrict_linked_loci_per_chromosome
 #' Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
 #' @param n_reps
-#' Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=5]
+#' Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=20]
 #' @param n_threads
 #' number of computing threads or processor cores to use in the computations. [Default=2]
 #' @param fname_out_prefix
@@ -192,7 +192,7 @@ aldknni = function(fname,
                     min_l_loci=1,
                     min_k_neighbours=1,
                     restrict_linked_loci_per_chromosome=TRUE,
-                    n_reps=5,
+                    n_reps=20,
                     n_threads=2,
                     fname_out_prefix="") {
     ### Handling NA conversion into Rust's f64:NAN
