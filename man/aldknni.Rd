@@ -15,10 +15,10 @@ aldknni(fname,
         frac_top_missing_loci=0.0,
         min_loci_corr=0.9,
         max_pool_dist=0.1,
-        min_l_loci=10,
-        min_k_neighbours=5,
+        min_l_loci=1,
+        min_k_neighbours=1,
         restrict_linked_loci_per_chromosome=TRUE,
-        n_reps=1,
+        n_reps=5,
         n_threads=2,
         fname_out_prefix="")
 }

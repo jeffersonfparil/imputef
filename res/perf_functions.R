@@ -1,9 +1,9 @@
 ### Load imputef library
 # dir_src = "/group/pasture/Jeff/imputef/res"
-library(imputef)
+# library(imputef)
 # system("conda activate rustenv")
-# devtools::load_all()
-# rextendr::document()
+devtools::load_all()
+rextendr::document()
 
 
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
@@ -357,7 +357,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
         write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
         time_ini = Sys.time()
-        system(paste0("java -jar ", dir_src, "/linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute))
+        system(paste0("java -jar ", dir_src, "/linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute)) ### dir_src is defined in perf.R which sources this Rsccipt
         duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
         mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
         rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
