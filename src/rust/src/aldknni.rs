@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::fs::OpenOptions;
+use std::fs::{OpenOptions, remove_file};
 use std::io::Write;
 
 use crate::helpers::*;
@@ -283,7 +283,7 @@ impl GenotypesAndPhenotypes {
         corr: &Vec<Vec<u8>>,
         restrict_linked_loci_per_chromosome: bool,
         n_reps: &usize,
-    ) -> io::Result<(Array2<f64>, f64)> {
+    ) -> io::Result<(Array2<f64>, f64, f64)> {
 
 
         let idx_ini = loci_idx[*idx_loci_idx_ini];
@@ -390,16 +390,14 @@ impl GenotypesAndPhenotypes {
         });
 
         // Extract average minimum MAE across loci and pools (Note that we used 0: u8 as missing)
-        let mut predicted_mae = 0.0;
+        let mut sum_mae = 0.0;
         let mut n_missing = 0.0;
         for mu8 in mae_u8.into_iter() {
             if mu8 > 0 {
-                predicted_mae += (mu8 as f64 - 1.0) / 255.0;
+                sum_mae += (mu8 as f64 - 1.0) / 255.0;
                 n_missing += 1.0;
             }
         }
-        predicted_mae = predicted_mae / n_missing;
-
 
         // Correct for allele frequency over- and under-flows, as we are assuming all loci are represented by all of its alleles (see assumptions above)
         let n = allele_frequencies.nrows();
@@ -432,12 +430,13 @@ impl GenotypesAndPhenotypes {
             }
         }
 
-        println!("allele_frequencies={:?}", allele_frequencies);
-        Ok((allele_frequencies, predicted_mae))
+        // println!("allele_frequencies={:?}", allele_frequencies);
+        Ok((allele_frequencies, sum_mae, n_missing))
     }
 
     pub fn adaptive_ld_knn_imputation(
         &self,
+        loci_idx: &Vec<usize>,
         min_loci_corr: &f64,
         max_pool_dist: &f64,
         min_l_loci: &usize,
@@ -447,14 +446,14 @@ impl GenotypesAndPhenotypes {
         n_reps: &usize,
         n_threads: &usize,
 
-    ) -> () {
+    ) -> io::Result<(String, f64)> {
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
         //      - Input vcf file will have all alleles per locus extracted.
         //      - Similarly, input sync file will have all alleles per locus extracted.
         //      - Finally, input allele frequency table file which can be represented by all alleles or one less allele per locus will be appended with the alternative allele if the sum of allele frequencies per locus do not add up to one.
 
         self.check().expect("Error self.check() within adaptive_ld_knn_imputation() method of GenotypesAndPhenotypes struct.");
-        let (loci_idx, loci_chr, loci_pos) = self.count_loci().expect("Error counting loci of self within the adaptive_ld_knn_imputation method of GenotypesAndPhenotypes struct.");
+        // let (loci_idx, loci_chr, loci_pos) = self.count_loci().expect("Error counting loci of self within the adaptive_ld_knn_imputation method of GenotypesAndPhenotypes struct.");
 
         
         // Define fixed linkage and distance thresholds, i.e. the minimum number of loci to use in estimating genetic distances, and the minimum number of nearest neighbours to include in imputation
@@ -487,7 +486,7 @@ impl GenotypesAndPhenotypes {
         let l = loci_idx.len();
         let chunk_size = l / n_chunks;
         // Define the indices of the indices of loci
-        let mut vec_idx_loci_idx_ini: Vec<usize> = (0..(l-chunk_size)).step_by(chunk_size).collect();
+        let vec_idx_loci_idx_ini: Vec<usize> = (0..(l-chunk_size)).step_by(chunk_size).collect();
         let mut vec_idx_loci_idx_fin: Vec<usize> = (chunk_size..l).step_by(chunk_size).collect();
         let idx_fin = vec_idx_loci_idx_fin[vec_idx_loci_idx_fin.len()-1];
         if idx_fin != (l-1) {
@@ -498,7 +497,7 @@ impl GenotypesAndPhenotypes {
         n_chunks = vec_idx_loci_idx_ini.len();
 
         // Instantiate thread object for parallel execution
-        let mut thread_objects: Vec<String> = vec![];
+        let mut thread_objects: Vec<(String, f64, f64)> = vec![];
         for i in 0..n_chunks {
             let idx_loci_idx_ini = vec_idx_loci_idx_ini[i];
             let idx_loci_idx_fin = vec_idx_loci_idx_fin[i];
@@ -507,7 +506,7 @@ impl GenotypesAndPhenotypes {
                 // let mut allele_frequencies: Array2<f64> = self.intercept_and_allele_frequencies.slice(s![.., *idx_ini..*idx_fin]).to_owned();
 
 
-                let (allele_frequencies, mae) = self.per_chunk_aldknni(
+                let (allele_frequencies, sum_mae, n_missing) = self.per_chunk_aldknni(
                     &idx_loci_idx_ini,
                     &idx_loci_idx_fin,
                     &loci_idx,
@@ -554,12 +553,14 @@ impl GenotypesAndPhenotypes {
                     .append(false)
                     .open(&fname_intermediate_file)
                     .expect(&error_writing_file);
-                // Write the header
-                file_out
-                    .write_all(
-                        ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
-                    )
-                    .expect("Error calling write_all() within the write_csv() method for GenotypesAndPhenotypes struct.");
+                // Write the header only for the first chunk
+                if i == 0 {
+                    file_out
+                        .write_all(
+                            ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
+                        )
+                        .expect("Error calling write_all() within the write_csv() method for GenotypesAndPhenotypes struct.");
+                }
                 // Write allele frequencies line by line
                 for j in 0..p {
                     let line = [
@@ -579,18 +580,38 @@ impl GenotypesAndPhenotypes {
                 }
 
 
-                return fname_intermediate_file
+                return (fname_intermediate_file, sum_mae, n_missing)
             });
             thread_objects.push(thread);
         }
-        // Waiting for all threads to finish
-        let mut vec_fname_intermediate_files: Vec<String> = vec![];
+        // Concatenate output per chunk
+        let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64)> = vec![];
         for thread in thread_objects {
-            vec_fname_intermediate_files.push(thread);
+            vec_fname_intermediate_files_and_mae.push(thread);
         }
+        // Sort by intermediate output filenames (named according to indices)
+        vec_fname_intermediate_files_and_mae.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("Error sorting intermediate output filenames"));
 
-
-
+        // Concatenate intermediate output filenames together and calculate mae
+        let mut file_0 = OpenOptions::new()
+            .append(true)
+            .open(vec_fname_intermediate_files_and_mae[0].0.to_owned())
+            .expect("Error opening the intermediate file of the first chunk.");
+        let mut sum_mae = vec_fname_intermediate_files_and_mae[0].1;
+        let mut n_missing = vec_fname_intermediate_files_and_mae[0].2;
+        for i in 1..vec_fname_intermediate_files_and_mae.len() {
+            let mut file_1 = OpenOptions::new()
+                .read(true)
+                .open(vec_fname_intermediate_files_and_mae[i].0.to_owned())
+                .expect("Error opening the intermediate file of a chunk.");;
+            io::copy(&mut file_1, &mut file_0).expect("Error concatenating intermediate output files.");
+            remove_file(vec_fname_intermediate_files_and_mae[i].0.to_owned())
+                .expect("Error removing the intermediate file of a chunk.");
+            sum_mae += vec_fname_intermediate_files_and_mae[i].1;
+            n_missing += vec_fname_intermediate_files_and_mae[i].2;
+        }
+        let mae = sum_mae / n_missing;
+        Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae))
     }
 }
 
@@ -628,8 +649,9 @@ pub fn impute_aldknni(
         println!("Estimating imputation accuracy.");
     }
     let start = std::time::SystemTime::now();
-    let _ = genotypes_and_phenotypes
+    let (fname_imputed, mae) = genotypes_and_phenotypes
         .adaptive_ld_knn_imputation(
+            &loci_idx,
             min_loci_corr,
             max_pool_dist,
             min_l_loci,
@@ -638,45 +660,47 @@ pub fn impute_aldknni(
             restrict_linked_loci_per_chromosome,
             n_reps,
             n_threads
-        );
-        // .expect("Error calling adaptive_ld_knn_imputation() within impute_aldknni().");
+        ).expect("Error calling adaptive_ld_knn_imputation() within impute_aldknni().");
     let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).expect("Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().");
-    // println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    // println!(
-    //     "Expected imputation accuracy in terms of mean absolute error: {}",
-    //     mae
-    // );
-    // println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    // println!(
-    //     "Adaptive LD-kNN imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     self_clone.coverages.nrows(),
-    //     self_clone.coverages.ncols(),
-    //     self_clone.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
-    //     duration.as_secs()
-    // );
-    // // Remove 100% of the loci with missing data
-    // let start = std::time::SystemTime::now();
-    // self_clone
-    //     .filter_out_top_missing_loci(&1.00)
-    //     .expect("Error calling filter_out_top_missing_loci() method within impute_aldknni().");
-    // let end = std::time::SystemTime::now();
-    // let duration = end.duration_since(start).expect("Error measuring the duration of running filter_out_top_missing_loci() within impute_aldknni().");
-    // println!(
-    //     "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
-    //     self_clone.coverages.nrows(),
-    //     self_clone.coverages.ncols(),
-    //     self_clone.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
-    //     duration.as_secs()
-    // );
-    // // Output
-    // let out = self_clone
-    //     .write_csv(filter_stats, false, out, n_threads)
-    //     .expect(
-    //         "Error writing the output file using the write_csv() method within impute_aldknni().",
-    //     );
-    // Ok(out)
-    Ok("".to_owned())
+    let duration = end.duration_since(start).expect("Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().");
+    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    println!(
+        "Expected imputation accuracy in terms of mean absolute error: {}",
+        mae
+    );
+    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+    let mut genotypes_and_phenotypes = FileGeno{filename: fname_imputed.to_owned()}.into_genotypes_and_phenotypes(filter_stats, false, n_threads).expect("Error loading the imputed genotype file.");
+    remove_file(fname_imputed).expect("Error removing concatenated intermediate file.");
+
+    println!(
+        "Adaptive LD-kNN imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
+        genotypes_and_phenotypes.coverages.nrows(),
+        genotypes_and_phenotypes.coverages.ncols(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
+        duration.as_secs()
+    );
+    // Remove 100% of the loci with missing data
+    let start = std::time::SystemTime::now();
+    genotypes_and_phenotypes
+        .filter_out_top_missing_loci(&1.00)
+        .expect("Error calling filter_out_top_missing_loci() method within impute_aldknni().");
+    let end = std::time::SystemTime::now();
+    let duration = end.duration_since(start).expect("Error measuring the duration of running filter_out_top_missing_loci() within impute_aldknni().");
+    println!(
+        "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
+        genotypes_and_phenotypes.coverages.nrows(),
+        genotypes_and_phenotypes.coverages.ncols(),
+        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
+        duration.as_secs()
+    );
+    // Output
+    let out = genotypes_and_phenotypes
+        .write_csv(filter_stats, false, out, n_threads)
+        .expect(
+            "Error writing the output file using the write_csv() method within impute_aldknni().",
+        );
+    Ok(out)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -825,8 +849,9 @@ mod tests {
         let n_threads = 8;
 
 
-        let _ = frequencies_and_phenotypes
+        let (fname_imputed, mae) = frequencies_and_phenotypes
             .adaptive_ld_knn_imputation(
+                &loci_idx,
         &min_loci_corr,
         &max_pool_dist,
         &min_l_loci,
@@ -835,43 +860,38 @@ mod tests {
         restrict_linked_loci_per_chromosome,
         &n_reps,
         &n_threads
-            );
-        // println!(
-        //     "After imputation:\n{:?}",
-        //     frequencies_and_phenotypes.intercept_and_allele_frequencies
-        // );
-        // println!("Estimated MAE={}", mae);
-        assert_eq!(0, 1)
-        // let n_nan = frequencies_and_phenotypes
-        //     .intercept_and_allele_frequencies
-        //     .iter()
-        //     .fold(0, |n_nan, &x| if x.is_nan() { n_nan + 1 } else { n_nan });
-        // println!("n_nan={}", n_nan);
-        // assert_eq!(n_nan, 1_915); // corresponds to the 1_915 alleles completely missing across all pools
+            ).unwrap();
+        println!(
+            "After imputation:\n{:?}",
+            frequencies_and_phenotypes.intercept_and_allele_frequencies
+        );
+        println!("Estimated MAE={}", mae);
+        let n_nan = frequencies_and_phenotypes
+            .intercept_and_allele_frequencies
+            .iter()
+            .fold(0, |n_nan, &x| if x.is_nan() { n_nan + 1 } else { n_nan });
+        println!("n_nan={}", n_nan);
+        assert_eq!(n_nan, 1_915); // corresponds to the 1_915 alleles completely missing across all pools
 
-        // let keep_p_minus_1 = false;
-        // let genotypes_and_phenotypes = file_sync_phen
-        //     .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &n_threads)
-        //     .unwrap();
+        let keep_p_minus_1 = false;
+        let genotypes_and_phenotypes = file_sync_phen
+            .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &n_threads)
+            .unwrap();
 
-        // let outname = impute_aldknni(
-        //     genotypes_and_phenotypes,
-        //     &filter_stats,
-        //     &min_loci_corr,
-        //     &max_pool_dist,
-        //     &min_l_loci,
-        //     &min_k_neighbours,
-        //     restrict_linked_loci_per_chromosome,
-        //     &optimise_n_steps_min_loci_corr,
-        //     &optimise_n_steps_max_pool_dist,
-        //     &optimise_max_l_loci,
-        //     &optimise_max_k_neighbours,
-        //     &optimise_n_reps,
-        //     &n_threads,
-        //     &"test-impute_aldknni.csv".to_owned(),
-        // )
-        // .unwrap();
-        // assert_eq!(outname, "test-impute_aldknni.csv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
+        let outname = impute_aldknni(
+            genotypes_and_phenotypes,
+            &filter_stats,
+            &min_loci_corr,
+            &max_pool_dist,
+            &min_l_loci,
+            &min_k_neighbours,
+            restrict_linked_loci_per_chromosome,
+            &n_reps,
+            &n_threads,
+            &"test-impute_aldknni.csv".to_owned(),
+        )
+        .unwrap();
+        assert_eq!(outname, "test-impute_aldknni.csv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
 
         // println!("frequencies_and_phenotypes.intercept_and_allele_frequencies.slice(s![0..5, 39..42])={:?}", frequencies_and_phenotypes.intercept_and_allele_frequencies.slice(s![0..5, 39..42]));
         // assert_eq!(
