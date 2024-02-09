@@ -1,9 +1,9 @@
 ### Load imputef library
 # dir_src = "/group/pasture/Jeff/imputef/res"
-# library(imputef)
+library(imputef)
 # system("conda activate rustenv")
-devtools::load_all()
-rextendr::document()
+# devtools::load_all()
+# rextendr::document()
 
 
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
