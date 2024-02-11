@@ -5,8 +5,7 @@ setwd(dir_ouput)
 
 ### Plotting function per dataset
 plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concordance_classes"), vec_2_metrics_labels=c("Mean absolute error", "Concordance")) {
-  # vec_2_metrics = c("mae_frequencies", "concordance_classes")
-  # vec_2_metrics_labels = c("Mean absolute error", "Concordance")
+  # vec_2_metrics = c("mae_frequencies", "concordance_classes"); vec_2_metrics_labels = c("Mean absolute error", "Concordance")
   # Sort algorithms according to increasing complexity and with LinkImpute at the bottom as it will not be assessed for polyploid and pool datasets
   df$algorithm = as.character(df$algorithm)
   df$algorithm[df$algorithm=="mvi"] = "a"
@@ -114,6 +113,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
       plot(x=c(0,1), y=c(0,1), type="n", xlab="Expected allele frequencies (5% MAF)", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
       colour = vec_colours[vec_algorithm==algo]
       for (missing_rate in vec_missing_rate) {
+        # missing_rate = vec_missing_rate[1]
         eval(parse(text=paste0("colour = rgb(", paste(as.vector(col2rgb(colour)), collapse = "/256,"), "/256, alpha=", missing_rate, ")")))
         idx = which((subdf$algorithm == algo) & (subdf$missing_rate == missing_rate))
         if (length(idx) > 1) {
@@ -126,7 +126,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
               eval(parse(text=paste0("mae_across_freqs = rbind(mae_across_freqs, c(", paste(paste0("subdf$`mae_", q, "`[ix]"), collapse=", "), "))")))
             }
           }
-          mae_across_freqs = colMeans(mae_across_freqs)
+          mae_across_freqs = colMeans(mae_across_freqs, na.rm=TRUE)
         } else {
           eval(parse(text=paste0("mae_across_freqs = c(", paste(paste0("subdf$mae_", q, "[idx]"), collapse=", "), ")")))  
         }
@@ -156,7 +156,7 @@ vec_fnames = vec_fnames[grepl("-missing_rate_", vec_fnames)]
 vec_fnames = vec_fnames[grepl(".csv$", vec_fnames)]
 vec_datasets = unique(unlist(lapply(strsplit(vec_fnames, "-"), FUN=function(x){x[[1]]})))
 for (dataset in vec_datasets) {
-  # dataset = vec_datasets[3]
+  # dataset = vec_datasets[1]
   vec_files = vec_fnames[grepl(paste0("^", dataset), vec_fnames)]
   for (i in 1:length(vec_files)) {
     df_tmp = read.csv(vec_files[i])
