@@ -414,7 +414,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         // Find the positions where to split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).expect("Error calling find_file_splits() within the read_analyse_write() method for FileVcf struct.");
         let n_threads = chunks.len() - 1;
-        let outname_ndigits = chunks[n_threads].to_string().len();
+        let n_digits = chunks[n_threads].to_string().len();
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of vcf2sync_chunks
         // Instantiate thread object for parallel execution
@@ -428,7 +428,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             let self_clone = self.clone();
             let start = chunks[i];
             let end = chunks[i + 1];
-            let outname_ndigits = outname_ndigits;
+            let outname_ndigits = n_digits;
             let filter_stats = filter_stats.clone();
             let thread_ouputs_clone = thread_ouputs.clone(); // Mutated within the current thread worker
             let thread = std::thread::spawn(move || {
