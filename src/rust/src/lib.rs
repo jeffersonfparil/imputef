@@ -45,7 +45,7 @@ fn impute(
     // 2) sync - intermediate richness and most preferred (*.sync)
     // 3) geno - least detailed - tab-delimited: chr,pos,allele,sample-1,sample-2,some-name-@#@#$%^&*(+)}:<'?"-with-a-bunch-of-asci-characters,... (*.txt)
     let extension_name: &str = fname
-        .split(".")
+        .split('.')
         .collect::<Vec<&str>>()
         .last()
         .expect("Error extracting the last character of the input filename in impute().");
@@ -216,7 +216,7 @@ fn impute(
             vec_header
         };
         let vec_header: Vec<&str> = if vec_header.len() == 1 {
-            header.split(";").collect()
+            header.split(';').collect()
         } else {
             vec_header
         };
@@ -297,7 +297,7 @@ fn impute(
     } else {
         fname_out_prefix.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
     };
-    let _ = if &imputation_method == &"mean".to_owned() {
+    let _ = if imputation_method == *"mean" {
         println!("###################################################################################################");
         println!("mvi: mean value imputation");
         println!("###################################################################################################");

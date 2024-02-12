@@ -307,11 +307,13 @@ impl GenotypesAndPhenotypes {
                     n_non_missing
                 };
                 // Select randomly non-missing pools to impute and estimate imputation error from
-                let mut rng = rand::thread_rng();
+                let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
                 let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
-                let mut optimum_mae = 1.0;
-                let mut optimum_min_loci_corr = vec_min_loci_corr[0];
-                let mut optimum_max_pool_dist = vec_max_pool_dist[0];
+                // Optimum mae, and parameters
+                let mut optimum_mae: f64 = 1.0;
+                let mut optimum_min_loci_corr: f64 = vec_min_loci_corr[0];
+                let mut optimum_max_pool_dist: f64 = vec_max_pool_dist[0];
+                let mut recent_3_maes: Vec<f64> = vec![0.0, 0.5, 1.0];
                 // Find the optimal min_loci_corr and max_pool_dist which minimise imputation error (MAE: mean absolute error)
                 // Across minimum loci correlation thresholds
                 for min_loci_corr in vec_min_loci_corr.iter() {
@@ -347,7 +349,15 @@ impl GenotypesAndPhenotypes {
                             ).abs();
                         }
                         mae /= n_reps as f64;
-                        if (mae <= f64::EPSILON) | (mae > optimum_mae) {
+                        // The most recent 3 MAEs
+                        recent_3_maes[2] = recent_3_maes[1];
+                        recent_3_maes[1] = recent_3_maes[0];
+                        recent_3_maes[0] = mae;
+                        // Inner loop break conditions
+                        if (mae <= f64::EPSILON) |
+                           (mae > optimum_mae) |
+                           (((recent_3_maes[0]-recent_3_maes[1]).abs() <= f64::EPSILON) &
+                            ((recent_3_maes[0]-recent_3_maes[2]).abs() <= f64::EPSILON)) {
                             break;
                         }
                         if mae < optimum_mae {
