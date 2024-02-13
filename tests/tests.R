@@ -28,9 +28,9 @@ test_that(
 test_that(
     "aldknni_fixed", {
         print("aldknni_fixed:")
-        vcf = fn_extract_missing(aldknni(fname=fname_vcf, min_loci_corr=0.9, max_pool_dist=0.1))
-        sync = fn_extract_missing(aldknni(fname=fname_sync, min_loci_corr=0.9, max_pool_dist=0.1))
-        csv = fn_extract_missing(aldknni(fname=fname_csv, min_loci_corr=0.9, max_pool_dist=0.1)) - c(0, 0, 0, 0, 1, 0)
+        vcf = fn_extract_missing(aldknni(fname=fname_vcf))
+        sync = fn_extract_missing(aldknni(fname=fname_sync))
+        csv = fn_extract_missing(aldknni(fname=fname_csv)) - c(0, 0, 0, 0, 1, 0)
         expect_equal(vcf, sync, tolerance=0.1)
         expect_equal(vcf, csv, tolerance=0.1)
     }
@@ -39,9 +39,9 @@ test_that(
 test_that(
     "aldknni_optim", {
         print("aldknni_optim:")
-        vcf = fn_extract_missing(aldknni(fname=fname_vcf))
-        sync = fn_extract_missing(aldknni(fname=fname_sync))
-        csv = fn_extract_missing(aldknni(fname=fname_csv)) - c(0, 0, 0, 0, 1, 0)
+        vcf = fn_extract_missing(aldknni(fname=fname_vcf, min_loci_corr=NA, max_pool_dist=NA))
+        sync = fn_extract_missing(aldknni(fname=fname_sync, min_loci_corr=NA, max_pool_dist=NA))
+        csv = fn_extract_missing(aldknni(fname=fname_csv, min_loci_corr=NA, max_pool_dist=NA)) - c(0, 0, 0, 0, 1, 0)
         expect_equal(vcf, sync, tolerance=0.1)
         expect_equal(vcf, csv, tolerance=0.1)
     }

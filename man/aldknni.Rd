@@ -41,13 +41,13 @@ aldknni(fname,
 
 \item{frac_top_missing_loci}{fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. \link{Default=0.0}}
 
-\item{min_loci_corr}{Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=NA}}
+\item{min_loci_corr}{Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=0.9}}
 
-\item{max_pool_dist}{Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=NA}}
+\item{max_pool_dist}{Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. \link{Default=0.1}}
 
-\item{min_l_loci}{Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. \link{Default=1}}
+\item{min_l_loci}{Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. \link{Default=20}}
 
-\item{min_k_neighbours}{Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. \link{Default=1}}
+\item{min_k_neighbours}{Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. \link{Default=5}}
 
 \item{restrict_linked_loci_per_chromosome}{Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? \link{Default=TRUE}}
 
