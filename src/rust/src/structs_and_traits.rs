@@ -181,7 +181,7 @@ pub trait ChunkyReadAnalyseWrite<T, F> {
     fn read_analyse_write(
         &self,
         filter_stats: &FilterStats,
-        out: &String,
+        out: &str,
         n_threads: &usize,
         function: F,
     ) -> io::Result<String>
@@ -203,7 +203,7 @@ pub trait LoadAll {
         keep_n_minus_1: bool,
         n_threads: &usize,
     ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)>; // Allele frequencies and counts across pools and alleles per locus
-    fn into_genotypes_and_phenotypes(
+    fn convert_into_genotypes_and_phenotypes(
         &self,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
@@ -216,7 +216,7 @@ pub trait SaveCsv {
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
-        out: &String,
+        out: &str,
         n_threads: &usize,
     ) -> io::Result<String>;
 }

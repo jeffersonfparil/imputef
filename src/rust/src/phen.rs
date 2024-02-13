@@ -66,11 +66,11 @@ impl Parse<Phen> for FilePhen {
                 ));
                 for j in 0..k {
                     if (vec_line[trait_values_column_ids[j]] == *"")
-                        | (vec_line[trait_values_column_ids[j]] == *"NA")
-                        | (vec_line[trait_values_column_ids[j]] == *"NAN")
-                        | (vec_line[trait_values_column_ids[j]] == *"NaN")
-                        | (vec_line[trait_values_column_ids[j]] == *"na")
-                        | (vec_line[trait_values_column_ids[j]] == *"nan")
+                        || (vec_line[trait_values_column_ids[j]] == *"NA")
+                        || (vec_line[trait_values_column_ids[j]] == *"NAN")
+                        || (vec_line[trait_values_column_ids[j]] == *"NaN")
+                        || (vec_line[trait_values_column_ids[j]] == *"na")
+                        || (vec_line[trait_values_column_ids[j]] == *"nan")
                     {
                         phen_vec.push(f64::NAN)
                     } else {

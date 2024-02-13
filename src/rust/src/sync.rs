@@ -42,7 +42,7 @@ impl CheckStruct for LocusCountsAndPhenotypes {
         let (n, _p) = self.locus_counts.matrix.dim();
         let (n_, _k) = self.phenotypes.dim();
         let n__ = self.pool_names.len();
-        match (n == n_) & (n_ == n__) {
+        match (n == n_) && (n_ == n__) {
             true => Ok(()),
             false => {
                 let locus = [
@@ -64,7 +64,7 @@ impl CheckStruct for GenotypesAndPhenotypes {
         let (n_, _k) = self.phenotypes.dim();
         let n__ = self.pool_names.len();
         let (n___, l) = self.coverages.dim();
-        match (p == p_) & (p_ == p__) & (n == n_) & (n_ == n__) & (n__ == n___) & (l <= p) {
+        match (p == p_) && (p_ == p__) && (n == n_) && (n_ == n__) && (n__ == n___) && (l <= p) {
             true => Ok(()),
             false => Err(Error::new(ErrorKind::Other, "GenotypesAndPhenotypes: there are at least 1 mismatch in the number of pools and loci."))
         }
@@ -83,8 +83,7 @@ impl Count for GenotypesAndPhenotypes {
         for i in 1..p {
             // excludes the intercept
             if (self.chromosome[i - 1] != self.chromosome[i])
-                | ((self.chromosome[i - 1] == self.chromosome[i])
-                    & (self.position[i - 1] != self.position[i]))
+                || (self.position[i - 1] != self.position[i])
             {
                 loci_idx.push(i);
                 loci_chr.push(self.chromosome[i].to_owned());
@@ -205,7 +204,7 @@ impl Filter for LocusCounts {
             let i = match self
                 .alleles_vector
                 .iter()
-                .position(|x| (x == &"N".to_owned()) | (x == &"n".to_owned()))
+                .position(|x| (x == &"N".to_owned()) || (x == &"n".to_owned()))
             {
                 Some(x) => x as i32,
                 None => -1,
@@ -274,7 +273,7 @@ impl Filter for LocusCounts {
                 };
             }
             if (q < filter_stats.min_allele_frequency)
-                | (q > (1.00 - filter_stats.min_allele_frequency))
+                || (q > (1.00 - filter_stats.min_allele_frequency))
             {
                 allele_frequencies.matrix.remove_index(Axis(1), j);
                 matrix.remove_index(Axis(1), j);
@@ -391,7 +390,7 @@ impl Filter for LocusFrequencies {
             let i = match self
                 .alleles_vector
                 .iter()
-                .position(|x| (x == &"N".to_owned()) | (x == &"n".to_owned()))
+                .position(|x| (x == &"N".to_owned()) || (x == &"n".to_owned()))
             {
                 Some(x) => x as i32,
                 None => -1,
@@ -446,7 +445,7 @@ impl Filter for LocusFrequencies {
                 };
             }
             if (q < filter_stats.min_allele_frequency)
-                | (q > (1.00 - filter_stats.min_allele_frequency))
+                || (q > (1.00 - filter_stats.min_allele_frequency))
             {
                 allele_frequencies.matrix.remove_index(Axis(1), j);
                 matrix.remove_index(Axis(1), j);
@@ -477,7 +476,7 @@ impl Filter for LocusFrequencies {
         for i in 0..matrix.nrows() {
             let row_sum = matrix.row(i).sum();
             for j in 0..matrix.ncols() {
-                matrix[(i, j)] = matrix[(i, j)] / row_sum;
+                matrix[(i, j)] /= row_sum;
             }
         }
         // Return the locus if it passed all the filtering steps
@@ -534,8 +533,7 @@ impl RemoveMissing for LocusCountsAndPhenotypes {
             let mut new_phenotypes: Array2<f64> = Array2::from_elem((idx.len(), k), f64::NAN);
             let mut new_pool_names: Vec<String> = vec![];
             let mut new_locus_counts_matrix: Array2<u64> = Array2::from_elem((idx.len(), p), 0);
-            let mut i_new: usize = 0;
-            for i in idx {
+            for (i_new, i) in idx.into_iter().enumerate() {
                 for j in 0..k {
                     new_phenotypes[(i_new, j)] = self.phenotypes[(i, j)];
                 }
@@ -543,7 +541,6 @@ impl RemoveMissing for LocusCountsAndPhenotypes {
                 for j in 0..p {
                     new_locus_counts_matrix[(i_new, j)] = self.locus_counts.matrix[(i, j)];
                 }
-                i_new += 1;
             }
             self.phenotypes = new_phenotypes;
             self.pool_names = new_pool_names;
@@ -581,8 +578,7 @@ impl RemoveMissing for GenotypesAndPhenotypes {
             let mut new_intercept_and_allele_frequencies: Array2<f64> =
                 Array2::from_elem((idx.len(), p), f64::NAN);
             let mut new_coverages: Array2<f64> = Array2::from_elem((idx.len(), l), f64::NAN);
-            let mut i_new: usize = 0;
-            for i in idx.clone() {
+            for (i_new, i) in idx.into_iter().enumerate() {
                 for j in 0..k {
                     new_phenotypes[(i_new, j)] = self.phenotypes[(i, j)];
                 }
@@ -594,7 +590,6 @@ impl RemoveMissing for GenotypesAndPhenotypes {
                 for j in 0..l {
                     new_coverages[(i_new, j)] = self.coverages[(i, j)];
                 }
-                i_new += 1;
             }
             self.phenotypes = new_phenotypes;
             self.pool_names = new_pool_names;
@@ -752,13 +747,13 @@ impl LoadAll for FileSyncPhen {
         Ok((freq, cnts))
     }
 
-    fn into_genotypes_and_phenotypes(
+    fn convert_into_genotypes_and_phenotypes(
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
     ) -> io::Result<GenotypesAndPhenotypes> {
-        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the into_genotypes_and_phenotypes() method for FileSyncPhen struct.");
+        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the convert_into_genotypes_and_phenotypes() method for FileSyncPhen struct.");
         let n = self.pool_names.len();
         let m = freqs.len(); // total number of loci
                              // Find the total number of alleles across all loci
@@ -774,7 +769,6 @@ impl LoadAll for FileSyncPhen {
         let mut allele: Vec<String> = Vec::with_capacity(p);
         allele.push("intercept".to_owned());
         let mut coverages: Array2<f64> = Array2::from_elem((n, m), f64::NAN);
-        let mut l: usize = 0; // locus index
         let mut mat: Array2<f64> = Array2::from_elem((n, p), 1.0);
         let mut j: usize = 1; // SNP index across loci, start after the intercept
         assert_eq!(
@@ -782,7 +776,7 @@ impl LoadAll for FileSyncPhen {
             cnts.len(),
             "Frequencies and counts not the same length."
         );
-        for idx in 0..freqs.len() {
+        for (l, idx) in (0..freqs.len()).enumerate() {
             // Allele frequencies
             let f = &freqs[idx];
             for j_ in 0..f.matrix.ncols() {
@@ -805,7 +799,6 @@ impl LoadAll for FileSyncPhen {
             for i in 0..cov.len() {
                 coverages[(i, l)] = cov[i];
             }
-            l += 1; // next locus
         }
         // println!("coverages={:?}", coverages);
         // println!("mat={:?}", mat);
@@ -835,33 +828,24 @@ impl SaveCsv for FileSyncPhen {
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
-        out: &String,
+        out: &str,
         n_threads: &usize,
     ) -> io::Result<String> {
         // Output filename
-        let out = if *out == "".to_owned() {
+        let out = if out.is_empty() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Error extracting time in UNIX_EPOCH within write_csv() method for FileSyncPhen struct.")
                 .as_secs_f64();
-            let bname = self
-                .filename_sync
-                .split('.')
+            let bname = self.filename_sync.split('.').rev().collect::<Vec<&str>>()[1..]
+                .iter()
+                .copied()
+                .rev()
                 .collect::<Vec<&str>>()
-                .into_iter()
-                .map(|a| a.to_owned())
-                .collect::<Vec<String>>()
-                .into_iter()
-                .rev()
-                .collect::<Vec<String>>()[1..]
-                .to_owned()
-                .into_iter()
-                .rev()
-                .collect::<Vec<String>>()
                 .join(".");
             bname.to_owned() + "-" + &time.to_string() + "-allele_frequencies.csv"
         } else {
-            out.clone()
+            out.to_owned()
         };
         // Instantiate output file
         let error_writing_file = "Unable to create file: ".to_owned() + &out;
@@ -919,7 +903,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
         &self,
         _filter_stats: &FilterStats,
         _keep_p_minus_1: bool,
-        out: &String,
+        out: &str,
         _n_threads: &usize,
     ) -> io::Result<String> {
         // Note: All input parameters are not used except for one - out, the rest are for other implementations of this trait i.e. filter_stats, keep_p_minus_1, and n_threads
@@ -938,7 +922,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
         assert_eq!(n___, n_, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the coverages matrix.");
         assert_eq!(n___, n, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the allele frequencies matrix.");
         // Output filename
-        let out = if *out == "".to_owned() {
+        let out = if out.is_empty() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Error extracting time in UNIX_EPOCH within write_csv() method for GenotypesAndPhenotypes struct.")
@@ -948,7 +932,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
                 + &time.to_string()
                 + "-allele_frequencies.csv"
         } else {
-            out.clone()
+            out.to_owned()
         };
         // Instantiate output file
         let error_writing_file = "Unable to create file: ".to_owned() + &out;
@@ -1499,7 +1483,7 @@ mod tests {
         assert_eq!(locus_counts[2], locus_counts_load[2]);
         // Convert into genotypes and phenotypes
         let genotypes_and_phenotypes: GenotypesAndPhenotypes = file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, false, &2)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, false, &2)
             .unwrap();
         assert_eq!(12669, genotypes_and_phenotypes.chromosome.len());
         assert_eq!(12669, genotypes_and_phenotypes.allele.len());
@@ -1559,7 +1543,7 @@ mod tests {
         );
         // Genotypes and phenotypes struct
         let genotypes_and_phenotypes: GenotypesAndPhenotypes = file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, false, &2)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, false, &2)
             .unwrap();
         let fname_out_genotypes_and_phenotypes_save =
             "tests/test-genotypes_and_phenotypes-save.csv".to_owned();

@@ -20,7 +20,7 @@ impl Parse<LocusFrequencies> for String {
             vec_line
         };
         let vec_line: Vec<&str> = if vec_line.len() == 1 {
-            self.split(";").collect()
+            self.split(';').collect()
         } else {
             vec_line
         };
@@ -52,10 +52,10 @@ impl Parse<LocusFrequencies> for String {
         )
         .expect("Error parsing the allele frequency table text file within the lparse() method for parsing String into LocusFrequencies struct.");
         let freq_line = LocusFrequencies {
-            chromosome: chromosome,
-            position: position,
-            alleles_vector: alleles_vector,
-            matrix: matrix,
+            chromosome,
+            position,
+            alleles_vector,
+            matrix,
         };
         // println!("freq_line={:?}", freq_line);
         Ok(Box::new(freq_line))
@@ -180,7 +180,7 @@ impl LoadAll for FileGeno {
         Ok((freq, cnts))
     }
 
-    fn into_genotypes_and_phenotypes(
+    fn convert_into_genotypes_and_phenotypes(
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
@@ -188,10 +188,10 @@ impl LoadAll for FileGeno {
     ) -> io::Result<GenotypesAndPhenotypes> {
         // No filtering! Just loading the allele frequency data
         // Extract pool names
-        let file: File = File::open(self.filename.clone()).expect("Error opening the allele frequency table text file within the into_genotypes_and_phenotypes() method for FileGeno struct.");
+        let file: File = File::open(self.filename.clone()).expect("Error opening the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.");
         let reader = io::BufReader::new(file);
         let mut header: String = match reader.lines().next() {
-            Some(x) => x.expect("Error reading the allele frequency table text file within the into_genotypes_and_phenotypes() method for FileGeno struct."),
+            Some(x) => x.expect("Error reading the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct."),
             None => return Err(Error::new(ErrorKind::Other, "No header line found.")),
         };
         if header.ends_with('\n') {
@@ -207,7 +207,7 @@ impl LoadAll for FileGeno {
             vec_header
         };
         let vec_header: Vec<&str> = if vec_header.len() == 1 {
-            header.split(";").collect()
+            header.split(';').collect()
         } else {
             vec_header
         };
@@ -217,7 +217,7 @@ impl LoadAll for FileGeno {
             .map(|&x| x.to_owned())
             .collect();
         // Load allele frequencies
-        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the into_genotypes_and_phenotypes() method for FileGeno struct.");
+        let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.");
         let n = freqs[0].matrix.nrows();
         assert_eq!(
             n,
@@ -244,9 +244,7 @@ impl LoadAll for FileGeno {
             chromosome.push(f.chromosome.clone());
             position.push(f.position);
             allele.push(f.alleles_vector[0].clone());
-            if (chromosome[j - 1] != chromosome[j])
-                | ((chromosome[j - 1] == chromosome[j]) & (position[j - 1] != position[j]))
-            {
+            if (chromosome[j - 1] != chromosome[j]) || (position[j - 1] != position[j]) {
                 l += 1;
                 loci_idx.push(j);
                 loci_chr.push(chromosome[j].to_owned());
@@ -258,8 +256,8 @@ impl LoadAll for FileGeno {
         }
         // Add the last allele of the last locus
         loci_idx.push(p);
-        loci_chr.push(chromosome.last().expect("Error push chromosome within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
-        loci_pos.push(position.last().expect("Error push position within the into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
+        loci_chr.push(chromosome.last().expect("Error push chromosome within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
+        loci_pos.push(position.last().expect("Error push position within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
         // Add alternative alleles if the allele frequencies per locus do not add up to 1.00 (~or if only one allele per locus is present~)
         // Count how many allele we have to add
         for j in 0..l {
@@ -273,7 +271,7 @@ impl LoadAll for FileGeno {
                     break;
                 }
             }
-            // if (n_alleles == 1) | freq_sum_less_than_one {
+            // if (n_alleles == 1) || freq_sum_less_than_one {
             if freq_sum_less_than_one {
                 p += 1;
             }
@@ -307,7 +305,7 @@ impl LoadAll for FileGeno {
                     break;
                 }
             }
-            if (n_alleles == 1) | freq_sum_less_than_one {
+            if (n_alleles == 1) || freq_sum_less_than_one {
                 chromosome_new.push(chromosome[idx_ini].to_owned());
                 position_new.push(position[idx_ini]);
                 allele_new.push("U".to_owned()); // unknown alternative allele
@@ -323,7 +321,7 @@ impl LoadAll for FileGeno {
             position: position_new,
             allele: allele_new,
             intercept_and_allele_frequencies: mat_new,
-            phenotypes: Array2::from_shape_vec((n, 1), vec![f64::NAN; n]).expect("Error generating dummy phenotype data within the into_genotypes_and_phenotypes() method for FileGeno struct."),
+            phenotypes: Array2::from_shape_vec((n, 1), vec![f64::NAN; n]).expect("Error generating dummy phenotype data within the convert_into_genotypes_and_phenotypes() method for FileGeno struct."),
             pool_names,
             coverages: Array2::from_elem((n, l), 1_000.0),
         })
@@ -352,7 +350,7 @@ mod tests {
         let n_threads = 8;
 
         let genotypes_and_phenotype = file_geno
-            .into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
             .unwrap();
         // println!("genotypes_and_phenotype={:?}", genotypes_and_phenotype);
         assert!(
