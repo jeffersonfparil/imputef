@@ -41,34 +41,27 @@ impl Parse<VcfLine> for String {
             // Iterate across pools to extract the allele depths
             for i in 9..raw_locus_data.len() {
                 let geno_data = raw_locus_data[i].split(':').collect::<Vec<&str>>();
-                allele_depths.push(if (geno_data[0] == "./.") | (geno_data[0] == ".|.") {
+                allele_depths.push(if (geno_data[0] == "./.") || (geno_data[0] == ".|.") {
                     // Missing data, i.e. coded as "./." which we are coding here as 0 depth across all alleles
                     vec![0; 1 + alternative_alleles.len()]
                 } else {
                     // Non-missing data
-                    let mut d = geno_data[idx]
+                    // Initially set zero counts for all alleles including excluded alternative alleles
+                    let mut d = vec![0; 1 + alternative_alleles.len()];
+                    for (j, x) in geno_data[idx]
                         .split(',')
                         .collect::<Vec<&str>>()
-                        .iter()
-                        .map(|&x| x.parse::<u64>().expect("Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct."))
-                        .collect::<Vec<u64>>();
-                    // Add zero to the alternative allele counts if the after splitting the allele depths we have less than the expected counts
-                    if d.len() == (1 + alternative_alleles.len()) {
-                        d
-                    } else {
-                        let n_missing_allele_counts = (1 + alternative_alleles.len()) - d.len();
-                        for _ in 0..n_missing_allele_counts {
-                            d.push(0);
-                        }
-                        d
+                        .into_iter()
+                        .enumerate() {
+                            d[j] = x.parse::<u64>().expect("Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct.");
                     }
+                    d
                 });
             }
         } else {
-            // return Err(Error::new(ErrorKind::Other, "Please check the format of the input vcf file as the allele depths (AD attribute) were not generated.".to_owned()));
             // Allowing for vcf without AD attribute but we need the GT attribute to extract diploid allele frequency genotype classes corresponding to 0.0, 0.5, and 1.0
             // Setting the depth per allele to 1000X, assuming reasonable minimum depth does not come up beyond this level
-            let allele_depth = 1000 as u64;
+            let allele_depth = 1000_u64;
             let idx = raw_locus_data[8]
                 .split(':')
                 .enumerate()
@@ -80,7 +73,7 @@ impl Parse<VcfLine> for String {
                 let geno_data = raw_locus_data[i].split(':').collect::<Vec<&str>>();
                 // println!("geno_data[idx]={:?}", geno_data[idx]);
                 let mut diploid_geno_vec: Vec<u64> = vec![0; 1 + alternative_alleles.len()];
-                if (geno_data[idx] != "./.") & (geno_data[idx] != ".|.") {
+                if (geno_data[idx] != "./.") && (geno_data[idx] != ".|.") {
                     let diploid_geno = geno_data[idx].split('|').collect::<Vec<&str>>();
                     // If the genotype is unphased:
                     let diploid_geno = if diploid_geno.len() == 1 {
@@ -97,8 +90,8 @@ impl Parse<VcfLine> for String {
                             .collect::<Vec<u64>>()
                     };
                     // println!("diploid_geno={:?}", diploid_geno);
-                    for j in 0..(1 + alternative_alleles.len()) {
-                        diploid_geno_vec[j] = diploid_geno.iter().fold(0 as u64, |sum, &a| {
+                    for (j, g) in diploid_geno_vec.iter_mut().enumerate() {
+                        *g = diploid_geno.iter().fold(0_u64, |sum, &a| {
                             if j as u64 == a {
                                 sum + allele_depth
                             } else {
@@ -204,7 +197,7 @@ impl Filter for VcfLine {
                 // We've made sure the pool_sizes sum up to one in phen.rs
             }
             if (q < filter_stats.min_allele_frequency)
-                | (q > (1.00 - filter_stats.min_allele_frequency))
+                || (q > (1.00 - filter_stats.min_allele_frequency))
             {
                 m -= 1;
             } else {
@@ -350,7 +343,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
     fn read_analyse_write(
         &self,
         filter_stats: &FilterStats,
-        out: &String,
+        out: &str,
         n_threads: &usize,
         function: fn(&mut VcfLine, &FilterStats) -> Option<String>,
     ) -> io::Result<String> {
@@ -363,19 +356,11 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
                 .duration_since(UNIX_EPOCH)
                 .expect("Error extracting time in UNIX_EPOCH within read_analyse_write() method for FileVcf struct.")
                 .as_secs_f64();
-            let bname = fname
-                .split('.')
+            let bname = fname.split('.').rev().collect::<Vec<&str>>()[1..]
+                .iter()
+                .copied()
+                .rev()
                 .collect::<Vec<&str>>()
-                .into_iter()
-                .map(|a| a.to_owned())
-                .collect::<Vec<String>>()
-                .into_iter()
-                .rev()
-                .collect::<Vec<String>>()[1..]
-                .to_owned()
-                .into_iter()
-                .rev()
-                .collect::<Vec<String>>()
                 .join(".");
             out = bname.to_owned() + "-" + &time.to_string() + ".sync";
         }

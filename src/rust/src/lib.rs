@@ -19,6 +19,7 @@ use crate::structs_and_traits::*;
 use crate::vcf::*;
 
 #[extendr]
+#[allow(clippy::too_many_arguments)]
 fn impute(
     fname: String,
     imputation_method: String,
@@ -126,7 +127,6 @@ fn impute(
         let file_vcf = FileVcf {
             filename: fname.to_owned(),
         };
-        let _fname_sync_out: String = fname.to_owned() + "-" + &rand_id + ".sync";
         let fname_sync_out = if fname_out_prefix == *"" {
             fname.to_owned() + "-" + &rand_id + ".sync"
         } else {
@@ -149,8 +149,8 @@ fn impute(
             test: "".to_owned(),
         };
         file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .expect("Error parsing the input genotype (converted from vcf into sync) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
+            .convert_into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
+            .expect("Error parsing the input genotype (converted from vcf into sync) and dummy phenotype data via convert_into_genotypes_and_phenotypes() method within impute().")
     } else if extension_name == "sync" {
         // Extract pool names from the sync file
         let mut pool_names: Vec<String> = vec![];
@@ -191,8 +191,8 @@ fn impute(
             test: "".to_owned(),
         };
         file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .expect("Error parsing the genotype (sync format) and dummy phenotype data via into_genotypes_and_phenotypes() method within impute().")
+            .convert_into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
+            .expect("Error parsing the genotype (sync format) and dummy phenotype data via convert_into_genotypes_and_phenotypes() method within impute().")
     } else {
         // Extract pool names from the txt file
         let file: File =
@@ -236,8 +236,8 @@ fn impute(
         };
         filter_stats.pool_sizes = pool_sizes;
         file_geno
-            .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
-            .expect("Error parsing the genotype data (extracted from allele frequency table text file) via into_genotypes_and_phenotypes() method within impute().")
+            .convert_into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &(n_threads as usize))
+            .expect("Error parsing the genotype data (extracted from allele frequency table text file) via convert_into_genotypes_and_phenotypes() method within impute().")
     };
     // println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
     // Define missing data
@@ -304,10 +304,6 @@ fn impute(
         impute_mean(
             genotypes_and_phenotypes,
             &filter_stats,
-            &min_depth_below_which_are_missing,
-            &max_depth_above_which_are_missing,
-            &frac_top_missing_pools,
-            &frac_top_missing_loci,
             &(n_threads as usize),
             &fname_out,
         )
@@ -330,12 +326,14 @@ fn impute(
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
-            &min_loci_corr,
-            &max_pool_dist,
-            &(min_l_loci as usize),
-            &(min_k_neighbours as usize),
+            (
+                &min_loci_corr,
+                &max_pool_dist,
+                &(min_l_loci as usize),
+                &(min_k_neighbours as usize),
+                &(n_reps as usize),
+            ),
             restrict_linked_loci_per_chromosome,
-            &(n_reps as usize),
             &(n_threads as usize),
             &fname_out,
         )

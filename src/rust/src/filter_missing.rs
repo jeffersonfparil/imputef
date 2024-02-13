@@ -25,7 +25,7 @@ impl GenotypesAndPhenotypes {
         for i in 0..n {
             for j in 0..l {
                 if (self.coverages[(i, j)] < *min_depth_below_which_are_missing)
-                    | (self.coverages[(i, j)] > *max_depth_above_which_are_missing)
+                    || (self.coverages[(i, j)] > *max_depth_above_which_are_missing)
                 {
                     self.coverages[(i, j)] = f64::NAN;
                     // Use the indexes of the locus to set missing values to all alleles in the locus
@@ -181,11 +181,10 @@ impl GenotypesAndPhenotypes {
         let mut new_position: Vec<u64> = vec![self.position[0]];
         let mut new_allele: Vec<String> = vec![self.allele[0].to_owned()];
         let i = 0;
-        for j in 0..l_after_filtering {
-            let j_ = idx[j];
+        for j in idx.clone().into_iter() {
             // Use the indexes of the locus to set missing values to all alleles in the locus
-            let idx_ini = loci_idx_ini[j_];
-            let idx_fin = loci_idx_fin[j_];
+            let idx_ini = loci_idx_ini[j];
+            let idx_fin = loci_idx_fin[j];
             for k in idx_ini..idx_fin {
                 vec_intercept_and_allele_frequencies_pool_0
                     .push(self.intercept_and_allele_frequencies[(i, k)]);
@@ -269,7 +268,7 @@ mod tests {
         };
         let n_threads = 2;
         let mut frequencies_and_phenotypes = file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
             .unwrap();
         let min_depth_below_which_are_missing = 5.0;
         let max_depth_above_which_are_missing = 100.0;

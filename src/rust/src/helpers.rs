@@ -13,7 +13,7 @@ use std::io::{Error, ErrorKind};
 /// Find the start position of the next line given the current position,`pos`.
 /// Positions are coded as the nth UTF8 character count in the file counting the newline characters at the end of each line.
 /// This is used in file splitting to allocate a chunk of the file to a single thread for parallel processing.
-fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
+fn find_start_of_next_line(fname: &str, pos: u64) -> u64 {
     let mut out = pos;
     if out > 0 {
         let mut file = File::open(fname).expect("Error opening file.");
@@ -27,7 +27,7 @@ fn find_start_of_next_line(fname: &String, pos: u64) -> u64 {
 }
 
 /// Detect the cursor positions across the input file corresponding to the splits for parallel computation
-pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64>> {
+pub fn find_file_splits(fname: &str, n_threads: &usize) -> io::Result<Vec<u64>> {
     let mut file = match File::open(fname) {
         Ok(x) => x,
         Err(_) => return Err(Error::new(ErrorKind::Other, "The input file: ".to_owned() + fname + " does not exist. Please make sure you are entering the correct filename and/or the correct path.")),
@@ -39,8 +39,8 @@ pub fn find_file_splits(fname: &String, n_threads: &usize) -> io::Result<Vec<u64
         .step_by((end as usize) / n_threads)
         .collect::<Vec<u64>>();
     out.push(end);
-    for i in 0..out.len() {
-        out[i] = find_start_of_next_line(fname, out[i]);
+    for x in &mut out {
+        *x = find_start_of_next_line(fname, x.to_owned());
     }
     out.dedup();
     Ok(out)
@@ -125,7 +125,7 @@ pub fn pearsons_correlation_pairwise_complete(
     let filtered_vectors: (Vec<f64>, Vec<f64>) = x
         .iter()
         .zip(y.iter())
-        .filter(|&(&x, &y)| (!x.is_nan()) & (!y.is_nan()))
+        .filter(|&(&x, &y)| (!x.is_nan()) && (!y.is_nan()))
         .unzip();
     // println!("q.0={:?}; q.1={:?}", q.0, q.1);
     let x = Array1::from_vec(filtered_vectors.0);

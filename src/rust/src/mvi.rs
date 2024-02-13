@@ -6,6 +6,8 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use std::io;
 
+type SparsitySimulationOutput = (f64, Vec<usize>, Vec<f64>, Vec<Vec<f64>>);
+
 impl GenotypesAndPhenotypes {
     pub fn mean_imputation(&mut self) -> io::Result<&mut Self> {
         self.check().expect("Error calling check() method within mean_imputation() method for GenotypesAndPhenotypes struct.");
@@ -63,10 +65,10 @@ impl GenotypesAndPhenotypes {
 
     pub fn simulate_missing(
         &mut self,
-        loci_idx: &Vec<usize>,
+        loci_idx: &[usize],
         max_sparsity: &f64,
         rep: &usize,
-    ) -> io::Result<(&mut Self, f64, Vec<usize>, Vec<f64>, Vec<Vec<f64>>)> {
+    ) -> io::Result<(&mut Self, SparsitySimulationOutput)> {
         self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         let (n, l) = self.coverages.dim();
         // let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
@@ -119,17 +121,19 @@ impl GenotypesAndPhenotypes {
         self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         Ok((
             self,
-            max_sparsity,
-            vec_masked_loci_idx,
-            vec_masked_coverages,
-            vec_vec_masked_alleles_freqs,
+            (
+                max_sparsity,
+                vec_masked_loci_idx,
+                vec_masked_coverages,
+                vec_vec_masked_alleles_freqs,
+            ),
         ))
     }
 
     pub fn extract_imputed_mask(
         &self,
-        loci_idx: &Vec<usize>,
-        vec_masked_loci_idx: &Vec<usize>,
+        loci_idx: &[usize],
+        vec_masked_loci_idx: &[usize],
     ) -> io::Result<Vec<Vec<f64>>> {
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
@@ -171,10 +175,10 @@ impl GenotypesAndPhenotypes {
         let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
         let (
             _,
-            max_sparsity,
+            (max_sparsity,
             vec_masked_loci_idx,
             _vec_masked_coverages,
-            vec_vec_masked_alleles_freqs,
+            vec_vec_masked_alleles_freqs),
         ) = genotype_data_for_optimisation
             .simulate_missing(&loci_idx, &missing_rate_sim, &0)
             .expect("Error calling simulate_missing() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
@@ -198,7 +202,7 @@ impl GenotypesAndPhenotypes {
                 let w = vec_vec_masked_alleles_freqs[i].len();
                 for j in 0..w {
                     if (vec_vec_masked_alleles_freqs[i][j].is_nan())
-                        | (vec_vec_imputed_mask[i][j].is_nan())
+                        || (vec_vec_imputed_mask[i][j].is_nan())
                     {
                         // Skip if we if masked already missing loci or if we cannot impute because the whole locus is missing
                         continue;
@@ -224,12 +228,8 @@ impl GenotypesAndPhenotypes {
 pub fn impute_mean(
     mut genotypes_and_phenotypes: GenotypesAndPhenotypes,
     filter_stats: &FilterStats,
-    _min_depth_below_which_are_missing: &f64,
-    _max_depth_above_which_are_missing: &f64,
-    _frac_top_missing_pools: &f64,
-    _frac_top_missing_loci: &f64,
     n_threads: &usize,
-    out: &String,
+    out: &str,
 ) -> io::Result<String> {
     // Estimate predicted imputation accuracy
     let mae = genotypes_and_phenotypes
@@ -314,7 +314,7 @@ mod tests {
         };
         let n_threads = 2;
         let mut frequencies_and_phenotypes = file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, false, &n_threads)
             .unwrap();
         println!(
             "Before simulating missing data:\n{:?}",
@@ -341,16 +341,12 @@ mod tests {
         let keep_p_minus_1 = false;
         let _start = std::time::SystemTime::now();
         let genotypes_and_phenotypes = file_sync_phen
-            .into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &n_threads)
+            .convert_into_genotypes_and_phenotypes(&filter_stats, keep_p_minus_1, &n_threads)
             .unwrap();
 
         let outname = impute_mean(
             genotypes_and_phenotypes,
             &filter_stats,
-            &min_depth_below_which_are_missing,
-            &max_depth_above_which_are_missing,
-            &0.2,
-            &0.5,
             &n_threads,
             &"test-impute_mean.csv".to_owned(),
         )
