@@ -131,7 +131,14 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
           eval(parse(text=paste0("mae_across_freqs = c(", paste(paste0("subdf$mae_", q, "[idx]"), collapse=", "), ")")))  
         }
         idx = which(!is.na(mae_across_freqs))
-        lines(x=q[idx], y=mae_across_freqs[idx], lwd=5*missing_rate, col=colour)
+
+        if (dataset == "grape") {
+          ### The grape dataset only includes the minor alleles, hence to get the full picture we need to unfold the alleles to represent the reference alleles
+          lines(x=q[idx], y=(mae_across_freqs[idx] + rev(mae_across_freqs[idx]))/2, lwd=5*missing_rate, col=colour)
+        } else {
+          ### The other datasets have all the alleles present and should expectedly generate a bell-ish curve or MAE across allele frequencies
+          lines(x=q[idx], y=mae_across_freqs[idx], lwd=5*missing_rate, col=colour)
+        }
       }
       grid()
       if (algo == vec_algorithm[1]) {
