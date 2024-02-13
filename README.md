@@ -8,24 +8,42 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 
 ## Manual installation and development tools
 
+1. Install conda
+
 ```shell
-# Install conda
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh ./Miniconda3-latest-Linux-x86_64.sh
-# Download the repo
-git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git some_branch
-# Create the development environment
+```
+
+2. Download the repository and load the development environment
+
+```shell
+git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
 cd imputef/
 conda env create --file res/rustenv.yml
 conda activate rustenv
 ```
 
-## Installation
+3. Install the local copy of imputef in R
 
 ```R
-usethis::use_git_config(user.name="USERNAME", user.email="EMAIL@EMAIL.COM")
-credentials::set_github_pat() ### Enter access token
+### Note make sure that you are in the imputef/, e.g. `getwd()`, and the rustenv Conda environment is activated
+devtools::install(pkg=".")
+```
+
+## Installation
+
+- Prior to publication into [CRAN](https://cran.r-project.org/):
+
+```R
+credentials::set_github_pat() ### Enter access token when prompted
 remotes::install_github("jeffersonfparil/imputef")
+```
+
+- Once published and after all the checks and manual quality control from the good people at CRAN:
+
+```R
+install.packages("imputef")
 ```
 
 ## Usage
@@ -61,12 +79,12 @@ Shared by both functions:
 
 Exclusive to `aldknni`:
 
-- **min_loci_corr**: minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
-- **max_pool_dist**: maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
-- **min_l_loci**: minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. This parameter has precedence over ***min_loci_corr**, such that the minimum loci correlation threshold will not hold if the minimum number of loci is not reached. [Default=1]
-- **min_k_neighbours**: minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. This parameter has precedence over ***max_pool_dist**, such that the maximum genetic distance threshold will not hold if the minimum number of k-neighbours is not reached. [Default=1]
+- **min_loci_corr**: minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=0.9]
+- **max_pool_dist**: maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=01]
+- **min_l_loci**: minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. This parameter has precedence over ***min_loci_corr**, such that the minimum loci correlation threshold will not hold if the minimum number of loci is not reached. [Default=20]
+- **min_k_neighbours**: minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. This parameter has precedence over ***max_pool_dist**, such that the maximum genetic distance threshold will not hold if the minimum number of k-neighbours is not reached. [Default=5]
 - **restrict_linked_loci_per_chromosome**: restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
-- **n_reps**: number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=5]
+- **n_reps**: number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=20]
 
 
 ## Genotype data formats
