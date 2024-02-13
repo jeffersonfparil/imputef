@@ -133,13 +133,13 @@ mvi = function(fname,
 #' @param frac_top_missing_loci
 #' fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default=0.0]
 #' @param min_loci_corr
-#' Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
+#' Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=0.9]
 #' @param max_pool_dist
-#' Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=NA]
+#' Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=0.1]
 #' @param min_l_loci
-#' Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. [Default=1]
+#' Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. [Default=20]
 #' @param min_k_neighbours
-#' Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. [Default=1]
+#' Minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. [Default=5]
 #' @param restrict_linked_loci_per_chromosome
 #' Restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
 #' @param n_reps
@@ -187,10 +187,10 @@ aldknni = function(fname,
                     max_depth_above_which_are_missing=1000000,
                     frac_top_missing_pools=0.0,
                     frac_top_missing_loci=0.0,
-                    min_loci_corr=NA,
-                    max_pool_dist=NA,
-                    min_l_loci=1,
-                    min_k_neighbours=1,
+                    min_loci_corr=0.9,
+                    max_pool_dist=0.1,
+                    min_l_loci=20,
+                    min_k_neighbours=5,
                     restrict_linked_loci_per_chromosome=TRUE,
                     n_reps=20,
                     n_threads=2,
