@@ -331,14 +331,12 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
-    ### (3) Adaptive LD-kNN imputation using optimised min_loci_corr and max_pool_dist
+    ### (3) Adaptive LD-kNN imputation using optimised min_loci_corr and max_pool_dist (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
     fname_out_aldknni_optim = aldknni(fname=list_sim_missing$fname_vcf,
         fname_out_prefix=paste0("AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
         min_loci_corr=NA,
         max_pool_dist=NA,
-        min_l_loci=1,
-        min_k_neighbours=1,
         restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
         n_threads=n_threads)
     duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")

@@ -294,29 +294,39 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ## Execution
 
 ```shell
-### Submit array jobs for each dataset using specific memory and time limits
+### Create slurm scripts with specific memory and time limits per dataset
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 for DATASET in "grape" "lucerne" "soybean"
 do
     if [ $DATASET == "grape" ]
     then
-        INI=1
-        FIN=20
         sed 's/--job-name="imputef"/--job-name="grapeImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=100G/g' | \
             sed 's/--time=14-0:0:00/--time=0-0:30:00/g' > perf_${DATASET}.slurm
     elif [ $DATASET == "lucerne" ]
     then
+        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm > perf_${DATASET}.slurm
+    else
+        sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
+            sed 's/--mem=250G/--mem=200G/g' > perf_${DATASET}.slurm
+    fi
+done
+
+### Submit array jobs for each dataset
+for DATASET in "grape" "lucerne" "soybean"
+do
+    if [ $DATASET == "grape" ]
+    then
+        INI=1
+        FIN=20
+    elif [ $DATASET == "lucerne" ]
+    then
         INI=21
         FIN=40
-        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm > perf_${DATASET}.slurm
     else
         INI=41
         FIN=60
-        sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
-            sed 's/--mem=250G/--mem=200G/g' | \
-            sed 's/--time=14-0:0:00/--time=7-0:0:00/g' > perf_${DATASET}.slurm
     fi
     echo ${DATASET}: ${INI}-${FIN}
     sbatch --array=${INI}-${FIN} perf_${DATASET}.slurm
@@ -327,16 +337,16 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-25415655_*.out
-SLURMOUT_LUCERNE=slurm-25415655_*.out
-SLURMOUT_SOYBEAN=slurm-25415662_*.out
-tail slurm-254156*_*.out
-grep -n -i "err" slurm-254156*_*.out | grep -v "mean absolute"
+SLURMOUT_GRAPE=slurm-25507249_*.out
+SLURMOUT_LUCERNE=slurm-25507250_*.out
+SLURMOUT_SOYBEAN=slurm-25507251_*.out
+tail slurm-255072*_*.out
+grep -n -i "err" slurm-255072*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
 # scancel -u jp3h
-# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv SIMULATED_MISSING-* LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
+# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv SIMULATED_MISSING-* LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.* perf_grape.slurm perf_lucerne.slurm perf_soybean.slurm
 
 ### After all jobs have finished, move the output and plot:
 mkdir output
