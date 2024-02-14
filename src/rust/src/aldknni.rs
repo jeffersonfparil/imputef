@@ -274,39 +274,13 @@ impl GenotypesAndPhenotypes {
             .intercept_and_allele_frequencies
             .slice(s![.., idx_ini..idx_fin])
             .to_owned();
-        // Local positions in the chunk (add loci_idx[*idx_loci_idx_ini] to get the global index)
-        let mut vec_chunk_loci_idx: Vec<usize> = vec![];
-        // for ix in *idx_loci_idx_ini..=*idx_loci_idx_fin {
-        //     vec_chunk_loci_idx.push(loci_idx[ix] - idx_ini);
-        // }
-        for idx in loci_idx
-            .iter()
-            .take(*idx_loci_idx_fin + 1)
-            .skip(*idx_loci_idx_ini)
-        {
-            vec_chunk_loci_idx.push(idx - idx_ini);
-        }
         // Define the 2D array used for storing the minimum mean absolute error (MAE) estimates across all missing data across pools and loci.
         // We encode the MAE as u8 for memory efficiency, where we set 0: u8 as missing.
         let mut mae_u8: Array2<u8> = Array::from_elem(allele_frequencies.dim(), 0);
         Zip::indexed(&mut allele_frequencies)
         .and(&mut mae_u8)
         .par_for_each(|(i, j_local), q, mu8| {
-
-            // Find the locus index where the current allele is part of
-            let mut idx_of_vec_chunk_loci_idx = 0;
-            for (idx, j) in vec_chunk_loci_idx.iter().enumerate() {
-                if *j <= j_local {
-                    idx_of_vec_chunk_loci_idx = idx;
-                } else {
-                    break;
-                }
-            }
-            // Determine if the allele is the last allele in a allelic locus (>=2 alleles per locus being represented here)
-            let n_alleles = vec_chunk_loci_idx[idx_of_vec_chunk_loci_idx + 1] - vec_chunk_loci_idx[idx_of_vec_chunk_loci_idx];
-            let current_allele_is_the_nth_allele = (j_local - vec_chunk_loci_idx[idx_of_vec_chunk_loci_idx]) + 1;
-            // Impute if the allele is missing and if it is not the last allele in its locus
-            if q.is_nan() & (current_allele_is_the_nth_allele < n_alleles) {
+            if q.is_nan() {
                 // Define global locus index
                 let j = j_local + idx_ini;
                 // Define the current chromosome
@@ -379,7 +353,6 @@ impl GenotypesAndPhenotypes {
                             optimum_max_pool_dist = *max_pool_dist;
                         }
                     }
-
                     // Backwards across maximum pool distance thresholds (to avoid getting stuck at local minima)
                     if constant_last_3_maes {
                         for max_pool_dist in vec_max_pool_dist.iter().rev() {
@@ -466,6 +439,15 @@ impl GenotypesAndPhenotypes {
             }
         }
         // Correct for allele frequency over- and under-flows, as we are assuming all loci are represented by all of its alleles (see assumptions above)
+        // Local positions in the chunk (add loci_idx[*idx_loci_idx_ini] to get the global index)
+        let mut vec_chunk_loci_idx: Vec<usize> = vec![];
+        for idx in loci_idx
+            .iter()
+            .take(*idx_loci_idx_fin + 1)
+            .skip(*idx_loci_idx_ini)
+        {
+            vec_chunk_loci_idx.push(idx - idx_ini);
+        }
         let n = allele_frequencies.nrows();
         for j in 0..(vec_chunk_loci_idx.len() - 1) {
             let idx_locus_ini = vec_chunk_loci_idx[j];
@@ -475,12 +457,6 @@ impl GenotypesAndPhenotypes {
                     [(i, (idx_locus_ini + loci_idx[*idx_loci_idx_ini]))]
                     .is_nan()
                 {
-                    // Use the additive inverse to impute the skipped allele per locus
-                    let sum = allele_frequencies
-                        .slice(s![i, idx_locus_ini..(idx_locus_fin - 1)])
-                        .sum();
-                    allele_frequencies[(i, idx_locus_fin - 1)] = 1.00 - sum;
-                    // Make sure the allele frequencies per locus sum up to one
                     let sum = allele_frequencies
                         .slice(s![i, idx_locus_ini..idx_locus_fin])
                         .sum();

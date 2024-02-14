@@ -39,9 +39,9 @@ test_that(
 test_that(
     "aldknni_optim", {
         print("aldknni_optim:")
-        vcf = fn_extract_missing(aldknni(fname=fname_vcf, min_loci_corr=NA, max_pool_dist=NA))
-        sync = fn_extract_missing(aldknni(fname=fname_sync, min_loci_corr=NA, max_pool_dist=NA))
-        csv = fn_extract_missing(aldknni(fname=fname_csv, min_loci_corr=NA, max_pool_dist=NA)) - c(0, 0, 0, 0, 1, 0)
+        vcf = fn_extract_missing(aldknni(fname=fname_vcf, min_loci_corr=NA, max_pool_dist=NA, min_l_loci=1, min_k_neighbours=1))
+        sync = fn_extract_missing(aldknni(fname=fname_sync, min_loci_corr=NA, max_pool_dist=NA, min_l_loci=1, min_k_neighbours=1))
+        csv = fn_extract_missing(aldknni(fname=fname_csv, min_loci_corr=NA, max_pool_dist=NA, min_l_loci=1, min_k_neighbours=1)) - c(0, 0, 0, 0, 1, 0)
         expect_equal(vcf, sync, tolerance=0.1)
         expect_equal(vcf, csv, tolerance=0.1)
     }

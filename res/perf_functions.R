@@ -235,8 +235,6 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
         }, list_sim_missing=list_sim_missing, imputed_loci_names=imputed_loci_names,
     mc.cores=n_threads)
     vec_imputed = unlist(vec_imputed)
-
-
     mat_high_conf_true_and_imputed = parallel::mclapply(X=c(1:n_missing),
         FUN=function(i, list_sim_missing, imputed_loci_names){
             # i = 1 # for (i in 1:n_missing) {

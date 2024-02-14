@@ -330,13 +330,13 @@ squeue -u jp3h | sort
 SLURMOUT_GRAPE=slurm-25415655_*.out
 SLURMOUT_LUCERNE=slurm-25415655_*.out
 SLURMOUT_SOYBEAN=slurm-25415662_*.out
-grep -n -i "err" slurm-254156*_*.out | grep -v "mean absolute"
 tail slurm-254156*_*.out
-ls -lh *-performance_assessment-maf_*missing_rate_*.csv
+grep -n -i "err" slurm-254156*_*.out | grep -v "mean absolute"
+wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
 # scancel -u jp3h
-# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
+# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv SIMULATED_MISSING-* LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.*
 
 ### After all jobs have finished, move the output and plot:
 mkdir output

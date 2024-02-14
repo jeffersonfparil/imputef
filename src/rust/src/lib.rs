@@ -351,4 +351,10 @@ extendr_module! {
     fn impute;
 }
 
-// Test in R: time Rscript imputef/tests/tests.R
+// Format, fix and ask clippy:
+// ```shell
+// cargo fmt
+// cargo fix --allow-dirty
+// cargo clippy
+// ```
+// Test in R: `time Rscript imputef/tests/tests.R`
