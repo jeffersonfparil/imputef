@@ -40,8 +40,8 @@ devtools::install(pkg=".")
 ### For Users
 
 1. Install Rust:
-    - Option 1: via conda - `conda create -c conda-forge -n rustenv rust`
-    - Option 2: [install rustup](https://www.rust-lang.org/tools/install)
+    - Option 1 - via conda: `conda create -c conda-forge -n rustenv rust`, then activate the environment: `conda activate rustenv`
+    - Option 2 - [install rustup](https://www.rust-lang.org/tools/install)
 
 2. Install the R package:
 
