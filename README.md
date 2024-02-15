@@ -26,10 +26,14 @@ conda env create --file res/rustenv.yml
 conda activate rustenv
 ```
 
-3. Install the local copy of imputef in R
+3. Load or unstall the local copy of imputef in R
 
 ```R
 ### Note make sure that you are in the imputef/, e.g. `getwd()`, and the rustenv Conda environment is activated
+### Load the package without installing
+rextendr::document()
+devtools::load_all()
+### Install the package
 devtools::install(pkg=".")
 ```
 
