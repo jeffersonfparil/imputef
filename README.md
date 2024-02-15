@@ -1,12 +1,14 @@
 # imputef
 
-Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
+Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations. This is an [R](https://www.r-project.org/) package written in [Rust](https://www.rust-lang.org/).
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|
 | <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/r.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
 
-## Manual installation and development tools
+## Installation
+
+### For Developers
 
 1. Install conda
 
@@ -31,7 +33,13 @@ conda activate rustenv
 devtools::install(pkg=".")
 ```
 
-## Installation
+### For Users
+
+1. Install Rust:
+    - Option 1: via conda - `conda create -c conda-forge -n rustenv rust`
+    - Option 2: [install rustup](https://www.rust-lang.org/tools/install)
+
+2. Install the R package:
 
 - Prior to publication into [CRAN](https://cran.r-project.org/):
 
