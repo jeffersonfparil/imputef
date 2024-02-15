@@ -25,8 +25,9 @@ cd imputef/
 conda env create --file res/rustenv.yml
 conda activate rustenv
 ```
+3. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
 
-3. Load or unstall the local copy of imputef in R
+4. Load or install the local copy of imputef in R
 
 ```R
 ### Note make sure that you are in the imputef/, e.g. `getwd()`, and the rustenv Conda environment is activated
@@ -40,23 +41,15 @@ devtools::install(pkg=".")
 ### For Users
 
 1. Install Rust:
-    - Option 1 - via conda: `conda create -c conda-forge -n rustenv rust`, then activate the environment: `conda activate rustenv`
+    - Option 1 - via conda: 
+        + [Install conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
+        + Create a Rust environment: `conda create -c conda-forge -n rustenv rust`
+        + Activate the environment: `conda activate rustenv`
     - Option 2 - [install rustup](https://www.rust-lang.org/tools/install)
-
-2. Install the R package:
-
-- Prior to publication into [CRAN](https://cran.r-project.org/):
-
-```R
-credentials::set_github_pat() ### Enter access token when prompted
-remotes::install_github("jeffersonfparil/imputef")
-```
-
-- Once published and after all the checks and manual quality control from the good people at CRAN:
-
-```R
-install.packages("imputef")
-```
+2. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
+3. Install the imputef package in R:
+    - Prior to publication in [CRAN](https://cran.r-project.org/): `credentials::set_github_pat()` then enter your access token, and install: `remotes::install_github("jeffersonfparil/imputef")`
+    - Once published and after all the checks and manual quality control from the good people at CRAN: `install.packages("imputef")`
 
 ## Usage
 
