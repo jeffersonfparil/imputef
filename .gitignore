@@ -2,6 +2,8 @@
 /target/
 /tests/test*-*
 /tests/test*.vcf-*
+/tests/test*.sync-*
+/tests/test*.csv-*
 /tests/perf.slurm
 /tests/slurm-*
 /tests/apple.vcf
