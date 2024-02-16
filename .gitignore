@@ -1,7 +1,7 @@
-/src/rust/Cargo.lock
-/src/rust/target/
-/src/rust/tests/test-*
-/tests/test.vcf-*
+/Cargo.lock
+/target/
+/tests/test*-*
+/tests/test*.vcf-*
 /tests/perf.slurm
 /tests/slurm-*
 /tests/apple.vcf

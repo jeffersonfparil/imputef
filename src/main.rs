@@ -75,7 +75,7 @@ struct Args {
     #[clap(long, default_value_t = 5)]
     min_k_neighbours: usize,
     /// Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to?
-    #[clap(long, default_value_t = true)]
+    #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
     /// Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance (minimum value of 1).
     #[clap(long, default_value_t = 20)]
@@ -253,6 +253,10 @@ fn main() {
         } else {
             args.max_pool_dist
         };
+        println!(
+            "args.restrict_linked_loci_per_chromosome={:?}",
+            args.restrict_linked_loci_per_chromosome
+        );
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
