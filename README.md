@@ -8,10 +8,28 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 
 ## Installation
 
+### Compile from source
+
+1. From this repo
+
+
+2. Download the repository and load the development environment
+
+```shell
+git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
+cd imputef/
+conda env create --file res/rustenv.yml
+conda activate rustenv
+```
+
 ```shell
 cargo build --release
 target/release/imputef -h
 ```
+
+### Pre-compiled binaries
+
+
 
 ## Usage
 

@@ -1,5 +1,5 @@
 use ndarray::{prelude::*, Zip};
-use rand::{prelude::IteratorRandom, Rng};
+use rand::Rng;
 use std::cmp::Ordering;
 use std::fs::{remove_file, OpenOptions};
 use std::io;
@@ -280,29 +280,36 @@ impl GenotypesAndPhenotypes {
         Zip::indexed(&mut allele_frequencies)
         .and(&mut mae_u8)
         .par_for_each(|(i, j_local), q, mu8| {
-            if q.is_nan() {
-                // Define global locus index
-                let j = j_local + idx_ini;
+            // Define global locus index
+            let j = j_local + idx_ini;
+            // Define the allele frequencies at the current allele/locus
+            let vec_q: ArrayView1<f64> = self.intercept_and_allele_frequencies.column(j);
+            let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
+            let n_reps = if *n_reps <= n_non_missing {
+                *n_reps
+            } else {
+                n_non_missing
+            };
+            if q.is_nan() && (n_reps > 0) {
                 // Define the current chromosome
                 let current_chromosome = self.chromosome[j].to_owned();
-                // Define the allele frequencies at the current allele/locus
-                let vec_q: ArrayView1<f64> = self.intercept_and_allele_frequencies.column(j);
-                let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() {t+1}else{t});
-                let n_reps = if *n_reps <= n_non_missing {
-                    *n_reps
-                } else {
-                    n_non_missing
-                };
-                // Select randomly non-missing pools to impute and estimate imputation error from
-                let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
-                let idx_random_pools: Vec<usize> = (0..vec_q.len()).filter(|&idx| !vec_q[idx].is_nan()).choose_multiple(&mut rng, n_reps);
-
-                // // Select the n_reps most correlated non-missing pools to impute and estimate imputation error from
-                // let distances_all_loci = calculate_genetic_distances_between_pools(
-                //     idx_i,
-                //     &linked_loci_idx,
-                //     &self.intercept_and_allele_frequencies)
-
+                // Select the n_reps most correlated non-missing pools to impute and estimate imputation error from using n_reps most linked loci
+                let (linked_loci_idx, _correlations) =
+                        find_l_linked_loci(j, corr, &0.0, &n_reps,
+                            restrict_linked_loci_per_chromosome,
+                            &current_chromosome,
+                            &self.chromosome).expect("Error getting 10 most linked loci to the locus requiring imputation.");
+                let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
+                    &i,
+                    &linked_loci_idx,
+                    &self.intercept_and_allele_frequencies)
+                    .expect("Error getting distances of all the pools using the 10 most linked loci above.");
+                let mut idx_pools: Vec<usize> = (0..distances_from_all_other_pools.len()).collect();
+                idx_pools
+                    .sort_by(|&a, &b| distances_from_all_other_pools[a]
+                        .partial_cmp(&distances_from_all_other_pools[b])
+                        .expect("Error sorting indexes"));
+                let idx_n_reps_nearest_pools: Vec<usize> = idx_pools[0..n_reps].to_vec();
 
                 // Optimum mae, and parameters
                 let mut optimum_mae: f64 = 1.0;
@@ -323,9 +330,9 @@ impl GenotypesAndPhenotypes {
                     for max_pool_dist in vec_max_pool_dist.iter() {
                         // Across reps
                         let mut mae = 0.0;
-                        for idx_i in idx_random_pools.iter() {
+                        for idx_i in idx_n_reps_nearest_pools.iter() {
                             // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
-                            let distances_all_loci = calculate_genetic_distances_between_pools(
+                            let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
                                 idx_i,
                                 &linked_loci_idx,
                                 &self.intercept_and_allele_frequencies)
@@ -333,7 +340,7 @@ impl GenotypesAndPhenotypes {
                             // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
                             let (distances, frequencies) =
                                 find_k_nearest_neighbours(
-                                    &distances_all_loci,
+                                    &distances_from_all_other_pools,
                                     max_pool_dist,
                                     min_k_neighbours,
                                     &j,
@@ -366,9 +373,9 @@ impl GenotypesAndPhenotypes {
                         for max_pool_dist in vec_max_pool_dist.iter().rev() {
                             // Across reps
                             let mut mae = 0.0;
-                            for idx_i in idx_random_pools.iter() {
+                            for idx_i in idx_n_reps_nearest_pools.iter() {
                                 // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
-                                let distances_all_loci = calculate_genetic_distances_between_pools(
+                                let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
                                     idx_i,
                                     &linked_loci_idx,
                                     &self.intercept_and_allele_frequencies)
@@ -376,7 +383,7 @@ impl GenotypesAndPhenotypes {
                                 // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
                                 let (distances, frequencies) =
                                     find_k_nearest_neighbours(
-                                        &distances_all_loci,
+                                        &distances_from_all_other_pools,
                                         max_pool_dist,
                                         min_k_neighbours,
                                         &j,
@@ -418,7 +425,7 @@ impl GenotypesAndPhenotypes {
                         &current_chromosome,
                         &self.chromosome).expect("Error calling find_l_linked_loci() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.");
                 // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
-                let distances_all_loci = calculate_genetic_distances_between_pools(
+                let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
                     &i,
                     &linked_loci_idx,
                     &self.intercept_and_allele_frequencies)
@@ -426,7 +433,7 @@ impl GenotypesAndPhenotypes {
                 // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
                 let (distances, frequencies) =
                     find_k_nearest_neighbours(
-                        &distances_all_loci,
+                        &distances_from_all_other_pools,
                         &optimum_max_pool_dist,
                         min_k_neighbours,
                         &j,
@@ -549,15 +556,15 @@ impl GenotypesAndPhenotypes {
             let thread = std::thread::scope(|_scope| {
                 let (allele_frequencies, sum_mae, n_missing) = self
                     .per_chunk_aldknni(
-                        (&idx_loci_idx_ini, &idx_loci_idx_fin, &loci_idx),
+                        (&idx_loci_idx_ini, &idx_loci_idx_fin, loci_idx),
                         (
                             &vec_min_loci_corr,
                             &vec_max_pool_dist,
                             &min_l_loci,
                             &min_k_neighbours,
-                            &n_reps,
+                            n_reps,
                         ),
-                        (&corr, restrict_linked_loci_per_chromosome),
+                        (corr, restrict_linked_loci_per_chromosome),
                     )
                     .expect("Error executing per_chunk_aldknni() method on self_clone.");
                 // Write-out intermediate file

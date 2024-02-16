@@ -330,13 +330,9 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     ### (3) Adaptive LD-kNN imputation using optimised min_loci_corr and max_pool_dist (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
     if (restrict_linked_loci_per_chromosome) {
-        tmp_fname_out_aldknni_optim = system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome --n-threads=", n_threads, " --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE)
-        print(tmp_fname_out_aldknni_optim)
-        fname_out_aldknni_optim = tail(tmp_fname_out_aldknni_optim, n=1)
+        fname_out_aldknni_optim = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome --n-threads=", n_threads, " --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE), n=1)
     } else {
-        tmp_fname_out_aldknni_optim = system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE)
-        print(tmp_fname_out_aldknni_optim)
-        fname_out_aldknni_optim = tail(tmp_fname_out_aldknni_optim, n=1)
+        fname_out_aldknni_optim = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE), n=1)
     }
     duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)

@@ -78,7 +78,7 @@ struct Args {
     #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
     /// Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance (minimum value of 1).
-    #[clap(long, default_value_t = 20)]
+    #[clap(long, default_value_t = 10)]
     n_reps: usize,
     /// Number of computing threads or processor cores to use in the computations.
     #[clap(long, default_value_t = 2)]
