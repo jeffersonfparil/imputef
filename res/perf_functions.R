@@ -1,10 +1,6 @@
 ### Load imputef library
-# dir_src = "/group/pasture/Jeff/imputef/res"
-library(imputef)
-# system("conda activate rustenv")
-# devtools::load_all()
-# rextendr::document()
-
+# dir_src = "/group/pasture/Jeff/imputef"
+# dir_src = "/home/jeff/imputef"
 
 ### Extract allele frequencies into a pxn matrix where we have p loci and n entries
 ### Assumes all loci have a maximum of 2 alleles
@@ -296,15 +292,15 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
 
 ### Performance assessment function
 fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, n_threads=10) {
-    # vcf = vcfR::read.vcfR("test-lucerne.vcf") ### 154 pools X 124,151 loci
+    # vcf = vcfR::read.vcfR(file.path(dir_src, "res/grape.vcf"))
     # list_genotypes = fn_extract_allele_frequencies(vcf)
     # mat_genotypes = list_genotypes$mat_genotypes
     # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
-    # maf = 0.25
-    # missing_rate = 0.5
+    # maf = 0.01
+    # missing_rate = 0.1
     # strict_boundaries = FALSE
     # n_threads = 32
-    ### Simulate missing data
+    ## Simulate missing data
     list_sim_missing = fn_simulate_missing_data(vcf=vcf,
                                                 mat_genotypes=mat_genotypes,
                                                 maf=maf,
@@ -320,25 +316,15 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     }
     ### (1) Mean value imputation
     time_ini = Sys.time()
-    fname_out_mvi = mvi(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("MVI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        n_threads=n_threads)
+    fname_out_mvi = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " -m='mean' --fname-out-prefix='MVI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome=", restrict_linked_loci_per_chromosome, " --n-threads=", n_threads), intern=TRUE), n=1)
     duration_mvi = difftime(Sys.time(), time_ini, units="mins")
     ### (2) Adaptive LD-kNN imputation using default fixed min_loci_corr and max_pool_dist at 0.9 and 0.1, respectively (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
-    fname_out_aldknni_fixed = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
-        n_threads=n_threads)
+    fname_out_aldknni_fixed = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome=", restrict_linked_loci_per_chromosome, " --n-threads=", n_threads), intern=TRUE), n=1)
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
     ### (3) Adaptive LD-kNN imputation using optimised min_loci_corr and max_pool_dist (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
-    fname_out_aldknni_optim = aldknni(fname=list_sim_missing$fname_vcf,
-        fname_out_prefix=paste0("AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id),
-        min_loci_corr=NA,
-        max_pool_dist=NA,
-        restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome,
-        n_threads=n_threads)
+    fname_out_aldknni_optim = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome=", restrict_linked_loci_per_chromosome, " --n-threads=", n_threads, " --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE), n=1)
     duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
     fname_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,".tsv")
@@ -353,7 +339,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         mat_genotypes_for_linkimpute[is.na(mat_genotypes_for_linkimpute)] = -1
         write.table(mat_genotypes_for_linkimpute, file=fname_for_linkimpute, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
         time_ini = Sys.time()
-        system(paste0("java -jar ", dir_src, "/linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute)) ### dir_src is defined in perf.R which sources this Rsccipt
+        system(paste0("java -jar ", dir_src, "/res/linkimpute/LinkImpute.jar --verbose -a ", fname_for_linkimpute, " ", output_for_linkimpute)) ### dir_src is defined in perf.R which sources this Rsccipt
         duration_linkimpute = difftime(Sys.time(), time_ini, units="mins")
         mat_linkimputed = read.delim(output_for_linkimpute, header=FALSE)
         rownames(mat_linkimputed) = rownames(mat_genotypes_for_linkimpute)
@@ -394,7 +380,6 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
             ploidy=2,
             strict_boundaries=strict_boundaries,
             n_threads=n_threads)
-        # print(paste0("metrics_mvi$concordance_classes=", round(metrics_mvi$concordance_classes, 4), "; metrics_aldknni_fixed$concordance_classes=", round(metrics_aldknni_fixed$concordance_classes, 4), "; metrics_aldknni_optim$concordance_classes=", round(metrics_aldknni_optim$concordance_classes, 4), "; metrics_linkimpute$concordance_classes=", round(metrics_linkimpute$concordance_classes, 4)))
     } else {
         df_metrics_across_allele_freqs_frequencies = metrics_aldknni_optim$df_metrics_across_allele_freqs_frequencies
         df_metrics_across_allele_freqs_classes = metrics_aldknni_optim$df_metrics_across_allele_freqs_classes

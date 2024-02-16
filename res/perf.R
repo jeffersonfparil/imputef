@@ -1,7 +1,7 @@
 ### Parse Rscript arguments
 args = commandArgs(trailingOnly=TRUE)
-# args = c("1", "/group/pasture/Jeff/imputef/res", "/group/pasture/Jeff/imputef/misc", "3", "32")
-# args = c("1", "/home/jeff/imputef/res", "/home/jeff/imputef/res", "3", "32")
+# args = c("1", "/group/pasture/Jeff/imputef", "/group/pasture/Jeff/imputef/misc", "3", "32")
+# args = c("1", "/home/jeff/imputef", "/home/jeff/imputef/res", "3", "32")
 i = as.numeric(args[1])
 dir_src = args[2]
 dir_data = args[3]
@@ -9,7 +9,7 @@ n_reps = as.numeric(args[4])
 n_threads = as.numeric(args[5])
 
 ### Load functions
-source(paste0(dir_src, "/perf_functions.R"))
+source(paste0(dir_src, "/res/perf_functions.R"))
 
 ### Define variable combinations
 df_variables = expand.grid(dataset=c("grape", "lucerne", "soybean"), 

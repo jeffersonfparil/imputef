@@ -1,64 +1,20 @@
 # imputef
 
-Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations. This is an [R](https://www.r-project.org/) package written in [Rust](https://www.rust-lang.org/).
+Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|
-| <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/r.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
+| <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/rust.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
 
 ## Installation
 
-### For Developers
-
-1. Install conda
-
 ```shell
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-sh ./Miniconda3-latest-Linux-x86_64.sh
+cargo build --release
+target/release/imputef -h
 ```
-
-2. Download the repository and load the development environment
-
-```shell
-git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
-cd imputef/
-conda env create --file res/rustenv.yml
-conda activate rustenv
-```
-3. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
-
-4. Load or install the local copy of imputef in R
-
-```R
-### Note make sure that you are in the imputef/, e.g. `getwd()`, and the rustenv Conda environment is activated
-### Load the package without installing
-rextendr::document()
-devtools::load_all()
-### Install the package
-devtools::install(pkg=".")
-```
-
-### For Users
-
-1. Install Rust:
-    - Option 1 - via conda: 
-        + [Install conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
-        + Create a Rust environment: `conda create -c conda-forge -n rustenv rust`
-        + Activate the environment: `conda activate rustenv`
-    - Option 2 - [install rustup](https://www.rust-lang.org/tools/install)
-2. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
-3. Install the imputef package in R:
-    - Prior to publication in [CRAN](https://cran.r-project.org/): `credentials::set_github_pat()` then enter your access token, and install: `remotes::install_github("jeffersonfparil/imputef")`
-    - Once published and after all the checks and manual quality control from the good people at CRAN: `install.packages("imputef")`
 
 ## Usage
 
-```R
-?imputef::mvi
-?imputef::aldknni
-imputef::mvi(fname="tests/test.vcf")
-imputef::aldknni(fname="tests/test.vcf")
-```
 
 ### Functions
 
@@ -71,16 +27,6 @@ imputef::aldknni(fname="tests/test.vcf")
 Shared by both functions:
 
 - **fname**: name of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-csv). Details on these genotype formats are available below.
-- **min_coverage**: minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
-- **min_allele_frequency**: minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0001]
-- **max_missingness_rate_per_locus**: maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default=1.00]
-- **pool_sizes**: vector of pool sizes, i.e. the number of individuals included in each pool, or can be set to an arbitrarily large value like 100 for individual polyploids or if allele frequency estimates are expected to be accurate. [Default=100]
-- **min_depth_below_which_are_missing**: minimum depth at which loci with depth below this threshold are set to missing. Set to one if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default=1]
-- **max_depth_above_which_are_missing**: maximum depth at which loci with depth above this threshold are set to missing. Set to some large arbitrarily large value (e.g. 1000000) if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default=1000000]
-- **frac_top_missing_pools**: fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one. [Default=0.0]
-- **frac_top_missing_loci**: fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default=0.0]
-- **n_threads**: number of computing threads or processor cores to use in the computations. [Default=2]
-- **fname_out_prefix**: prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`). [Default="" which will use the name of the input file as the prefix including the path]
 
 Exclusive to `aldknni`:
 
