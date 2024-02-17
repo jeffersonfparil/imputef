@@ -39,7 +39,7 @@ jobs:
         with:
           rust-version: ${{ matrix.rust }}
       - name: Tests | Rust
-        run: time cargo test
+        run: cargo test
       - name: Build | Compile | Test on test data
         run: | 
           cargo run -- -h
