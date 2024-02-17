@@ -59,5 +59,3 @@ jobs:
           cargo run -- -f tests/test_2.csv --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
           cargo run -- -f tests/test_2.sync --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
           cargo run -- -f tests/test_2.vcf --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
-
-          rm intermediate_output-* test-* tests/test-* tests/test_2.*-*.*
