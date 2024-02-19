@@ -1,86 +1,115 @@
 # imputef
 
-Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations. This is an [R](https://www.r-project.org/) package written in [Rust](https://www.rust-lang.org/).
+Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
 
 |**Build Status**|**License**|
 |:--------------:|:---------:|
-| <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/r.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
+| <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/rust.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
 
 ## Installation
 
-### For Developers
+### Compile from source
 
-1. Install conda
-
-```shell
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-sh ./Miniconda3-latest-Linux-x86_64.sh
-```
-
-2. Download the repository and load the development environment
+1. Clone the repository
 
 ```shell
 git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
+```
+
+2. Load the Rust development environment via Conda (please see [Conda installation instructions](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) if you do not have Conda pre-installed)
+
+```shell
 cd imputef/
 conda env create --file res/rustenv.yml
 conda activate rustenv
 ```
-3. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
 
-4. Load or install the local copy of imputef in R
+3. Compile and optionally create an alias or a symbolic link or add to $PATH
 
-```R
-### Note make sure that you are in the imputef/, e.g. `getwd()`, and the rustenv Conda environment is activated
-### Load the package without installing
-rextendr::document()
-devtools::load_all()
-### Install the package
-devtools::install(pkg=".")
+```shell
+cargo build --release
+target/release/imputef -h
+# Option 1: alias
+echo alias imputef="$(pwd)/target/release/imputef" >> ~/.bashrc
+source ~/.bashrc
+# Option 2: symlink
+sudo ln -s $(pwd)/target/release/imputef /usr/bin/imputef
+# Option 3: add to $PATH (Note that you need to place this in your ~/.bashrc or the appropriate shell initialisation file)
+export PATH=${PATH}:$(pwd)/target/release
+### Check
+type -a imputef
+cd ~; imputef -h; cd -
 ```
 
-### For Users
+### Pre-compiled binaries
 
-1. Install Rust:
-    - Option 1 - via conda: 
-        + [Install conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
-        + Create a Rust environment: `conda create -c conda-forge -n rustenv rust`
-        + Activate the environment: `conda activate rustenv`
-    - Option 2 - [install rustup](https://www.rust-lang.org/tools/install)
-2. Install the [rextender package](https://github.com/extendr/rextendr) in R: `install.packages("rextendr")`
-3. Install the imputef package in R:
-    - Prior to publication in [CRAN](https://cran.r-project.org/): `credentials::set_github_pat()` then enter your access token, and install: `remotes::install_github("jeffersonfparil/imputef")`
-    - Once published and after all the checks and manual quality control from the good people at CRAN: `install.packages("imputef")`
+1. Download the appropriate executable binary compatible with your system
+
+- [GNU/Linux (x86 64-bit)](some/link)
+- [macOS Catalina (x86 64-bit)](some/link)
+- [Windows 10 (x86 64-bit)](some/link)
+
+2. Configure and execute
+
+- In GNU/Linux and macOS:
+
+```shell
+unzip imputef.zip
+chmod +x imputef
+./imputef
+```
+
+- In Windows, open command prompt via: *Win + R*, type "cmd" and press enter. Navigate to your download folder and execute, e.g. `imputef-x86_64-windows.exe -h`.
+
 
 ## Usage
 
-```R
-?imputef::mvi
-?imputef::aldknni
-imputef::mvi(fname="tests/test.vcf")
-imputef::aldknni(fname="tests/test.vcf")
+### Quickstart
+
+```shell
+imputef -h
+imputef -f tests/test.csv   # allele frequency table as input
+imputef -f tests/test.sync  # synchronised pileup file as input
+imputef -f tests/test.vcf   # variant call format as input without missing data
+imputef -f tests/test_2.vcf   # variant call format as input
+imputef -f tests/test_2.vcf --method mean # use mean value imputation
+imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # use set minimum loci correlation and maximum genetic distance thresholds
+imputef -f tests/test_2.vcf --min-loci-corr=-1 --max-pool-dist=-1 # optimise for minimum loci correlation and maximum genetic distance thresholds per locus
+### Gird search optimisation assuming a common set of optimal parameters across all loci
+### (different from the built-in optimisation which optimises the minimum loci correlation and maximum genetic distance per locus)
+echo 'l,k,corr,dist,mae' > grid_search.csv
+for l in 5 10 15
+do
+    for k in 1 2 3 4 5
+    do
+        for corr in 0.75 0.95 1.00
+        do
+            for dist in 0.0 0.10 0.25
+            do
+                echo "@@@@@@@@@@@@@@@@@@@@@@@@"
+                echo ${l},${k},${corr},${dist}
+                imputef -f tests/test_2.vcf \
+                    --min-l-loci=${l} \
+                    --min-k-neighbours=${k} \
+                    --min-loci-corr=${corr} \
+                    --max-pool-dist=${dist} \
+                    --n-reps=3 > log.tmp
+                fname_out=$(tail -n1 log.tmp | cut -d':' -f2 | tr -d ' ')
+                mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log.tmp | cut -d':' -f2 | tr -d ' ')
+                echo ${l},${k},${corr},${dist},${mae} >> grid_search.csv
+                rm $fname_out log.tmp
+            done
+        done
+    done
+done
+awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' grid_search.csv
 ```
-
-### Functions
-
-- `mvi`: mean value imputation of allele frequencies
-
-- `aldknni`: adaptive linkage-informed k-nearest neighbour imputation of allele frequencies
 
 ### Input variables
 
 Shared by both functions:
 
 - **fname**: name of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-csv). Details on these genotype formats are available below.
-- **min_coverage**: minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default=0]
-- **min_allele_frequency**: minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default=0.0001]
-- **max_missingness_rate_per_locus**: maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default=1.00]
-- **pool_sizes**: vector of pool sizes, i.e. the number of individuals included in each pool, or can be set to an arbitrarily large value like 100 for individual polyploids or if allele frequency estimates are expected to be accurate. [Default=100]
-- **min_depth_below_which_are_missing**: minimum depth at which loci with depth below this threshold are set to missing. Set to one if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default=1]
-- **max_depth_above_which_are_missing**: maximum depth at which loci with depth above this threshold are set to missing. Set to some large arbitrarily large value (e.g. 1000000) if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default=1000000]
-- **frac_top_missing_pools**: fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one. [Default=0.0]
-- **frac_top_missing_loci**: fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default=0.0]
-- **n_threads**: number of computing threads or processor cores to use in the computations. [Default=2]
-- **fname_out_prefix**: prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`). [Default="" which will use the name of the input file as the prefix including the path]
 
 Exclusive to `aldknni`:
 
