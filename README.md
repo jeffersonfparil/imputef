@@ -8,6 +8,26 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 
 ## Installation
 
+### Pre-compiled binaries
+
+1. Download the appropriate executable binary compatible with your system
+
+- [GNU/Linux (x86 64-bit)](some/link)
+- [Windows 10 (x86 64-bit)](some/link)
+- ~[macOS Catalina (x86 64-bit)](some/link)~ (macOS binary pending)
+
+2. Configure and execute
+
+- In GNU/Linux (macOS binary pending):
+
+```shell
+unzip imputef.zip
+chmod +x imputef
+./imputef
+```
+
+- In Windows, open command prompt via: *Win + R*, type "cmd" and press enter. Navigate to your download folder and execute, e.g. `imputef-x86_64-windows.exe -h`.
+
 ### Compile from source
 
 1. Clone the repository
@@ -40,27 +60,6 @@ export PATH=${PATH}:$(pwd)/target/release
 type -a imputef
 cd ~; imputef -h; cd -
 ```
-
-### Pre-compiled binaries
-
-1. Download the appropriate executable binary compatible with your system
-
-- [GNU/Linux (x86 64-bit)](some/link)
-- [macOS Catalina (x86 64-bit)](some/link)
-- [Windows 10 (x86 64-bit)](some/link)
-
-2. Configure and execute
-
-- In GNU/Linux and macOS:
-
-```shell
-unzip imputef.zip
-chmod +x imputef
-./imputef
-```
-
-- In Windows, open command prompt via: *Win + R*, type "cmd" and press enter. Navigate to your download folder and execute, e.g. `imputef-x86_64-windows.exe -h`.
-
 
 ## Usage
 
