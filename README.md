@@ -21,7 +21,6 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 - In GNU/Linux (macOS binary pending):
 
 ```shell
-unzip imputef.zip
 chmod +x imputef
 ./imputef
 ```
