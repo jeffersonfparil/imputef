@@ -10,35 +10,100 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 
 ### Compile from source
 
-1. From this repo
-
-
-2. Download the repository and load the development environment
+1. Clone the repository
 
 ```shell
 git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
+```
+
+2. Load the Rust development environment via Conda (please see [Conda installation instructions](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) if you do not have Conda pre-installed)
+
+```shell
 cd imputef/
 conda env create --file res/rustenv.yml
 conda activate rustenv
 ```
 
+3. Compile and optionally create an alias or a symbolic link or add to $PATH
+
 ```shell
 cargo build --release
 target/release/imputef -h
+# Option 1: alias
+echo alias imputef="$(pwd)/target/release/imputef" >> ~/.bashrc
+source ~/.bashrc
+# Option 2: symlink
+sudo ln -s $(pwd)/target/release/imputef /usr/bin/imputef
+# Option 3: add to $PATH (Note that you need to place this in your ~/.bashrc or the appropriate shell initialisation file)
+export PATH=${PATH}:$(pwd)/target/release
+### Check
+type -a imputef
+cd ~; imputef -h; cd -
 ```
 
 ### Pre-compiled binaries
 
+1. Download the appropriate executable binary compatible with your system
+
+- [GNU/Linux (x86 64-bit)](some/link)
+- [macOS Catalina (x86 64-bit)](some/link)
+- [Windows 10 (x86 64-bit)](some/link)
+
+2. Configure and execute
+
+- In GNU/Linux and macOS:
+
+```shell
+unzip imputef.zip
+chmod +x imputef
+./imputef
+```
+
+- In Windows, open command prompt via: *Win + R*, type "cmd" and press enter. Navigate to your download folder and execute, e.g. `imputef-x86_64-windows.exe -h`.
 
 
 ## Usage
 
+### Quickstart
 
-### Functions
-
-- `mvi`: mean value imputation of allele frequencies
-
-- `aldknni`: adaptive linkage-informed k-nearest neighbour imputation of allele frequencies
+```shell
+imputef -h
+imputef -f tests/test.csv   # allele frequency table as input
+imputef -f tests/test.sync  # synchronised pileup file as input
+imputef -f tests/test.vcf   # variant call format as input without missing data
+imputef -f tests/test_2.vcf   # variant call format as input
+imputef -f tests/test_2.vcf --method mean # use mean value imputation
+imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # use set minimum loci correlation and maximum genetic distance thresholds
+imputef -f tests/test_2.vcf --min-loci-corr=-1 --max-pool-dist=-1 # optimise for minimum loci correlation and maximum genetic distance thresholds per locus
+### Gird search optimisation assuming a common set of optimal parameters across all loci
+### (different from the built-in optimisation which optimises the minimum loci correlation and maximum genetic distance per locus)
+echo 'l,k,corr,dist,mae' > grid_search.csv
+for l in 5 10 15
+do
+    for k in 1 2 3 4 5
+    do
+        for corr in 0.75 0.95 1.00
+        do
+            for dist in 0.0 0.10 0.25
+            do
+                echo "@@@@@@@@@@@@@@@@@@@@@@@@"
+                echo ${l},${k},${corr},${dist}
+                imputef -f tests/test_2.vcf \
+                    --min-l-loci=${l} \
+                    --min-k-neighbours=${k} \
+                    --min-loci-corr=${corr} \
+                    --max-pool-dist=${dist} \
+                    --n-reps=3 > log.tmp
+                fname_out=$(tail -n1 log.tmp | cut -d':' -f2 | tr -d ' ')
+                mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log.tmp | cut -d':' -f2 | tr -d ' ')
+                echo ${l},${k},${corr},${dist},${mae} >> grid_search.csv
+                rm $fname_out log.tmp
+            done
+        done
+    done
+done
+awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' grid_search.csv
+```
 
 ### Input variables
 

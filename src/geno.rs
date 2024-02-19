@@ -259,13 +259,16 @@ impl LoadAll for FileGeno {
         loci_chr.push(chromosome.last().expect("Error push chromosome within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
         loci_pos.push(position.last().expect("Error push position within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.").to_owned());
         // Add alternative alleles if the allele frequencies per locus do not add up to 1.00 (~or if only one allele per locus is present~)
-        // Count how many allele we have to add
+        // Create coverages matrix setting missing loci to f64::NAN, while counting how many allele we have to add
+        let mut coverages: Array2<f64> = Array2::from_elem((n, l), 1_000.0);
         for j in 0..l {
             let idx_ini = loci_idx[j];
             let idx_fin = loci_idx[j + 1];
-            let _n_alleles = idx_fin - idx_ini;
             let mut freq_sum_less_than_one = false;
             for i in 0..n {
+                if mat[(i, idx_ini)].is_nan() {
+                    coverages[(i, j)] = f64::NAN;
+                }
                 if mat.slice(s![i, idx_ini..idx_fin]).sum() < 1.0 {
                     freq_sum_less_than_one = true;
                     break;
@@ -323,7 +326,7 @@ impl LoadAll for FileGeno {
             intercept_and_allele_frequencies: mat_new,
             phenotypes: Array2::from_shape_vec((n, 1), vec![f64::NAN; n]).expect("Error generating dummy phenotype data within the convert_into_genotypes_and_phenotypes() method for FileGeno struct."),
             pool_names,
-            coverages: Array2::from_elem((n, l), 1_000.0),
+            coverages,
         })
     }
 }

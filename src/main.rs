@@ -21,7 +21,7 @@ use crate::vcf::*;
 #[derive(Parser, Debug)]
 #[clap(
     author = "Jeff Paril",
-    version = "0.1.0",
+    version = "1.0.0",
     about = "Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.",
     long_about = "Imputation of genotype data from sequencing of more than 2 sets of genomes, i.e. polyploid individuals, population samples, or pools of individuals. This library can also perform simple genotype data filtering prior to imputation. Two imputation methods are available: (1) mean value imputation which uses the arithmentic mean of the locus across non-missing pools; (2) adaptive linkage-informed k-nearest neighbour imputation. This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples. Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi. Four parameters can be set by the user, (1) minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples; (2) maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies; (3) minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met; and (4) minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met. The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation."
 )]
@@ -74,10 +74,10 @@ struct Args {
     /// This argument overrides `max_pool_dist`, i.e. the minimum number of k-nearest neighbours will be met regardless of the maximum genetic distance threshold.
     #[clap(long, default_value_t = 5)]
     min_k_neighbours: usize,
-    /// Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to?
+    /// Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false]
     #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
-    /// Number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance (minimum value of 1).
+    /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE), and for the optimisation for minimum loci correlation, and/or maximum genetic distance (minimum value of 1).
     #[clap(long, default_value_t = 10)]
     n_reps: usize,
     /// Number of computing threads or processor cores to use in the computations.
@@ -89,6 +89,7 @@ struct Args {
 }
 
 /// # imputef: Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
+/// Imputation of genotype data from sequencing of more than 2 sets of genomes, i.e. polyploid individuals, population samples, or pools of individuals. This library can also perform simple genotype data filtering prior to imputation. Two imputation methods are available: (1) mean value imputation which uses the arithmentic mean of the locus across non-missing pools (`?imputef::mvi`); (2) adaptive linkage-informed k-nearest neighbour imputation (`?imputef::aldknni`). This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples. Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi. Four parameters can be set by the user, (1) minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples; (2) maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies; (3) minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met; and (4) minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met. The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation.
 fn main() {
     let args = Args::parse();
     // Identify the format of the input file
@@ -273,7 +274,31 @@ fn main() {
         )
         .expect("Error performing adaptive LD-kNN imputation via impute_aldknni() within impute().")
     };
-    println!("{}", fname_out);
+    println!(
+        "Imputation output in allele frequency table format: {}",
+        fname_out
+    );
 }
 
+// # Running tests
+// cargo fmt
+// cargo fix --allow-dirty
+// cargo clippy
+// time cargo test
+// rm intermediate_output-* test-* tests/test-* tests/test.*-*.* tests/test_2.*-*.* tests/test_2.*-*.*
+// # Compilation and building docs (for x86_64-unknown-linux-gnu)
+// cargo build --release
+// RUSTDOCFLAGS="--html-in-header res/doc_header_for_maths.html" cargo doc --no-deps --document-private-items ### open: $(pwd)/target/doc/imputef/index.html
+// # Compilation on Windows (for x86_64-pc-windows-gnu)
+// Install git and rustup on Windows
+// git clone https://github.com/jeffersonfparil/imputef.git
+// cd imputef
+// cargo build --release
+// Compile on macOS
+// Install Docker Desktop on Windows and activate WSL2 backend
+// Open WSL2 and install: sudo apt -y install bridge-utils cpu-checker libvirt-clients libvirt-daemon qemu qemu-kvm
+// docker pull sickcodes/docker-osx:latest
+// Open Docker Desktop, find the downloaded docker image and run
+// git clone https://github.com/jeffersonfparil/imputef.git
+// cd imputef
 // cargo build --release

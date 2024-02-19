@@ -224,7 +224,19 @@ impl GenotypesAndPhenotypes {
     }
 }
 
-// Impute using mean allele frequencies across pools
+/// # `mvi`: mean value imputation
+///
+/// This imputation uses the arithmetic mean of the observed allele frequencies across all samples where the locus was genotyped:
+///
+/// $$
+/// \hat q_{r,j} = { {1 \over (n-m)} { \sum_{i \ne r}^{n} q_{i,j} } }
+/// $$
+///
+/// where:
+/// - $\hat q_{r,j}$ is the imputed allele frequency of sample $r$ at the $j^{\text {th}}$ locus,
+/// - $n$ is the total number of samples,
+/// - $m$ is the number of samples which are missing data at the $j^{\text {th}}$ locus, and
+/// - $q_{i,j}$ is the known allele frequency of the $i^{\text {th}}$ sample at the $j^{\text {th}}$ locus.
 pub fn impute_mean(
     mut genotypes_and_phenotypes: GenotypesAndPhenotypes,
     filter_stats: &FilterStats,
@@ -380,28 +392,3 @@ mod tests {
         // assert_eq!(0, 1);
     }
 }
-
-// SYNC=/home/jeff/poolgen/tests/test_REMOVE_ME_BEFORE_PUSHING.sync
-// PHEN=/home/jeff/poolgen/tests/test_REMOVE_ME_BEFORE_PUSHING.csv
-// NCORES=7
-// OUT=/home/jeff/poolgen/tests/test-MEAN_IMPUTE-REMOVE_ME_BEFORE_PUSHING.csv
-// time cargo run -- impute \
-//     --imputation-method "mean" \
-//     -f ${SYNC} \
-//     -p ${PHEN} \
-//     --phen-delim , \
-//     --phen-name-col 0 \
-//     --phen-pool-size-col 1 \
-//     --phen-value-col 2 \
-//     --min-allele-frequency 0.0001 \
-//     --min-coverage 0 \
-//     --min-quality 0.01 \
-//     --max-missingness-rate 0.75 \
-//     --min-depth-set-to-missing 5 \
-//     --window-size-bp 1000000 \
-//     --window-slide-size-bp 1000000 \
-//     --min-loci-per-window 1 \
-//     --min-correlation 0.5 \
-//     --k-neighbours 5 \
-//     --n-threads ${NCORES} \
-//     -o ${OUT}
