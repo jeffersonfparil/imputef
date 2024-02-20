@@ -101,7 +101,7 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 - **min_l_loci**: Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples (minimum value of 1). This argument overrides `min_loci_corr`, i.e. the minimum number of loci will be met regardless of the minimum loci correlation threshold.
 - **min_k_neighbours**: Minimum number of k-nearest neighbours of the pool or sample requiring imputation (minimum value of 1). This argument overrides `max_pool_dist`, i.e. the minimum number of k-nearest neighbours will be met regardless of the maximum genetic distance threshold.
 - **restrict_linked_loci_per_chromosome**: Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false]
-- **n_reps**: Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most linked loci to compute genetic distances and where the top-most related samples to the sample requiring imputation are used as replicates (minimum value of 1).
+- **n_reps**: Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most related samples to the sample requiring imputation to use as replicates for the estimation of MAE and optimisation (minimum value of 1).
 - **n_threads**: Number of computing threads or processor cores to use in the computations.
 - **fname_out_prefix**: Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`).
 

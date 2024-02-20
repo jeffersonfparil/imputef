@@ -455,13 +455,14 @@ impl GenotypesAndPhenotypes {
         // Define the range of minimum loci correlation and maximum pool distance thresholds to be used for optimisation.
         // However, if the user-supplied values are non-missing then that user-supplied fixed threshold will be used without optimisation
         // We have set a hard-coded number of steps which can be explored across the 2 parameter spaces, i.e. 10 steps provides a reasonable balance between accuracy and computational efficiency
+        let n_steps: usize = 10;
         let vec_min_loci_corr: Vec<f64> = if min_loci_corr.is_nan() {
-            vec![0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 1.0]
+            (0..=n_steps).map(|x| x as f64 / n_steps as f64).collect()
         } else {
             vec![*min_loci_corr]
         };
         let vec_max_pool_dist: Vec<f64> = if max_pool_dist.is_nan() {
-            vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.0]
+            (0..=n_steps).map(|x| x as f64 / n_steps as f64).collect()
         } else {
             vec![*max_pool_dist]
         };
