@@ -77,8 +77,8 @@ struct Args {
     /// Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false]
     #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
-    /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE), and for the optimisation for minimum loci correlation, and/or maximum genetic distance (minimum value of 1).
-    #[clap(long, default_value_t = 10)]
+    /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most related samples to the sample requiring imputation to use as replicates for the estimation of MAE and optimisation (minimum value of 1).
+    #[clap(long, default_value_t = 1)]
     n_reps: usize,
     /// Number of computing threads or processor cores to use in the computations.
     #[clap(long, default_value_t = 2)]
@@ -118,6 +118,10 @@ fn main() {
     println!(
         "Maximum fraction of pools missing at each locus:\n{:?}",
         args.max_missingness_rate_per_locus
+    );
+    println!(
+        "Restrict linked loci per chromosome:\n{:?}",
+        args.restrict_linked_loci_per_chromosome
     );
     println!("Pool sizes:\n{:?}", args.pool_sizes);
     println!(
@@ -254,10 +258,6 @@ fn main() {
         } else {
             args.max_pool_dist
         };
-        println!(
-            "args.restrict_linked_loci_per_chromosome={:?}",
-            args.restrict_linked_loci_per_chromosome
-        );
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,

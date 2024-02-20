@@ -6,6 +6,16 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 |:--------------:|:---------:|
 | <a href="https://github.com/jeffersonfparil/imputef/actions"><img src="https://github.com/jeffersonfparil/imputef/actions/workflows/rust.yml/badge.svg"></a> | [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) |
 
+## Overview
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Details](#details)
+- [Optimisation](#optimisation-approaches)
+- [Performance evaluation](#performance-evaluation)
+- [References](#references)
+- [Acknowledgements](#acknowledgements)
+
 ## Installation
 
 ### Pre-compiled binaries
@@ -71,52 +81,30 @@ imputef -f tests/test.sync  # synchronised pileup file as input
 imputef -f tests/test.vcf   # variant call format as input without missing data
 imputef -f tests/test_2.vcf   # variant call format as input
 imputef -f tests/test_2.vcf --method mean # use mean value imputation
-imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # use set minimum loci correlation and maximum genetic distance thresholds
-imputef -f tests/test_2.vcf --min-loci-corr=-1 --max-pool-dist=-1 # optimise for minimum loci correlation and maximum genetic distance thresholds per locus
-### Gird search optimisation assuming a common set of optimal parameters across all loci
-### (different from the built-in optimisation which optimises the minimum loci correlation and maximum genetic distance per locus)
-echo 'l,k,corr,dist,mae' > grid_search.csv
-for l in 5 10 15
-do
-    for k in 1 2 3 4 5
-    do
-        for corr in 0.75 0.95 1.00
-        do
-            for dist in 0.0 0.10 0.25
-            do
-                echo "@@@@@@@@@@@@@@@@@@@@@@@@"
-                echo ${l},${k},${corr},${dist}
-                imputef -f tests/test_2.vcf \
-                    --min-l-loci=${l} \
-                    --min-k-neighbours=${k} \
-                    --min-loci-corr=${corr} \
-                    --max-pool-dist=${dist} \
-                    --n-reps=3 > log.tmp
-                fname_out=$(tail -n1 log.tmp | cut -d':' -f2 | tr -d ' ')
-                mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log.tmp | cut -d':' -f2 | tr -d ' ')
-                echo ${l},${k},${corr},${dist},${mae} >> grid_search.csv
-                rm $fname_out log.tmp
-            done
-        done
-    done
-done
-awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' grid_search.csv
+imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define some minimum loci correlation and maximum genetic distance thresholds
 ```
 
-### Input variables
+### Arguments
 
-Shared by both functions:
+- **fname**: Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-csv). Details on these genotype formats are available below.
+- **method**: Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation
+- **min_coverage**: Minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`.
+- **min_allele_frequency**: Minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted.
+- **max_missingness_rate_per_locus**: Maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted.
+- **pool_sizes**: Vector of pool sizes, i.e. the number of individuals included in each pool. Enter the pool sizes separated by commas `,`. This can also be set to a single arbitrarily large value like 100 for individual polyploids or if allele frequency estimates are expected to be accurate.
+- **min_depth_below_which_are_missing**: Minimum depth at which loci with depth below this threshold are set to missing. Set to one if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero.
+- **max_depth_above_which_are_missing**: Maximum depth at which loci with depth above this threshold are set to missing. Set to some large arbitrarily large value (e.g. 1000000) if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero.
+- **frac_top_missing_pools**: Fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one.
+- **frac_top_missing_loci**: Fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one.
+- **min_loci_corr**: Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation.
+- **max_pool_dist**: Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation.
+- **min_l_loci**: Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples (minimum value of 1). This argument overrides `min_loci_corr`, i.e. the minimum number of loci will be met regardless of the minimum loci correlation threshold.
+- **min_k_neighbours**: Minimum number of k-nearest neighbours of the pool or sample requiring imputation (minimum value of 1). This argument overrides `max_pool_dist`, i.e. the minimum number of k-nearest neighbours will be met regardless of the maximum genetic distance threshold.
+- **restrict_linked_loci_per_chromosome**: Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false]
+- **n_reps**: Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most linked loci to compute genetic distances and where the top-most related samples to the sample requiring imputation are used as replicates (minimum value of 1).
+- **n_threads**: Number of computing threads or processor cores to use in the computations.
+- **fname_out_prefix**: Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`).
 
-- **fname**: name of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-csv). Details on these genotype formats are available below.
-
-Exclusive to `aldknni`:
-
-- **min_loci_corr**: minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=0.9]
-- **max_pool_dist**: maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0. If using the default value with is NA, then this threshold will be optimised to find the best value minimising imputation error. [Default=01]
-- **min_l_loci**: minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples. Minimum value of 1. This parameter has precedence over ***min_loci_corr**, such that the minimum loci correlation threshold will not hold if the minimum number of loci is not reached. [Default=20]
-- **min_k_neighbours**: minimum number of k-nearest neighbours of the pool or sample requiring imputation. Minimum value of 1. This parameter has precedence over ***max_pool_dist**, such that the maximum genetic distance threshold will not hold if the minimum number of k-neighbours is not reached. [Default=5]
-- **restrict_linked_loci_per_chromosome**: restrict the choice of linked loci to within the chromosome the locus requiring imputation belong to? [Default=TRUE]
-- **n_reps**: number of replications for the optimisation for the minimum loci correlation, and/or maximum genetic distance. Minimum value of 1. [Default=20]
 
 
 ## Genotype data formats
@@ -197,6 +185,47 @@ where:
 - $\delta_{i,r}$ is scaled $d_{i,r}$ which is the genetic distance between the $i^{\text {th}}$ sample and sample $r$. This distance is the mean absolute difference in allele frequencies between the two samples across $c$ linked loci.
 
 The variables $k$ and $c$ are proportional to the user inputs `max_pool_dist` (default=0.1) and `min_loci_corr` (default=0.9), respectively. The former defines the maximum distance of samples to be considered as one of the k-nearest neighbours, while the latter refers to the minimum correlation with the locus requiring imputation to be included in the estimation of the genetic distance.
+
+## Optimisation approaches
+
+1. Using the built-in optimisation for minimum loci correlation and maximum genetic distance thresholds per locus:
+
+```shell
+imputef -f tests/test_2.vcf --min-loci-corr=-1 --max-pool-dist=-1
+```
+
+2. Gird search optimisation for all four parameters which assumes a common set of optimal parameters across all loci
+
+```shell
+### Find the optimal l-loci to use for distance estimation, k-nearest neighbours, minimum loci correlation, and maximum distance
+### i.e. the combination of these 4 parameters which minimises the mean absolute error between expected and predicted allele frequencies.
+echo 'l,k,corr,dist,mae' > grid_search.csv
+for l in 5 10 15
+do
+    for k in 1 2 3 4 5
+    do
+        for corr in 0.75 0.95 1.00
+        do
+            for dist in 0.0 0.10 0.25
+            do
+                echo "@@@@@@@@@@@@@@@@@@@@@@@@"
+                echo ${l},${k},${corr},${dist}
+                imputef -f tests/test_2.vcf \
+                    --min-l-loci=${l} \
+                    --min-k-neighbours=${k} \
+                    --min-loci-corr=${corr} \
+                    --max-pool-dist=${dist} \
+                    --n-reps=3 > log.tmp
+                fname_out=$(tail -n1 log.tmp | cut -d':' -f2 | tr -d ' ')
+                mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log.tmp | cut -d':' -f2 | tr -d ' ')
+                echo ${l},${k},${corr},${dist},${mae} >> grid_search.csv
+                rm $fname_out log.tmp
+            done
+        done
+    done
+done
+awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' grid_search.csv
+```
 
 ## Performance evaluation
 

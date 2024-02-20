@@ -291,7 +291,7 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
 }
 
 ### Performance assessment function
-fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, n_threads=10) {
+fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, restrict_linked_loci_per_chromosome=FALSE, n_threads=10) {
     # vcf = vcfR::read.vcfR(file.path(dir_src, "res/grape.vcf"))
     # list_genotypes = fn_extract_allele_frequencies(vcf)
     # mat_genotypes = list_genotypes$mat_genotypes
@@ -299,6 +299,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     # maf = 0.01
     # missing_rate = 0.1
     # strict_boundaries = FALSE
+    # restrict_linked_loci_per_chromosome = FALSE
     # n_threads = 32
     ## Simulate missing data
     list_sim_missing = fn_simulate_missing_data(vcf=vcf,
@@ -308,32 +309,23 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     ### Define the actual number of missing loci after simulating missing data to account for cases when missingness (sparsity) is above 90% which is the maximum sparsity we have artificially set for computationally efficiency and to avoid errors due to too much sparsity
     n_missing = length(list_sim_missing$vec_missing_loci)
     rand_number_id = sample.int(1e9, 1)
-    ### Use all loci if the number of loci is less than 10k lco
-    if (ncol(mat_genotypes) < 1e4) {
-        restrict_linked_loci_per_chromosome = FALSE
-    } else {
-        restrict_linked_loci_per_chromosome = TRUE
-    }
-    print(paste0("restrict_linked_loci_per_chromosome=", restrict_linked_loci_per_chromosome))
     ### (1) Mean value imputation
     time_ini = Sys.time()
-    fname_out_mvi = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " -m='mean' --fname-out-prefix='MVI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --n-threads=", n_threads), intern=TRUE), n=1)
+    tmp_fname_out_mvi = system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " -m='mean' --fname-out-prefix='MVI-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --n-threads=", n_threads), intern=TRUE)
+    fname_out_mvi = gsub("Imputation output in allele frequency table format: ", "", tail(tmp_fname_out_mvi, n=1))
+    cat(paste(tmp_fname_out_mvi, collapse='\n'))
     duration_mvi = difftime(Sys.time(), time_ini, units="mins")
     ### (2) Adaptive LD-kNN imputation using default fixed min_loci_corr and max_pool_dist at 0.9 and 0.1, respectively (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
-    if (restrict_linked_loci_per_chromosome) {
-        fname_out_aldknni_fixed = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome --n-threads=", n_threads), intern=TRUE), n=1)
-    } else {
-        fname_out_aldknni_fixed = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --n-threads=", n_threads), intern=TRUE), n=1)
-    }
+    tmp_fname_out_aldknni_fixed = system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AFIXED-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --n-threads=", n_threads), intern=TRUE)
+    fname_out_aldknni_fixed = gsub("Imputation output in allele frequency table format: ", "", tail(tmp_fname_out_aldknni_fixed, n=1))
+    cat(paste(tmp_fname_out_aldknni_fixed, collapse='\n'))
     duration_aldknni_fixed = difftime(Sys.time(), time_ini, units="mins")
     ### (3) Adaptive LD-kNN imputation using optimised min_loci_corr and max_pool_dist (where min_l_loci=20 and min_k_neighbours=5)
     time_ini = Sys.time()
-    if (restrict_linked_loci_per_chromosome) {
-        fname_out_aldknni_optim = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --restrict-linked-loci-per-chromosome --n-threads=", n_threads, " --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE), n=1)
-    } else {
-        fname_out_aldknni_optim = tail(system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE), n=1)
-    }
+    tmp_fname_out_aldknni_optim = system(paste0(dir_src, "/target/release/imputef -f ", list_sim_missing$fname_vcf, " --fname-out-prefix='AOPTIM-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id, "' --min-loci-corr='-1.0' --max-pool-dist='-1.0'"), intern=TRUE)
+    fname_out_aldknni_optim = gsub("Imputation output in allele frequency table format: ", "", tail(tmp_fname_out_aldknni_optim, n=1))
+    cat(paste(tmp_fname_out_aldknni_optim, collapse='\n'))
     duration_aldknni_optim = difftime(Sys.time(), time_ini, units="mins")
     ### LinkImpute's LD-kNN imputation algorithm for unordered genotype data (forcing all data to be diploids)
     fname_for_linkimpute = paste0("LINKIMPUTE_INPUT-maf", maf, "-missing_rate", missing_rate, "-", rand_number_id,".tsv")

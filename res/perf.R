@@ -27,7 +27,8 @@ fname_vcf = paste0(dir_data, "/", df_variables$dataset[i], ".vcf")
 ploidy = df_variables$ploidy[i]
 maf = df_variables$maf[i]
 missing_rate = df_variables$missing_rate[i]
-strict_boundaries=FALSE
+strict_boundaries = FALSE
+restrict_linked_loci_per_chromosome = FALSE
 
 ### Load genotype data
 vcf = vcfR::read.vcfR(fname_vcf)
@@ -59,6 +60,7 @@ for (r in c(1:n_reps)) {
                                  maf=maf, 
                                  missing_rate=missing_rate, 
                                  strict_boundaries=strict_boundaries, 
+                                 restrict_linked_loci_per_chromosome=restrict_linked_loci_per_chromosome, 
                                  n_threads=n_threads)
     df_perf$rep = rep(r, times=nrow(df_perf))
     if (r==1) {
