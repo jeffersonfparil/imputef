@@ -317,7 +317,7 @@ impl GenotypesAndPhenotypes {
                 // Filter-out indexes of samples missing at the locus requiring imputation, and if the distance from the pool requiring imputation is greater than 0.5
                 let mut idx_pools: Vec<usize> = vec![];
                 for idx in idx_pools_tmp.iter() {
-                    if !vec_q[i].is_nan() && (distances_from_all_other_pools[i] < 0.5) {
+                    if !vec_q[*idx].is_nan() && (distances_from_all_other_pools[*idx] < 0.5) {
                         idx_pools.push(idx.to_owned())
                     }
                 }

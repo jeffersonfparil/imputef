@@ -117,18 +117,18 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 Canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. The [`vcf2sync`](#vcf2sync) utility is expected to work with vcf versions 4.2 and 4.3. See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
 
 ### Synchronised pileup (sync)
-    + an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
-    + tab-delimited
-    + *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
-    + *Column 1*:       chromosome or scaffold name
-    + *Column 2*:       locus position 
-    + *Column 3*:       reference allele, e.g. A, T, C, G 
-    + *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+- an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
+- tab-delimited
+- *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
+- *Column 1*:       chromosome or scaffold name
+- *Column 2*:       locus position 
+- *Column 3*:       reference allele, e.g. A, T, C, G 
+- *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
 
 ### Allele frequency table (csv)
-    + comma-delimited
-    + *Header line*: ` #chr,pos,allele,<pool_name_1>,...,<pool_name_n>`
-    + each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+- comma-delimited
+- *Header line*: ` #chr,pos,allele,<pool_name_1>,...,<pool_name_n>`
+- each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
 
 
 ## Details

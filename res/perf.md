@@ -337,11 +337,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-SLURMOUT_GRAPE=slurm-25953246_*.out
-SLURMOUT_LUCERNE=slurm-25953247_*.out
-SLURMOUT_SOYBEAN=slurm-25953248_*.out
-tail slurm-2595324*_*.out
-grep -n -i "err" slurm-2595324*_*.out | grep -v "mean absolute"
+tail slurm-2595332*_*.out
+grep -n -i "err" slurm-2595332*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
