@@ -78,7 +78,7 @@ struct Args {
     #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
     /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most related samples to the sample requiring imputation to use as replicates for the estimation of MAE and optimisation (minimum value of 1).
-    #[clap(long, default_value_t = 1)]
+    #[clap(long, default_value_t = 10)]
     n_reps: usize,
     /// Number of computing threads or processor cores to use in the computations.
     #[clap(long, default_value_t = 2)]

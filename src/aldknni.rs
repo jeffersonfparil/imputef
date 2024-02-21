@@ -294,9 +294,19 @@ impl GenotypesAndPhenotypes {
                 // Define the current chromosome
                 let current_chromosome = self.chromosome[j].to_owned();
                 // Select the n_reps most correlated non-missing pools which will be used for imputation/optimisation/estimation of imputation error using all the loci
+                let j_ini = if (j as f64)-(n_reps as f64) < 0.0 {
+                    0
+                } else {
+                    j-n_reps
+                };
+                let j_fin = if (j as f64)+(n_reps as f64) > self.intercept_and_allele_frequencies.ncols() as f64 {
+                    self.intercept_and_allele_frequencies.ncols()
+                } else {
+                    j+n_reps
+                };
                 let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
                     &i,
-                    &(0..self.intercept_and_allele_frequencies.ncols()).collect::<Vec<usize>>(),
+                    &(j_ini..j_fin).collect::<Vec<usize>>(),
                     &self.intercept_and_allele_frequencies)
                     .expect("Error getting distances of all the pools using the 10 most linked loci above.");
                 let mut idx_pools: Vec<usize> = (0..distances_from_all_other_pools.len()).collect();
@@ -304,6 +314,17 @@ impl GenotypesAndPhenotypes {
                     .sort_by(|&a, &b| distances_from_all_other_pools[a]
                         .partial_cmp(&distances_from_all_other_pools[b])
                         .expect("Error sorting indexes"));
+                // Filter-out indexes of samples missing at the locus requiring imputation
+                let idx_pools: Vec<usize> = idx_pools.into_iter().filter(|&i| !vec_q[i].is_nan()).collect();
+                // Just use 1 replicate if all samples are at maximum distance from the sample requiring imputation
+                // Or set to maximum possible number of replicates in case of overflow
+                let n_reps = if distances_from_all_other_pools[idx_pools[0]] == 1.00 {
+                    1
+                } else if n_reps > idx_pools.len() {
+                    idx_pools.len()
+                } else {
+                    n_reps
+                };
                 let idx_n_reps_nearest_pools: Vec<usize> = idx_pools[0..n_reps].to_vec();
                 // Optimum mae, and parameters
                 let mut optimum_mae: f64 = 1.0;
@@ -382,8 +403,8 @@ impl GenotypesAndPhenotypes {
             }
         });
         // Extract average minimum MAE across loci and pools (Note that we used 0: u8 as missing)
-        let mut sum_mae = 0.0;
-        let mut n_missing = 0.0;
+        let mut sum_mae: f64 = 0.0;
+        let mut n_missing: f64 = 0.0;
         for mu8 in mae_u8.into_iter() {
             if mu8 > 0 {
                 sum_mae += (mu8 as f64 - 1.0) / 254.0;

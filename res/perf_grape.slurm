@@ -10,10 +10,10 @@ module load Miniconda3/22.11.1-1
 conda init bash
 source ~/.bashrc
 conda activate rustenv
-DIR='/group/pasture/Jeff/imputef/res'
+DIR='/group/pasture/Jeff/imputef'
 DIR_DATA='/group/pasture/Jeff/imputef/misc' ### contains grape.vcf (2n), lucerne.vcf (2n=4x), and soybean.vcf (2n x 42)
 NREPS=3
-cd $DIR
+cd ${DIR}/res
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 echo ${SLURM_ARRAY_TASK_ID}
 time \
