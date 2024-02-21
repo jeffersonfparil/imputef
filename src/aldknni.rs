@@ -309,18 +309,24 @@ impl GenotypesAndPhenotypes {
                     &(j_ini..j_fin).collect::<Vec<usize>>(),
                     &self.intercept_and_allele_frequencies)
                     .expect("Error getting distances of all the pools using the 10 most linked loci above.");
-                let mut idx_pools: Vec<usize> = (0..distances_from_all_other_pools.len()).collect();
-                idx_pools
+                let mut idx_pools_tmp: Vec<usize> = (0..distances_from_all_other_pools.len()).collect();
+                idx_pools_tmp
                     .sort_by(|&a, &b| distances_from_all_other_pools[a]
                         .partial_cmp(&distances_from_all_other_pools[b])
                         .expect("Error sorting indexes"));
-                // Filter-out indexes of samples missing at the locus requiring imputation
-                let idx_pools: Vec<usize> = idx_pools.into_iter().filter(|&i| !vec_q[i].is_nan()).collect();
-                // Just use 1 replicate if all samples are at maximum distance from the sample requiring imputation
-                // Or set to maximum possible number of replicates in case of overflow
-                let n_reps = if distances_from_all_other_pools[idx_pools[0]] == 1.00 {
-                    1
-                } else if n_reps > idx_pools.len() {
+                // Filter-out indexes of samples missing at the locus requiring imputation, and if the distance from the pool requiring imputation is greater than 0.5
+                let mut idx_pools: Vec<usize> = vec![];
+                for idx in idx_pools_tmp.iter() {
+                    if !vec_q[i].is_nan() && (distances_from_all_other_pools[i] < 0.5) {
+                        idx_pools.push(idx.to_owned())
+                    }
+                }
+                // Just use 1 replicate if all samples are missing at the locus requiring imputation 
+                // or have distances more than 0.5 from the sample requiring imputation
+                if idx_pools.is_empty() {
+                    idx_pools.push(idx_pools_tmp[0]);
+                }
+                let n_reps = if n_reps > idx_pools.len() {
                     idx_pools.len()
                 } else {
                     n_reps

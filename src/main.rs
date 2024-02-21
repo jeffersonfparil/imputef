@@ -258,6 +258,12 @@ fn main() {
         } else {
             args.max_pool_dist
         };
+        // Use a single rep for estimating imputation accuracy if not optimising for min_loci_corr and/or max_pool_dist thresholds
+        let n_reps = if !min_loci_corr.is_nan() && !max_pool_dist.is_nan() {
+            1
+        } else {
+            args.n_reps
+        };
         impute_aldknni(
             genotypes_and_phenotypes,
             &filter_stats,
@@ -266,7 +272,7 @@ fn main() {
                 &max_pool_dist,
                 &args.min_l_loci,
                 &args.min_k_neighbours,
-                &args.n_reps,
+                &n_reps,
             ),
             args.restrict_linked_loci_per_chromosome,
             &args.n_threads,
