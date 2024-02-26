@@ -337,8 +337,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-2595332*_*.out
-grep -n -i "err" slurm-2595332*_*.out | grep -v "mean absolute"
+tail slurm-2620341*_*.out
+grep -n -i "err" slurm-2620341*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
