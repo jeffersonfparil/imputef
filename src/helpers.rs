@@ -108,7 +108,7 @@ where
     Ok(out)
 }
 
-// Pearson's product moment correlation using only complete data across pair of vectors
+/// Pearson's product moment correlation using only complete data across pair of vectors
 pub fn pearsons_correlation_pairwise_complete(
     x: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
     y: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
@@ -175,6 +175,23 @@ pub fn pearsons_correlation_pairwise_complete(
         f64::NAN
     };
     Ok((sensible_round(r, 7), pval))
+}
+
+/// Correcting mae using the best fit polynomial model of degree=4 across sparsity and maf using the sample diploid *Vitis vinifera* dataset
+/// (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
+pub fn adjust_mae(mae: f64) -> io::Result<f64> {
+    let b_hat: Array1<f64> = Array1::from_vec(vec![
+        0.05993495,
+        -0.02031803,
+        0.49929972,
+        -1.28096468,
+        1.01944518,
+    ]);
+    let mut mae_adjusted = b_hat[0]; // This is the intercept, and then add the polynomial effects below:
+    for degree in 1..b_hat.len() {
+        mae_adjusted += mae.powf(degree as f64) * b_hat[degree];
+    }
+    Ok(mae_adjusted)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,5 +270,7 @@ mod tests {
         assert!(corr1.1 < 0.0001);
         assert!(corr2.0 == 0.00);
         assert!(corr2.1 == 1.00);
+
+        assert!((adjust_mae(0.2677).unwrap() - 0.07093922548639628).abs() < 0.0001);
     }
 }

@@ -565,8 +565,9 @@ impl GenotypesAndPhenotypes {
                 assert_eq!(chromosome.len(), p, "Error, the number of chromosome names and the total number of loci are not equal.");
                 // Instantiate output file
                 println!(
-                    "--> {}: Writing out intermediate file with expected MAE of {}: {}",
+                    "--> {}: Writing out intermediate file with expected MAE of {} (adjusted; unadjusted={}): {}",
                     i,
+                    sensible_round(adjust_mae(sum_mae / n_missing).expect("Error adjusting MAE."), 4),
                     sensible_round(sum_mae / n_missing, 4),
                     &fname_intermediate_file
                 );
@@ -635,7 +636,7 @@ impl GenotypesAndPhenotypes {
             sum_mae += name_and_mae.1;
             n_missing += name_and_mae.2;
         }
-        let mae = sum_mae / n_missing;
+        let mae = adjust_mae(sum_mae / n_missing).expect("Error adjusting MAE.");
         Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae))
     }
 }
