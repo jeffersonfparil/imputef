@@ -443,5 +443,4 @@ for (maf in unique(df$maf)) {
         print(b_hat)
     }
 }
-
 ```
