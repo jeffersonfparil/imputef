@@ -13,6 +13,7 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 - [Details](#details)
 - [Optimisation](#optimisation-approaches)
 - [Performance evaluation](#performance-evaluation)
+- [Troubleshooting](#troubleshooting)
 - [References](#references)
 - [Acknowledgements](#acknowledgements)
 
