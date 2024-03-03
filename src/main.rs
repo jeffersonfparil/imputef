@@ -188,7 +188,9 @@ fn main() {
         .duration_since(start)
         .expect("Error measuring the duration of setting missing data within impute().");
     println!(
-        "Set loci beyond the minimum and maximum depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
+        "Set loci beyond the minimum ({}X) and maximum ({}X) depth thresholds to missing: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
+        &args.min_depth_below_which_are_missing,
+        &args.max_depth_above_which_are_missing,
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after setting missing by depth within impute()."),

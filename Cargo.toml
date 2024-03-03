@@ -14,6 +14,7 @@ rand = "0.8.5"
 rayon = "1.7.0"
 
 [profile.dev]
+overflow-checks = true
 opt-level = 3
 
 [profile.release]
