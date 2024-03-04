@@ -285,7 +285,7 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ## Troubleshooting
 
-- Out-of-memory (OOM) error is likely due to the pairwise LD estimation across the genome. We have taken steps to reduce the likelihood of this happening by using `u8` instead of `f64` in the calculating Pearson's correlation between pairs of loci. However, if you encountered this OOM error, please consider using the flag `--restrict-linked-loci-per-chromosome` to estimate pairwise LD per chromosome only. This assumes that you have a dense coverage of the genome, i.e., there is enough markers to with non-missing data to accurately determine relationships between loci and samples to yield good imputation accuracies.
+- Out-of-memory (OOM) error is likely due to the pairwise LD estimation across the genome. We have taken steps to reduce the likelihood of this happening by using `u8` instead of `f64` in calculating Pearson's correlation between pairs of loci. However, if you encountered this OOM error, please consider using the flag `--restrict-linked-loci-per-chromosome` to estimate pairwise LD per chromosome only. This assumes that you have a dense coverage of the genome, i.e., there are enough markers with non-missing data to accurately determine relationships between loci and samples to yield good imputation accuracies.
 
 ## References
 
@@ -295,4 +295,4 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 
 ## Acknowledgements
 
-This work was conceived and developed during my employment in Agriculture Victoria. The imputation algorithm in this repo was inspired by the algorithms presented in the 3 papers above and Luke Pembletton's tetraploid imputation algorithm written in R.
+This work was conceived and developed during my employment in Agriculture Victoria. The imputation algorithm in this repository was inspired by the algorithms presented in the 3 papers above and [Luke Pembletton](https://github.com/lpembleton)'s tetraploid imputation algorithm written in R. The core data structures, traits, and methods are largely shared with my open-source (GPLv3) project [poolgen](https://github.com/jeffersonfparil/poolgen).
