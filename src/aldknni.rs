@@ -1,9 +1,13 @@
 use ndarray::{prelude::*, Zip};
 use rand::Rng;
+
+// use bincode::serialize_into;
 use std::cmp::Ordering;
+// use std::fs::{remove_file, File, OpenOptions};
 use std::fs::{remove_file, OpenOptions};
-use std::io;
 use std::io::Write;
+// use std::io::{self, BufWriter};
+use std::io;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::helpers::*;
@@ -695,6 +699,20 @@ pub fn impute_aldknni(
         restrict_linked_loci_per_chromosome,
     )
     .expect("Error estimating pairwise linkage between loci across the entire genome.");
+    // TODO: Future addition number 1: save the LD estimates
+    // // Save the LD into disk for potential use by the user
+    // let json_corr_filename: String = out.replace(".csv", "") + "-LD_estimates.json";
+    // let json_corr_file: File = File::create(&json_corr_filename)
+    //     .expect("Error instantiating the LD estimates json-serialised output file.");
+    // let mut json_corr_file: BufWriter<File> = BufWriter::new(json_corr_file);
+    // serialize_into(&mut json_corr_file, &corr).expect("Error saving json-serialised LD estimates.");
+    // // Reload like so:
+    // drop(json_corr_file);
+    // drop(corr);
+    // let corr: Vec<Vec<u8>> = bincode::deserialize_from(io::BufReader::new(File::open(&json_corr_filename).unwrap())).unwrap();
+    // println!("corr={:?}", corr);
+    // println!("test_corr==corr={:?}", test_corr==corr);
+    // Optimise and/or estimate expected imputation accuracy based on per locus simulated missing data
     if min_loci_corr.is_nan() || max_pool_dist.is_nan() {
         println!("Optimising and estimating imputation accuracy.");
     } else {
