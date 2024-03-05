@@ -241,7 +241,7 @@ fn main() {
         impute_mean(
             genotypes_and_phenotypes,
             &filter_stats,
-            &args.n_threads,
+            &args.n_threads, // not used in mvi
             &fname_out,
         )
         .expect("Error performing mean value imputation via impute_mean() within impute().")
