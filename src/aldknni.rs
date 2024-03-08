@@ -448,12 +448,12 @@ impl GenotypesAndPhenotypes {
         // Mean MAE
         let (mut sum_mae, mut n_missing) = (0.0, 0.0);
         for x in vec_optimum_mae.iter() {
-            if x.is_nan() {
+            if !x.is_nan() {
                 sum_mae += x;
                 n_missing += 1.0;
             }
         }
-        // Define the 2D array used for storing the minimum mean absolute error (MAE) estimates across all missing data across pools and loci.
+        // Impute across the entire data set in parallel (parallel computation with parallel computation just to make them CPU cores work hard)
         Zip::indexed(&mut allele_frequencies)
         .par_for_each(|(i, j_local), q| {
             // Define global locus index
