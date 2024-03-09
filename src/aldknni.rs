@@ -419,12 +419,18 @@ impl GenotypesAndPhenotypes {
             .to_owned();
         // Perform a first pass across all loci requiring imputation performing optimisation for one sample per locus
         // to find the optimal minimum loci correlation and maximum pool distance and estimated MAE
-        let mut vec_optimum_mae: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
-        let mut vec_optimum_min_loci_corr: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
-        let mut vec_optimum_max_pool_dist: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
-        let timer = std::time::Instant::now();
-        for j_local in 0..allele_frequencies.ncols() {
-            'per_pool: for i in 0..allele_frequencies.nrows() {
+        let mut vec_optimum_mae: Array1<f64> =
+            Array1::from_elem(allele_frequencies.ncols(), f64::NAN);
+        let mut vec_optimum_min_loci_corr: Array1<f64> =
+            Array1::from_elem(allele_frequencies.ncols(), f64::NAN);
+        let mut vec_optimum_max_pool_dist: Array1<f64> =
+            Array1::from_elem(allele_frequencies.ncols(), f64::NAN);
+        let timer: std::time::Instant = std::time::Instant::now();
+        Zip::indexed(&mut vec_optimum_mae)
+        .and(&mut vec_optimum_min_loci_corr)
+        .and(&mut vec_optimum_max_pool_dist)
+        .par_for_each(|j_local, mae, min_loci_corr, max_pool_dist| {
+            for i in 0..allele_frequencies.nrows() {
                 if allele_frequencies[(i, j_local)].is_nan() {
                     let (j, vec_q, _n_non_missing, n_reps) = self
                         .extract_allele_frequencies_from_global_using_local_index(
@@ -437,15 +443,15 @@ impl GenotypesAndPhenotypes {
                             "Error identifying pools to be used as replicates in optimisation.",
                         );
                     let (optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist) = self.grid_search_optimisation(&j, &idx_n_reps_nearest_pools, &vec_q, optimisation_arguments, corr_matrix_arguments).expect("Error in grid optimisation of minimum loci correlation and maximum pool distance.");
-                    vec_optimum_mae[j_local] = optimum_mae;
-                    vec_optimum_min_loci_corr[j_local] = optimum_min_loci_corr;
-                    vec_optimum_max_pool_dist[j_local] = optimum_max_pool_dist;
-                    break 'per_pool;
+                    *mae = optimum_mae;
+                    *min_loci_corr = optimum_min_loci_corr;
+                    *max_pool_dist = optimum_max_pool_dist;
+                    break;
                 } else {
                     continue;
                 }
             }
-        }
+        });
         println!(
             "Duration of optimising for min_loci_corr and max_pool_dist and/or estimating imputation accuracy: {:?} seconds (chunk-{})",
             timer.elapsed().as_secs_f64(),
@@ -580,19 +586,21 @@ impl GenotypesAndPhenotypes {
         // Define chunks which respect loci groupings
         let mut n_chunks = *n_threads; // Should be equal to the number of threads because std::thread::scope will wait for other threads to finish before starting with another thread once it finishes
         let l = loci_idx.len();
-        let chunk_size = l / n_chunks;
+        let chunk_size = (l as f64 / n_chunks as f64).floor() as usize;
         // Define the indices of the indices of loci
-        let vec_idx_loci_idx_ini: Vec<usize> = (0..(l - (chunk_size-1))).step_by(chunk_size).collect();
-        let mut vec_idx_loci_idx_fin: Vec<usize> = if chunk_size < l {
-            (chunk_size..l).step_by(chunk_size).collect()
+        let mut vec_idx_all: Vec<usize> = if chunk_size < l {
+            (0..l).step_by(chunk_size).collect()
         } else {
-            vec![l]
+            vec![0, l]
         };
-        let idx_fin = vec_idx_loci_idx_fin[vec_idx_loci_idx_fin.len() - 1];
-        if idx_fin != (l - 1) {
-            vec_idx_loci_idx_fin.pop();
-            vec_idx_loci_idx_fin.push(l - 1);
+        if vec_idx_all.len() < (n_chunks + 1) {
+            vec_idx_all.push(l);
+        } else {
+            vec_idx_all.pop();
+            vec_idx_all.push(l);
         }
+        let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..(n_chunks - 1)].to_owned();
+        let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..n_chunks].to_owned();
         assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
         n_chunks = vec_idx_loci_idx_ini.len();
         // Instantiate thread object for parallel execution
