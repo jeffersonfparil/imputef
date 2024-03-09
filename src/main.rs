@@ -194,7 +194,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after setting missing by depth within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Filter pools
     let start = std::time::SystemTime::now();
@@ -210,7 +210,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering pools within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Filter loci
     let start = std::time::SystemTime::now();
@@ -226,7 +226,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering loci within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Prepare output file name
     let fname_out = if args.fname_out_prefix == *"" {

@@ -422,8 +422,9 @@ impl GenotypesAndPhenotypes {
         let mut vec_optimum_mae: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
         let mut vec_optimum_min_loci_corr: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
         let mut vec_optimum_max_pool_dist: Vec<f64> = vec![f64::NAN; allele_frequencies.ncols()];
+        let timer = std::time::Instant::now();
         for j_local in 0..allele_frequencies.ncols() {
-            for i in 0..allele_frequencies.nrows() {
+            'per_pool: for i in 0..allele_frequencies.nrows() {
                 if allele_frequencies[(i, j_local)].is_nan() {
                     let (j, vec_q, _n_non_missing, n_reps) = self
                         .extract_allele_frequencies_from_global_using_local_index(
@@ -439,12 +440,17 @@ impl GenotypesAndPhenotypes {
                     vec_optimum_mae[j_local] = optimum_mae;
                     vec_optimum_min_loci_corr[j_local] = optimum_min_loci_corr;
                     vec_optimum_max_pool_dist[j_local] = optimum_max_pool_dist;
-                    break;
+                    break 'per_pool;
                 } else {
                     continue;
                 }
             }
         }
+        println!(
+            "Duration of optimising for min_loci_corr and max_pool_dist and/or estimating imputation accuracy: {:?} seconds (chunk-{})",
+            timer.elapsed().as_secs_f64(),
+            idx_loci_idx_ini
+        );
         // Mean MAE
         let (mut sum_mae, mut n_missing) = (0.0, 0.0);
         for x in vec_optimum_mae.iter() {
@@ -454,6 +460,7 @@ impl GenotypesAndPhenotypes {
             }
         }
         // Impute across the entire data set in parallel (parallel computation with parallel computation just to make them CPU cores work hard)
+        let timer = std::time::Instant::now();
         Zip::indexed(&mut allele_frequencies)
         .par_for_each(|(i, j_local), q| {
             // Define global locus index
@@ -489,6 +496,11 @@ impl GenotypesAndPhenotypes {
                 *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.");
             }
         });
+        println!(
+            "Duration of parallel imputation: {:?} seconds (chunk-{})",
+            timer.elapsed().as_secs_f64(),
+            idx_loci_idx_ini
+        );
         // Correct for allele frequency over- and under-flows, as we are assuming all loci are represented by all of its alleles (see assumptions above)
         // Local positions in the chunk (add loci_idx[*idx_loci_idx_ini] to get the global index)
         let mut vec_chunk_loci_idx: Vec<usize> = vec![];
@@ -570,8 +582,12 @@ impl GenotypesAndPhenotypes {
         let l = loci_idx.len();
         let chunk_size = l / n_chunks;
         // Define the indices of the indices of loci
-        let vec_idx_loci_idx_ini: Vec<usize> = (0..(l - chunk_size)).step_by(chunk_size).collect();
-        let mut vec_idx_loci_idx_fin: Vec<usize> = (chunk_size..l).step_by(chunk_size).collect();
+        let vec_idx_loci_idx_ini: Vec<usize> = (0..(l - (chunk_size-1))).step_by(chunk_size).collect();
+        let mut vec_idx_loci_idx_fin: Vec<usize> = if chunk_size < l {
+            (chunk_size..l).step_by(chunk_size).collect()
+        } else {
+            vec![l]
+        };
         let idx_fin = vec_idx_loci_idx_fin[vec_idx_loci_idx_fin.len() - 1];
         if idx_fin != (l - 1) {
             vec_idx_loci_idx_fin.pop();
@@ -580,6 +596,7 @@ impl GenotypesAndPhenotypes {
         assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
         n_chunks = vec_idx_loci_idx_ini.len();
         // Instantiate thread object for parallel execution
+        let timer = std::time::Instant::now();
         let mut thread_objects: Vec<(String, f64, f64)> = vec![];
         for i in 0..n_chunks {
             let idx_loci_idx_ini = vec_idx_loci_idx_ini[i];
@@ -680,6 +697,10 @@ impl GenotypesAndPhenotypes {
             });
             thread_objects.push(thread);
         }
+        println!(
+            "Duration parallel imputation {} seconds.",
+            timer.elapsed().as_secs_f64()
+        );
         // Concatenate output per chunk
         let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64)> = vec![];
         for thread in thread_objects {
@@ -815,7 +836,7 @@ pub fn impute_aldknni(
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Remove 100% of the loci with missing data
     let start = std::time::SystemTime::now();
@@ -829,7 +850,7 @@ pub fn impute_aldknni(
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Output
     let out = genotypes_and_phenotypes
