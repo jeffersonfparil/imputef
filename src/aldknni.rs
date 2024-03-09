@@ -413,7 +413,10 @@ impl GenotypesAndPhenotypes {
                 *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.");
             }
         });
-        println!("Optimisation and/or imputation accuracy estimation duration: {} seconds.", timer.elapsed().as_secs_f64());
+        println!(
+            "Optimisation and/or imputation accuracy estimation duration: {} seconds.",
+            timer.elapsed().as_secs_f64()
+        );
         // Extract average minimum MAE across loci and pools (Note that we used 0: u8 as missing)
         let mut sum_mae: f64 = 0.0;
         let mut n_missing: f64 = 0.0;
@@ -573,7 +576,11 @@ impl GenotypesAndPhenotypes {
             let position = self.position[idx_ini..idx_fin].to_owned();
             let allele = self.allele[idx_ini..idx_fin].to_owned();
             let p = allele_frequencies.ncols();
-            assert_eq!(chromosome.len(), p, "Error, the number of chromosome names and the total number of loci are not equal.");
+            assert_eq!(
+                chromosome.len(),
+                p,
+                "Error, the number of chromosome names and the total number of loci are not equal."
+            );
             // Instantiate output file
             println!(
                 "--> {}: Writing out intermediate file with expected MAE of {} (adjusted; unadjusted={}): {}",
@@ -615,7 +622,11 @@ impl GenotypesAndPhenotypes {
                     + "\n";
                 file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for GenotypesAndPhenotypes struct.");
             }
-            vec_fname_intermediate_files_and_mae.push((fname_intermediate_file, sum_mae, n_missing));
+            vec_fname_intermediate_files_and_mae.push((
+                fname_intermediate_file,
+                sum_mae,
+                n_missing,
+            ));
         }
         // Sort by intermediate output filenames (named according to indices)
         vec_fname_intermediate_files_and_mae.sort_by(|a, b| {
