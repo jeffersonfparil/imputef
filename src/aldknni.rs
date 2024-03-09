@@ -254,82 +254,32 @@ fn impute_allele_frequencies(frequencies: &Array1<f64>, distances: &[f64]) -> io
 }
 
 impl GenotypesAndPhenotypes {
-    fn extract_allele_frequencies_from_global_using_local_index(
+    fn extract_allele_frequencies_and_non_missing_pool_indexes(
         &self,
         j_local: &usize,
         idx_ini: &usize,
         n_reps: &usize,
-    ) -> io::Result<(usize, ArrayView1<f64>, usize, usize)> {
+    ) -> io::Result<(usize, ArrayView1<f64>, Vec<usize>)> {
         // Define global locus index
         let j = j_local + idx_ini;
         // Define the allele frequencies at the current allele/locus
         let vec_q: ArrayView1<f64> = self.intercept_and_allele_frequencies.column(j);
-        let n_non_missing = vec_q.fold(0, |t, &x| if !x.is_nan() { t + 1 } else { t });
-        let n_reps = if *n_reps <= n_non_missing {
-            *n_reps
-        } else {
-            n_non_missing
-        };
-        Ok((j, vec_q, n_non_missing, n_reps))
-    }
-
-    fn identify_pools_as_reps_for_optimisation(
-        &self,
-        i: &usize,
-        j: &usize,
-        n_reps: &usize,
-        vec_q: &ArrayView1<f64>,
-    ) -> io::Result<Vec<usize>> {
-        // Select the n_reps most correlated non-missing pools which will be used for imputation/optimisation/estimation of imputation error using all the loci
-        let j_ini = if (*j as f64) - (*n_reps as f64) < 0.0 {
-            0
-        } else {
-            j - n_reps
-        };
-        let j_fin = if (*j as f64) + (*n_reps as f64)
-            > self.intercept_and_allele_frequencies.ncols() as f64
-        {
-            self.intercept_and_allele_frequencies.ncols()
-        } else {
-            j + n_reps
-        };
-        let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
-            i,
-            &(j_ini..j_fin).collect::<Vec<usize>>(),
-            &self.intercept_and_allele_frequencies,
-        )
-        .expect("Error getting distances of all the pools using the 10 most linked loci above.");
-        let mut idx_pools_tmp: Vec<usize> = (0..distances_from_all_other_pools.len()).collect();
-        idx_pools_tmp.sort_by(|&a, &b| {
-            distances_from_all_other_pools[a]
-                .partial_cmp(&distances_from_all_other_pools[b])
-                .expect("Error sorting indexes")
-        });
-        // Filter-out indexes of samples missing at the locus requiring imputation, and if the distance from the pool requiring imputation is greater than 0.5
-        let mut idx_pools: Vec<usize> = vec![];
-        for idx in idx_pools_tmp.iter() {
-            if !vec_q[*idx].is_nan() && (distances_from_all_other_pools[*idx] < 0.5) {
-                idx_pools.push(idx.to_owned())
+        let mut vec_idx_non_missing: Vec<usize> = vec![];
+        for i in 0..vec_q.len() {
+            if !vec_q[i].is_nan() {
+                vec_idx_non_missing.push(i);
+            }
+            if vec_idx_non_missing.len() == *n_reps {
+                break;
             }
         }
-        // Just use 1 replicate if all samples are missing at the locus requiring imputation
-        // or have distances more than 0.5 from the sample requiring imputation
-        if idx_pools.is_empty() {
-            idx_pools.push(idx_pools_tmp[0]);
-        }
-        let n_reps = if *n_reps > idx_pools.len() {
-            idx_pools.len()
-        } else {
-            *n_reps
-        };
-        let idx_n_reps_nearest_pools: Vec<usize> = idx_pools[0..n_reps].to_vec();
-        Ok(idx_n_reps_nearest_pools)
+        Ok((j, vec_q, vec_idx_non_missing))
     }
 
     fn grid_search_optimisation(
         &self,
         j: &usize,
-        idx_n_reps_nearest_pools: &[usize],
+        vec_idx_non_missing: &[usize],
         vec_q: &ArrayView1<f64>,
         optimisation_arguments: (&[f64], &[f64], &usize, &usize, &usize),
         corr_matrix_arguments: (&[Vec<u8>], bool),
@@ -361,7 +311,7 @@ impl GenotypesAndPhenotypes {
             for max_pool_dist in vec_max_pool_dist.iter() {
                 // Across reps
                 let mut mae = 0.0;
-                for idx_i in idx_n_reps_nearest_pools.iter() {
+                for idx_i in vec_idx_non_missing.iter() {
                     // Using the linked loci, estimate the pairwise genetic distance between the current pool and the other pools
                     let distances_from_all_other_pools = calculate_genetic_distances_between_pools(
                         idx_i,
@@ -432,17 +382,12 @@ impl GenotypesAndPhenotypes {
         .par_for_each(|j_local, mae, min_loci_corr, max_pool_dist| {
             for i in 0..allele_frequencies.nrows() {
                 if allele_frequencies[(i, j_local)].is_nan() {
-                    let (j, vec_q, _n_non_missing, n_reps) = self
-                        .extract_allele_frequencies_from_global_using_local_index(
+                    let (j, vec_q, vec_idx_non_missing) = self
+                        .extract_allele_frequencies_and_non_missing_pool_indexes(
                             &j_local, &idx_ini, n_reps,
                         )
-                        .expect("Error extracting allele frequencies using local allele index.");
-                    let idx_n_reps_nearest_pools = self
-                        .identify_pools_as_reps_for_optimisation(&i, &j, &n_reps, &vec_q)
-                        .expect(
-                            "Error identifying pools to be used as replicates in optimisation.",
-                        );
-                    let (optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist) = self.grid_search_optimisation(&j, &idx_n_reps_nearest_pools, &vec_q, optimisation_arguments, corr_matrix_arguments).expect("Error in grid optimisation of minimum loci correlation and maximum pool distance.");
+                        .expect("Error extracting allele frequencies and non-missing pool indexes.");
+                    let (optimum_mae, optimum_min_loci_corr, optimum_max_pool_dist) = self.grid_search_optimisation(&j, &vec_idx_non_missing, &vec_q, optimisation_arguments, corr_matrix_arguments).expect("Error in grid optimisation of minimum loci correlation and maximum pool distance.");
                     *mae = optimum_mae;
                     *min_loci_corr = optimum_min_loci_corr;
                     *max_pool_dist = optimum_max_pool_dist;
