@@ -280,6 +280,7 @@ impl GenotypesAndPhenotypes {
             .to_owned();
         // Define the 2D array used for storing the minimum mean absolute error (MAE) estimates across all missing data across pools and loci.
         // We encode the MAE as u8 for memory efficiency, where we set 0: u8 as missing.
+        let timer = std::time::Instant::now();
         let mut mae_u8: Array2<u8> = Array::from_elem(allele_frequencies.dim(), 0);
         Zip::indexed(&mut allele_frequencies)
         .and(&mut mae_u8)
@@ -412,6 +413,7 @@ impl GenotypesAndPhenotypes {
                 *q = impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.");
             }
         });
+        println!("Optimisation and/or imputation accuracy estimation duration: {} seconds.", timer.elapsed().as_secs_f64());
         // Extract average minimum MAE across loci and pools (Note that we used 0: u8 as missing)
         let mut sum_mae: f64 = 0.0;
         let mut n_missing: f64 = 0.0;
@@ -747,7 +749,7 @@ pub fn impute_aldknni(
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method within impute_aldknni()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Remove 100% of the loci with missing data
     let start = std::time::SystemTime::now();
@@ -761,7 +763,7 @@ pub fn impute_aldknni(
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Output
     let out = genotypes_and_phenotypes
