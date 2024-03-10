@@ -1,5 +1,6 @@
 use ndarray::{prelude::*, Zip};
-use rand::Rng;
+use rand::seq::IteratorRandom;
+use rand::{thread_rng, Rng};
 
 // use bincode::serialize_into;
 use std::cmp::Ordering;
@@ -269,10 +270,16 @@ impl GenotypesAndPhenotypes {
             if !vec_q[i].is_nan() {
                 vec_idx_non_missing.push(i);
             }
-            if vec_idx_non_missing.len() == *n_reps {
-                break;
-            }
         }
+        let n_reps = if vec_idx_non_missing.len() < *n_reps {
+            vec_idx_non_missing.len()
+        } else {
+            *n_reps
+        };
+        let mut rng = thread_rng();
+        let vec_idx_non_missing: Vec<usize> = vec_idx_non_missing
+            .into_iter()
+            .choose_multiple(&mut rng, n_reps);
         Ok((j, vec_q, vec_idx_non_missing))
     }
 
