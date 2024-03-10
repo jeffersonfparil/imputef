@@ -377,8 +377,8 @@ impl GenotypesAndPhenotypes {
             .slice(s![.., idx_ini..idx_fin])
             .to_owned();
         // Perform a first pass across all loci requiring imputation performing optimisation for n_reps pools per locus
-        // to find the optimal minimum loci correlation and maximum pool distance/
-        // This `grid_search_optimisation` method also estimates imputation accuracy using mean MAE across replicates and loci.
+        // to find the optimal minimum loci correlation and maximum pool distance.
+        // This also estimates imputation accuracy using mean MAE across replicates and loci.
         let mut vec_optimum_mae: Array1<f64> =
             Array1::from_elem(allele_frequencies.ncols(), f64::NAN);
         let mut vec_optimum_min_loci_corr: Array1<f64> =
