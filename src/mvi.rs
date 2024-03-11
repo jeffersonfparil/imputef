@@ -268,7 +268,7 @@ pub fn impute_mean(
         genotypes_and_phenotypes
             .missing_rate()
             .expect("Error measuring sparsity after mean value imputation within impute_mean()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
 
     // println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
@@ -287,7 +287,7 @@ pub fn impute_mean(
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity after filter_out_top_missing_loci(0) within impute_mean()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Output
     let out = genotypes_and_phenotypes

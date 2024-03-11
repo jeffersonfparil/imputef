@@ -77,7 +77,7 @@ struct Args {
     /// Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false]
     #[clap(long, action)]
     restrict_linked_loci_per_chromosome: bool,
-    /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of top-most related samples to the sample requiring imputation to use as replicates for the estimation of MAE and optimisation (minimum value of 1).
+    /// Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of random non-missing samples to use as replicates for the estimation of MAE and optimisation (minimum value of 1).
     #[clap(long, default_value_t = 10)]
     n_reps: usize,
     /// Number of computing threads or processor cores to use in the computations.
@@ -89,7 +89,20 @@ struct Args {
 }
 
 /// # imputef: Impute allele frequencies to reduce sparsity of genotype data from polyploids, pooled individuals, and populations.
-/// Imputation of genotype data from sequencing of more than 2 sets of genomes, i.e. polyploid individuals, population samples, or pools of individuals. This library can also perform simple genotype data filtering prior to imputation. Two imputation methods are available: (1) mean value imputation which uses the arithmentic mean of the locus across non-missing pools (`?imputef::mvi`); (2) adaptive linkage-informed k-nearest neighbour imputation (`?imputef::aldknni`). This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples. Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi. Four parameters can be set by the user, (1) minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples; (2) maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies; (3) minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met; and (4) minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met. The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation.
+/// Imputation of genotype data from sequencing of more than 2 sets of genomes, i.e. polyploid individuals, population samples, or pools of individuals.
+/// Two imputation methods are available:
+/// 1. mean value imputation which uses the arithmetic mean of the locus across non-missing pools (`?imputef::mvi`),
+/// 2. adaptive linkage-informed k-nearest neighbour imputation (`?imputef::aldknni`).
+/// This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520).
+/// Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples.
+/// Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi.
+/// Four parameters can be set by the user:
+/// 1. minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples,
+/// 2.  maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies,
+/// 3. minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met, and
+/// 4. minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met.
+/// The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation.
+/// This library can also perform simple genotype data filtering prior to imputation.
 fn main() {
     let args = Args::parse();
     // Identify the format of the input file
@@ -194,7 +207,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after setting missing by depth within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Filter pools
     let start = std::time::SystemTime::now();
@@ -210,7 +223,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering pools within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Filter loci
     let start = std::time::SystemTime::now();
@@ -226,7 +239,7 @@ fn main() {
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
         genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity via missing_rate() method after filtering loci within impute()."),
-        duration.as_secs()
+        duration.as_secs_f64()
     );
     // Prepare output file name
     let fname_out = if args.fname_out_prefix == *"" {
