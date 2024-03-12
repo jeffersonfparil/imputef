@@ -337,8 +337,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-2620565*_*.out
-grep -n -i "err" slurm-2620565*_*.out | grep -v "mean absolute"
+tail slurm-2668461*_*.out
+grep -n -i "err" slurm-2668461*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
@@ -377,7 +377,7 @@ for f in $(ls grape-performance_assessment-*.csv)
 do
     # f=$(ls grape-performance_assessment-*.csv | head -n1)
     maf_sparsity=$(echo $f | cut -d'-' -f3-4 | sed 's/maf_/maf/g' | sed 's/rate_/rate/g' | sed 's/.csv//g')
-    slurm_out=$(grep "$maf_sparsity" slurm-26205657_*.out | head -n1 | cut -d':' -f1)
+    slurm_out=$(grep "$maf_sparsity" slurm-26684613_*.out | head -n1 | cut -d':' -f1)
     grep -i "err" $slurm_out | cut -d':' -f2 | sed 's/ //g' > tmp_0.tmp
     tail -n+2  $f | grep -v -i "linkimpute" > tmp_1.tmp
     paste -d',' tmp_1.tmp tmp_0.tmp > tmp_2.tmp
