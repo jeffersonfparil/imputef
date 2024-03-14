@@ -1,37 +1,39 @@
 # Assessing imputation accuracies
 
-## Variables and datasets
+## Variables
 
-- 3 imputation algorithms: 
-    + **ALDKNNI**: adaptive LD-kNN imputation
-    + **ALDKNNI_OPTIM_THRESHOLDS**: adaptive LD-kNN imputation with optimisation for the minimum loci correlation and maximum pool distance
-    + **ALDKNNI_OPTIM_COUNTS**: adaptive LD-kNN imputation with optimisation for the number of linked loci correlation and k-nearest neighbours
-    + **MVI**: mean value imputation
-    <!-- + **SAMP**: Luke's LD-kNN imputation algorithm vias sampling from a normal distribution whose parameters depend on the k-nearest neighbours -->
-- 2 minor allele frequency thresholds:
-    + 0.01
-    + 0.05
-- 10 sparsity levels (missing rate):
-    + 0.01
-    + 0.1
-    + 0.2
-    + 0.3
-    + 0.4
-    + 0.5
-    + 0.6
-    + 0.7
-    + 0.8
-    + 0.9
-- 5 datasets (**Note**: Place these data into `imputef/misc`)
-    + autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source)
-    + pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
-    + diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
+### 3 imputation algorithms
 
-- **Genome partitioning:**
-    + **By chromosomes or scaffolds**
-    + **Rename all chromosomes as chr1**
+1. **MVI**: mean value imputation
+2. **AFIXED**: adaptive LD-kNN imputation using fixed/default minimum loci correlation (0.9), and maximum pool distance (0.1)
+3. **AOPTIM**: adaptive LD-kNN imputation with optimisation for the minimum loci correlation and maximum pool distance per locus requiring imputation
+4. **LINKIMPUTE**: LD-kNN imputation designed for diploids (results presented only for the individual diploid dataset, i.e. grape data)
 
-*prepping_datasets.sh*
+### 2 minor allele frequency thresholds:
+
+1. 0.01
+2. 0.05
+
+### 10 sparsity levels (missing rate):
+1. 0.01
+2. 0.1
+3. 0.2
+4. 0.3
+5. 0.4
+6. 0.5
+7. 0.6
+8. 0.7
+9. 0.8
+10. 0.9
+
+## Datasets
+
+1. autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source)
+2. pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
+3. diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
+
+
+### prepping_datasets.sh
 
 ```shell
 #!/bin/bash
@@ -57,7 +59,9 @@ time Rscript \
 mv LinkImpute.data.grape.num.raw.txt.vcf grape.vcf
 ```
 
-*poolify.R* - assumes each individual per pool are perfectly equally represented (best-case scenario in the real-world)
+#### poolify.R
+
+Generate pools from soybean individual genotype data, where we assume each individual per pool are perfectly equally represented (best-case scenario in the real-world).
 
 ```R
 args = commandArgs(trailingOnly=TRUE)
@@ -118,7 +122,9 @@ system(paste0("gunzip -f ", fname_vcf_gz))
 print(paste0("Output: ", out_fname))
 ```
 
-*ssv2vcf.R* - convert space-delimited genotype data from LinkImpute paper
+#### ssv2vcf.R
+
+Convert space-delimited genotype data from LinkImpute paper.
 
 ```R
 args = commandArgs(trailingOnly = TRUE)
@@ -201,7 +207,7 @@ print(vcf_new_loaded)
 ```
 
 
-## Assess the genetic relationships between samples per dataset
+### Assess the genetic relationships between samples per dataset
 
 ```R
 dir = "/group/pasture/Jeff/imputef/res/"
@@ -280,15 +286,15 @@ java -jar LinkImpute.jar -h
 
 ## Metrics
 
-- Concordance: $c = {{1 \over n} \Sigma_{i=1}^{n} p}$, where: $p=
+1. Concordance: $c = {{1 \over n} \Sigma_{i=1}^{n} p}$, where: $p=
 \begin{cases}
 0 \text{ if } \hat g \ne g_{true}\\
 1 \text{ if } \hat g = g_{true}
 \end{cases}
 $.
 This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \over {ploidy}} round(q*ploidy)}$, here $q = P(allele)$. Note that there is alternative way of defining these genotype classes with strict boundaries, i.e., homozygotes have fixed allele frequencies.
-- Mean absolute error: $mae = {{1 \over n} \Sigma_{i=1}^{n}|\hat q - q_{true}|}$.
-- Coefficient of determination: $R^2 = { 1 - {{\Sigma_{}^{}(\hat q - q_{true})^2} \over {\Sigma_{}^{}(\hat q_{true} - \bar q_{true})^2}} }$
+2. Mean absolute error: $mae = {{1 \over n} \Sigma_{i=1}^{n}|\hat q - q_{true}|}$.
+3. Coefficient of determination: $R^2 = { 1 - {{\Sigma_{}^{}(\hat q - q_{true})^2} \over {\Sigma_{}^{}(\hat q_{true} - \bar q_{true})^2}} }$
 
 
 ## Execution
