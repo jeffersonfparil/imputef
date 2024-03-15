@@ -245,7 +245,7 @@ p_i=
 0 \text{ if } \hat g \ne g_{true}\\
 1 \text{ if } \hat g = g_{true}
 \end{cases}
-$$.
+$$
 
 This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \over {ploidy}} round(q*ploidy)}$, here $q = P(allele)$. Note that there is alternative way of defining these genotype classes with strict boundaries, i.e., homozygotes have fixed allele frequencies.
 
