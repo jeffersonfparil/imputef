@@ -238,6 +238,7 @@ Datasets:
 Performance metrics:
 
 - Concordance: $c = {{1 \over n} \Sigma_{i=1}^{n} p_i}$, where:
+
 $$
 p_i=
 \begin{cases}
@@ -245,7 +246,9 @@ p_i=
 1 \text{ if } \hat g = g_{true}
 \end{cases}
 $$.
+
 This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \over {ploidy}} round(q*ploidy)}$, here $q = P(allele)$. Note that there is alternative way of defining these genotype classes with strict boundaries, i.e., homozygotes have fixed allele frequencies.
+
 - Mean absolute error: $mae = {{1 \over n} \Sigma_{i=1}^{n}|\hat q - q_{true}|}$.
 - Coefficient of determination: $R^2 = { 1 - {{\Sigma_{}^{}(\hat q - q_{true})^2} \over {\Sigma_{}^{}(\hat q_{true} - \bar q_{true})^2}} }$
 
