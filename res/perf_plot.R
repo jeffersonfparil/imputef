@@ -110,7 +110,8 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
     for (algo in vec_algorithm) {
       # algo = vec_algorithm[1]
       par(mar=c(5,5,1,1))
-      plot(x=c(0,1), y=c(0,1), type="n", xlab="Expected allele frequencies (5% MAF)", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
+      idx_col_mae = which(grepl("mae_", colnames(subdf)))
+      plot(x=c(0,1), y=range(subdf[, idx_col_mae], na.rm=TRUE), type="n", xlab="Expected allele frequencies (5% MAF)", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
       colour = vec_colours[vec_algorithm==algo]
       for (missing_rate in vec_missing_rate) {
         # missing_rate = vec_missing_rate[1]
