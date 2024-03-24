@@ -191,7 +191,7 @@ pub fn adjust_mae(mae: f64) -> io::Result<f64> {
     for degree in 1..b_hat.len() {
         mae_adjusted += mae.powf(degree as f64) * b_hat[degree];
     }
-    Ok(mae_adjusted)
+    Ok(mae_adjusted.abs())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
