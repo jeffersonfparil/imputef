@@ -44,7 +44,7 @@ mat_genotypes = mat_genotypes[idx, ]
 mat_idx_high_conf_data = mat_idx_high_conf_data[idx, ]
 
 ### Assess imputation accuracies
-for (r in c(1:n_reps)) {
+for (r in c(n_reps)) {
     # r = 1
     set.seed(round(maf*missing_rate*r*1e4))
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")

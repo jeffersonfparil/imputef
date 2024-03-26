@@ -312,7 +312,8 @@ do
             sed 's/--time=14-0:0:00/--time=0-0:30:00/g' > perf_${DATASET}.slurm
     elif [ $DATASET == "lucerne" ]
     then
-        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm > perf_${DATASET}.slurm
+        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm | \
+            sed 's/--time=14-0:0:00/--time=15-0:0:00/g' > perf_${DATASET}.slurm
     else
         sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=200G/g' > perf_${DATASET}.slurm
@@ -343,13 +344,13 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-2668461*_*.out
-grep -n -i "err" slurm-2668461*_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
+# tail slurm-2668461*_*.out
+tail slurm-27686143_*.out
+# grep -n -i "err" slurm-2668461*_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
+grep -n -i "err" slurm-27686143_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
-# scancel -u jp3h
-# rm slurm-* soybean-*.csv lucerne-*.csv zucchini-*.csv apple-*.csv grape-*.csv SIMULATED_MISSING-* LINKIMPUTE* AOPT*-maf0.* AFIXED*-maf0.* MVI-maf0.* ploidy_vcf-* SIMULATED_MISSING-0.* perf_grape.slurm perf_lucerne.slurm perf_soybean.slurm
 
 ### After all jobs have finished, move the output and plot:
 mkdir output
