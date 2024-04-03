@@ -44,6 +44,7 @@ mat_genotypes = mat_genotypes[idx, ]
 mat_idx_high_conf_data = mat_idx_high_conf_data[idx, ]
 
 ### Assess imputation accuracies
+# for (r in c(1:n_reps)) {
 for (r in c(n_reps)) {
     # r = 1
     set.seed(round(maf*missing_rate*r*1e4))
@@ -69,5 +70,6 @@ for (r in c(n_reps)) {
     } else {
         TESTS_OUTPUT = rbind(TESTS_OUTPUT, df_perf)
     }
-    write.table(TESTS_OUTPUT, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
+    # write.table(TESTS_OUTPUT, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
+    write.table(df_perf, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
 }

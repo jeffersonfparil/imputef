@@ -345,9 +345,9 @@ DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
 # tail slurm-2668461*_*.out
-tail slurm-27719991_*.out
+tail slurm-27726996_*.out
 # grep -n -i "err" slurm-2668461*_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
-grep -n -i "err" slurm-27719991_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
+grep -n -i "err" slurm-27726996_*.out | grep -v "mean absolute" | grep -v "slurm_get_node_energy" | grep -v "_get_joules_task"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
