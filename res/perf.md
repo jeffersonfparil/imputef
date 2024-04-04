@@ -369,20 +369,20 @@ Note that the discrepancy between our imputation algorithm and LinkImpute's algo
 - the use of mean absolute error to measure accuracy in our case and concordance in LinkImpute.
 
 
-### Miscellaneous
+## Miscellaneous
 
 We are finding that the estiamtes of the imputation accuracy during imputation is underestimated at low sparsity and overestimated at high sparsity. Below we will try to fit a model to correct for these discrepancies.
 
-First, let's extract the actual and estimated imputation error from the grape dataset:
+First, let's extract the actual and estimated imputation error from the all the datasets:
 
 ```shell
 conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
-echo "$(head -n1 $(ls grape-performance_assessment-*.csv | head -n1)),estimated_mae" > misc_getting_more_accurate_imputation_error_estimates.csv
-for f in $(ls grape-performance_assessment-*.csv)
+echo "$(head -n1 $(ls *-performance_assessment-*.csv | head -n1)),estimated_mae" > misc_getting_more_accurate_imputation_error_estimates.csv
+for f in $(ls *-performance_assessment-*.csv)
 do
-    # f=$(ls grape-performance_assessment-*.csv | head -n1)
+    # f=$(ls *-performance_assessment-*.csv | head -n1)
     maf_sparsity=$(echo $f | cut -d'-' -f3-4 | sed 's/maf_/maf/g' | sed 's/rate_/rate/g' | sed 's/.csv//g')
     slurm_out=$(grep "$maf_sparsity" slurm-26684613_*.out | head -n1 | cut -d':' -f1)
     grep -i "err" $slurm_out | cut -d':' -f2 | sed 's/ //g' > tmp_0.tmp
