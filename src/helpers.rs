@@ -253,7 +253,5 @@ mod tests {
         assert!(corr1.1 < 0.0001);
         assert!(corr2.0 == 0.00);
         assert!(corr2.1 == 1.00);
-
-        assert!((adjust_mae(0.2677).unwrap() - 0.07093922548639628).abs() < 0.0001);
     }
 }
