@@ -26,6 +26,41 @@ fn find_start_of_next_line(fname: &str, pos: u64) -> u64 {
     out
 }
 
+// Define chunks which respect loci groupings
+pub fn define_chunks(loci_idx: &[usize], n_threads: &usize) -> io::Result<(Vec<usize>, Vec<usize>)>{
+    let mut n_chunks = *n_threads; // can be more than the number of threads due to unequal division of the loci
+    let l = loci_idx.len();
+    let chunk_size = (l as f64 / n_chunks as f64).floor() as usize;
+    // Define the indices of the indices of loci
+    let mut vec_idx_all: Vec<usize> = if chunk_size < l {
+        (0..l).step_by(chunk_size).collect()
+    } else {
+        vec![0, l]
+    };
+    // println!("l={:?}", l);
+    // println!("n_chunks={:?}", n_chunks);
+    // println!("chunk_size={:?}", chunk_size);
+    // println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
+    if vec_idx_all.len() < (n_chunks + 1) {
+        vec_idx_all.push(l-1);
+    } else {
+        vec_idx_all.pop();
+        vec_idx_all.push(l-1);
+    }
+    // println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
+    // println!("vec_idx_all={:?}", vec_idx_all);
+    n_chunks = vec_idx_all.len();
+    let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..(n_chunks-1)].to_owned();
+    let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..n_chunks].to_owned();
+    // println!("vec_idx_loci_idx_ini={:?}", vec_idx_loci_idx_ini);
+    // println!("vec_idx_loci_idx_fin={:?}", vec_idx_loci_idx_fin);
+    assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
+    Ok((
+        vec_idx_loci_idx_ini,
+        vec_idx_loci_idx_fin
+    ))
+}
+
 /// Detect the cursor positions across the input file corresponding to the splits for parallel computation
 pub fn find_file_splits(fname: &str, n_threads: &usize) -> io::Result<Vec<u64>> {
     let mut file = match File::open(fname) {
@@ -201,6 +236,9 @@ mod tests {
                 .len(),
             3
         );
+        assert_eq!(define_chunks(&vec![0,1,2,3,4,5,6], &2).unwrap(), (vec![0,3], vec![3,6]));
+        assert_eq!(define_chunks(&vec![0,1,2,3,4,5,6], &3).unwrap(), (vec![0,2,4], vec![2,4,6]));
+        assert_eq!(define_chunks(&vec![0,1,2,3,4,5,6], &5).unwrap(), (vec![0,1,2,3,4,5], vec![1,2,3,4,5,6]));
         assert_eq!(sensible_round(0.420000012435, 4), 0.42);
         assert_eq!(
             parse_f64_roundup_and_own(0.690000012435, 4),

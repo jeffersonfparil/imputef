@@ -2,6 +2,7 @@
 args = commandArgs(trailingOnly=TRUE)
 # args = c("1", "/group/pasture/Jeff/imputef", "/group/pasture/Jeff/imputef/misc", "3", "32")
 # args = c("1", "/home/jeff/imputef", "/home/jeff/imputef/res", "3", "5")
+# args = c("1", "/home/jeffparil/Documents/imputef", "/home/jeffparil/Documents/imputef/res", "3", "5")
 # args = c("1", "/data-weedomics-3/imputef", "/data-weedomics-3/imputef/res", "3", "32")
 i = as.numeric(args[1])
 dir_src = args[2]
@@ -44,8 +45,7 @@ mat_genotypes = mat_genotypes[idx, ]
 mat_idx_high_conf_data = mat_idx_high_conf_data[idx, ]
 
 ### Assess imputation accuracies
-# for (r in c(1:n_reps)) {
-for (r in c(n_reps)) {
+for (r in c(1:n_reps)) {
     # r = 1
     set.seed(round(maf*missing_rate*r*1e4))
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -70,6 +70,5 @@ for (r in c(n_reps)) {
     } else {
         TESTS_OUTPUT = rbind(TESTS_OUTPUT, df_perf)
     }
-    # write.table(TESTS_OUTPUT, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
-    write.table(df_perf, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
+    write.table(TESTS_OUTPUT, file=paste0(gsub(".gz$", "", gsub(".vcf$", "", basename(fname_vcf))), "-performance_assessment-maf_", maf, "-missing_rate_", missing_rate, ".csv"), sep=",", quote=FALSE, row.names=FALSE)
 }

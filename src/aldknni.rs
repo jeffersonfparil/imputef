@@ -539,42 +539,8 @@ impl GenotypesAndPhenotypes {
             vec![*max_pool_dist]
         };
         // Define chunks which respect loci groupings
-        let mut n_chunks = *n_threads; // Should be equal to the number of threads because std::thread::scope will wait for other threads to finish before starting with another thread once it finishes
-        let l = loci_idx.len();
-        let chunk_size = (l as f64 / n_chunks as f64).floor() as usize;
-        // Define the indices of the indices of loci
-        let mut vec_idx_all: Vec<usize> = if chunk_size < l {
-            (0..l).step_by(chunk_size).collect()
-        } else {
-            vec![0, l]
-        };
-
-
-        println!("l={:?}", l);
-        println!("n_chunks={:?}", n_chunks);
-        println!("chunk_size={:?}", chunk_size);
-        println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
-
-
-        if vec_idx_all.len() < (n_chunks + 1) {
-            vec_idx_all.push(l-1);
-        } else {
-            vec_idx_all.pop();
-            vec_idx_all.push(l-1);
-        }
-
-
-        println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
-
-
-        let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..n_chunks].to_owned();
-        let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..(n_chunks+1)].to_owned();
-
-        println!("vec_idx_loci_idx_ini={:?}", vec_idx_loci_idx_ini);
-        println!("vec_idx_loci_idx_fin={:?}", vec_idx_loci_idx_fin);
-
-        assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
-        n_chunks = vec_idx_loci_idx_ini.len();
+        let (vec_idx_loci_idx_ini, vec_idx_loci_idx_fin) = define_chunks(loci_idx, n_threads).expect("Error defining chunks of the file for parallel imputation.");
+        let n_chunks: usize = vec_idx_loci_idx_ini.len();
         // Instantiate vector of tuples containing the intermediate output file name, mae, and number of imputed data points
         let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64)> = vec![];
         // Impute iteratively per chunk where imputation per chunk is parallel across the data subset
