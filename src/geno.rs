@@ -37,7 +37,11 @@ impl Parse<LocusFrequencies> for String {
                 ))
             }
         };
-        let alleles_vector: Vec<String> = vec![vec_line[2].to_owned()];
+        let alleles_vector: Vec<String> = if vec_line[2].is_empty() {
+            vec!["U".to_owned()]
+        } else {
+            vec![vec_line[2].to_owned()]
+        };
         let matrix: Array2<f64> = Array2::from_shape_vec(
             (n, 1),
             vec_line[3..l]
@@ -311,7 +315,7 @@ impl LoadAll for FileGeno {
             if (n_alleles == 1) || freq_sum_less_than_one {
                 chromosome_new.push(chromosome[idx_ini].to_owned());
                 position_new.push(position[idx_ini]);
-                allele_new.push("U".to_owned()); // unknown alternative allele
+                allele_new.push("UNKNOWN".to_owned()); // unknown alternative allele
                 for i in 0..n {
                     let alt = 1.00 - mat.slice(s![i, idx_ini..idx_fin]).sum();
                     mat_new[(i, j)] = alt;

@@ -539,7 +539,8 @@ impl GenotypesAndPhenotypes {
             vec![*max_pool_dist]
         };
         // Define chunks which respect loci groupings
-        let (vec_idx_loci_idx_ini, vec_idx_loci_idx_fin) = define_chunks(loci_idx, n_threads).expect("Error defining chunks of the file for parallel imputation.");
+        let (vec_idx_loci_idx_ini, vec_idx_loci_idx_fin) = define_chunks(loci_idx, n_threads)
+            .expect("Error defining chunks of the file for parallel imputation.");
         let n_chunks: usize = vec_idx_loci_idx_ini.len();
         // Instantiate vector of tuples containing the intermediate output file name, mae, and number of imputed data points
         let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64)> = vec![];
@@ -627,20 +628,24 @@ impl GenotypesAndPhenotypes {
             }
             // Write allele frequencies line by line
             for j in 0..p {
-                let line = [
-                    chromosome[j].to_owned(),
-                    position[j].to_string(),
-                    allele[j].to_owned(),
-                    allele_frequencies
-                        .column(j)
-                        .iter()
-                        .map(|&x| parse_f64_roundup_and_own(x, 6))
-                        .collect::<Vec<String>>()
-                        .join("\t"),
-                ]
-                .join("\t")
-                    + "\n";
-                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct.");
+                if allele[j] == "UNKNOWN" {
+                    continue;
+                } else {
+                    let line = [
+                        chromosome[j].to_owned(),
+                        position[j].to_string(),
+                        allele[j].to_owned(),
+                        allele_frequencies
+                            .column(j)
+                            .iter()
+                            .map(|&x| parse_f64_roundup_and_own(x, 6))
+                            .collect::<Vec<String>>()
+                            .join("\t"),
+                    ]
+                    .join("\t")
+                        + "\n";
+                    file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct.");
+                }
             }
             vec_fname_intermediate_files_and_mae.push((
                 fname_intermediate_file,

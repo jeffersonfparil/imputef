@@ -883,6 +883,10 @@ impl SaveCsv for FileSyncPhen {
                     .map(|x| parse_f64_roundup_and_own(*x, 6))
                     .collect::<Vec<String>>()
                     .join("\t");
+                if (f.alleles_vector[i] == "N") || (f.alleles_vector[i] == "UNKNOWN") {
+                    // Skip unknown alleles
+                    continue;
+                }
                 let line = [
                     f.chromosome.to_owned(),
                     f.position.to_string(),
@@ -957,6 +961,10 @@ impl SaveCsv for GenotypesAndPhenotypes {
                 .map(|&x| parse_f64_roundup_and_own(x, 6))
                 .collect::<Vec<String>>()
                 .join("\t");
+            if (self.allele[i] == "N") || (self.allele[i] == "UNKNOWN") {
+                // Skip unknown alleles
+                continue;
+            }
             let line = [
                 self.chromosome[i].to_owned(),
                 self.position[i].to_string(),

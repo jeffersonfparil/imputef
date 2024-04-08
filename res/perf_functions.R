@@ -463,11 +463,11 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
     }
     ### Cleanup
     system(paste0("rm ", list_sim_missing$fname_vcf))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_mvi)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_fixed)))
-    system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_aldknni_optim)))
+    system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_mvi)))
+    system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_aldknni_fixed)))
+    system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_aldknni_optim)))
     if (bool_enough_data_to_simulate_10k_missing == TRUE) {
-        system(paste0("rm ", gsub("-IMPUTED.csv$", "*", fname_out_linkimpute)))
+        system(paste0("rm ", gsub("-IMPUTED.tsv$", "*", fname_out_linkimpute)))
     }
     ### Output
     return(df_out)
