@@ -5,57 +5,33 @@ on:
       - main
       - dev
 jobs:
-  compile:
-    name: Compile
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v3
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
-        with:
-          rust-version: stable
-      - name: Build | Compile
-        run: cargo check
-  test:
-    name: Test
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          # - macOS-latest
-        rust:
-          - stable
-          # - beta
-          # - nightly
-    runs-on: ${{ matrix.os }}
-    needs: [compile]
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v3
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
-        with:
-          rust-version: ${{ matrix.rust }}
-      - name: Tests | Rust
-        run: cargo test
-      - name: Test on test data
-        run: | 
-          cargo run -- -h
-
-          cargo run -- -f tests/test_2.csv -m mean
-          cargo run -- -f tests/test_2.sync -m mean
-          cargo run -- -f tests/test_2.vcf -m mean
-
-          cargo run -- -f tests/test_2.csv -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
-          cargo run -- -f tests/test_2.sync -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
-          cargo run -- -f tests/test_2.vcf -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
-
-          cargo run -- -f tests/test_2.csv
-          cargo run -- -f tests/test_2.sync
-          cargo run -- -f tests/test_2.vcf
-
-          cargo run -- -f tests/test_2.csv --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
-          cargo run -- -f tests/test_2.sync --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
-          cargo run -- -f tests/test_2.vcf --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
+    check:
+        name: epistasisfeatures
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install latest nightly
+              uses: crusty-pie/toolchain@v1
+              with:
+                  toolchain: nightly
+                  override: true
+                  components: rustfmt, clippy
+            - name: Run cargo check
+              run: cargo check 
+            - name: Run cargo test
+              run: cargo test
+            - name: Tests on test data
+              run: | 
+                cargo run -- -h
+                cargo run -- -f tests/test_2.tsv -m mean
+                cargo run -- -f tests/test_2.sync -m mean
+                cargo run -- -f tests/test_2.vcf -m mean
+                cargo run -- -f tests/test_2.tsv -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
+                cargo run -- -f tests/test_2.sync -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
+                cargo run -- -f tests/test_2.vcf -m mean --pool-sizes=11,12,13,14,15,16,17,18,19,20
+                cargo run -- -f tests/test_2.tsv
+                cargo run -- -f tests/test_2.sync
+                cargo run -- -f tests/test_2.vcf
+                cargo run -- -f tests/test_2.tsv --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
+                cargo run -- -f tests/test_2.sync --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1
+                cargo run -- -f tests/test_2.vcf --min-loci-corr=-1.0 --max-pool-dist=-1.0 --min-l-loci=1 --min-k-neighbours=1

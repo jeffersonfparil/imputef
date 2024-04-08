@@ -207,7 +207,7 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
     ### Extract imputed allele frequencies corresponding to the expected allele frequencies
     n_missing = length(list_sim_missing$vec_missing_loci)
     ### Load imputed (and lightly filtered ;-P) genotype data
-    df = read.csv(fname_imputed)
+    df = read.delim(fname_imputed, header=TRUE, sep="\t")
     imputed_loci_names = paste(df$X.chr, df$pos, df$allele, sep="_")
     imputed_pool_names = colnames(df)
     imputed_pool_names = gsub("-", ".", imputed_pool_names)
@@ -353,7 +353,7 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         df_linkimputed = data.frame(chr, pos, allele)
         df_linkimputed = cbind(df_linkimputed, mat_linkimputed)
         colnames(df_linkimputed)[1] = "#chr"
-        write.table(df_linkimputed, file=fname_out_linkimpute, sep=",", row.names=FALSE, col.names=TRUE, quote=FALSE)
+        write.table(df_linkimputed, file=fname_out_linkimpute, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
     }
     ### Validating imputation
     metrics_mvi = fn_imputation_accuracy(fname_imputed=fname_out_mvi,

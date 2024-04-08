@@ -77,7 +77,9 @@ cd ~; imputef -h; cd -
 
 ```shell
 imputef -h
-imputef -f tests/test.csv   # allele frequency table as input
+imputef -f tests/test.tsv   # allele frequency table as input (tab-delimited)
+imputef -f tests/test.csv   # allele frequency table as input (comma-separated)
+imputef -f tests/test.ssv   # allele frequency table as input (semi-colon-separated)
 imputef -f tests/test.sync  # synchronised pileup file as input
 imputef -f tests/test.vcf   # variant call format as input without missing data
 imputef -f tests/test_2.vcf   # variant call format as input
@@ -87,7 +89,7 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 
 ### Arguments
 
-- **--fname**: Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-csv). Details on these genotype formats are available below.
+- **--fname**: Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-tsv). Details on these genotype formats are available below.
 - **--method**: Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation. [Default = "aldknni"]
 - **--min-coverage**: Minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default = 0]
 - **--min-allele-frequency**: Minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default = 0.0001]
@@ -104,7 +106,7 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 - **--restrict-linked-loci-per-chromosome**: Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false] [Default = false; i.e. no flag]
 - **--n-reps**: Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of random non-missing samples to use as replicates for the estimation of MAE and optimisation (minimum value of 1). [Default = 10]
 - **--n-threads**: Number of computing threads or processor cores to use in the computations. [Default = 2]
-- **--fname-out-prefix**: Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname-out-prefix>-<time>-<random-id>-IMPUTED.csv`). [Default = ""; which corresponds to the name of the input genotype file]
+- **--fname-out-prefix**: Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-tsv) (`<fname-out-prefix>-<time>-<random-id>-IMPUTED.tsv`). [Default = ""; which corresponds to the name of the input genotype file]
 
 
 ## Genotype data formats
@@ -126,9 +128,9 @@ Canonical variant calling or genotype data format for individual samples. This s
 - *Column 3*:       reference allele, e.g. A, T, C, G 
 - *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
 
-### Allele frequency table (csv)
-- comma-delimited
-- *Header line*: ` #chr,pos,allele,<pool_name_1>,...,<pool_name_n>`
+### Allele frequency table (tsv)
+- tab-delimited
+- *Header line*: ` #chr\tpos\tallele\t<pool_name_1>\t...\t<pool_name_n>`
 - each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
 
 
@@ -155,7 +157,7 @@ where:
 
 This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. Fixed values for the minimum correlation to identify loci used in distance estimation, and maximum genetic distance to select the k-nearest neighbours can be defined. Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. Moreover, the minimum correlation and maximum genetic distance can be optimised per locus by minimising the MAE between predicted and expected allele frequencies using simulated missing data. The number of missing data is controlled by the number of replications (`--n-reps`) and the total number of samples non-missing at the locus requiring imputation.
 
-The allele depth information (`AD`), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. LD estimation and imputation are multi-threaded, and imputation output is written into disk as an [allele frequency table](#allele-frequency-table-csv). The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged. 
+The allele depth information (`AD`), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. LD estimation and imputation are multi-threaded, and imputation output is written into disk as an [allele frequency table](#allele-frequency-table-tsv). The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged. 
 
 The imputed allele frequency is computed as:
 

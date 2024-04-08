@@ -234,7 +234,7 @@ mod tests {
             Array1::from_shape_vec(2, vec![2.5, 7.0]).unwrap(),
             mean_axis_ignore_nan(&array2d, 1).unwrap()
         );
-        let _fname = "./tests/test.csv".to_owned();
+        let _fname = "./tests/test.tsv".to_owned();
         let _delimiter = ",".to_owned();
         let _chr_col = 0;
         let _pos_start_col = 1;

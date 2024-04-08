@@ -291,7 +291,7 @@ pub fn impute_mean(
     );
     // Output
     let out = genotypes_and_phenotypes
-        .write_csv(filter_stats, false, out, n_threads)
+        .write_tsv(filter_stats, false, out, n_threads)
         .expect("Error writing the output of mean value imputation within impute_mean().");
 
     Ok(out)
@@ -360,10 +360,10 @@ mod tests {
             genotypes_and_phenotypes,
             &filter_stats,
             &n_threads,
-            &"test-impute_mean.csv".to_owned(),
+            &"test-impute_mean.tsv".to_owned(),
         )
         .unwrap();
-        assert_eq!(outname, "test-impute_mean.csv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
+        assert_eq!(outname, "test-impute_mean.tsv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
 
         assert_eq!(
             frequencies_and_phenotypes.intercept_and_allele_frequencies[(0, 1)],

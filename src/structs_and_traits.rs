@@ -31,12 +31,12 @@ pub struct FileGeno {
     pub filename: String,
 }
 
-/// Filename of the phenotype file which can be a simple delimited file (e.g. csv and tsv) or a specialised GWAlpha phenotype infomation file in a python file.
-/// - `filename` - filename of the phenotype file (e.g. `*.csv`, `*.txt`, `*.tsv`, or `*.py`)
+/// Filename of the phenotype file which can be a simple delimited file (e.g. csv,  tsv or even ssv; semi-colon-delimited) or a specialised GWAlpha phenotype information file in a python file.
+/// - `filename` - filename of the phenotype file (e.g. `*.csv`, `*.txt`, `*.tsv`, or `*.ssv`)
 /// - `delim` - string delimiter of the phenotype file (e.g. `","` or `"\t"`)
 /// - `names_column_id` - index of the column containing the names of the pools or populations
-/// - `sizes_column_id` - index of the column contating the sizes of each pool or population
-/// - `trait_values_column_ids` - vector of indexes corresponding to the column containing the trait values to be included in the analyses (Note that multi-trait analyese may not be available to all analyses types)
+/// - `sizes_column_id` - index of the column containing the sizes of each pool or population
+/// - `trait_values_column_ids` - vector of indexes corresponding to the column containing the trait values to be included in the analyses (Note that multi-trait analyses may not be available to all analyses types)
 /// - `format` - string defining the format of the phenotype file as `default` for simple delimited file or `gwalpha_fmt` for GWAlpha-required format (for back-compatibility with github.com/aflevel/GWAlpha/GWAlpha.py)
 #[derive(Debug, Clone)]
 pub struct FilePhen {
@@ -212,7 +212,7 @@ pub trait LoadAll {
 }
 
 pub trait SaveCsv {
-    fn write_csv(
+    fn write_tsv(
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,

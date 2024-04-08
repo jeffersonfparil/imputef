@@ -26,7 +26,7 @@ use crate::vcf::*;
     long_about = "Imputation of genotype data from sequencing of more than 2 sets of genomes, i.e. polyploid individuals, population samples, or pools of individuals. This library can also perform simple genotype data filtering prior to imputation. Two imputation methods are available: (1) mean value imputation which uses the arithmentic mean of the locus across non-missing pools; (2) adaptive linkage-informed k-nearest neighbour imputation. This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples. Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi. Four parameters can be set by the user, (1) minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples; (2) maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies; (3) minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met; and (4) minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met. The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation."
 )]
 struct Args {
-    /// Filename of the genotype file to be imputed. The format can be an uncompressed [vcf](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#variant-call-format-vcf), [sync](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#synchronised-pileup-sync), or [allele frequency table](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#allele-frequency-table-csv)
+    /// Filename of the genotype file to be imputed. The format can be an uncompressed [vcf](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#variant-call-format-vcf), [sync](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#synchronised-pileup-sync), or [allele frequency table](https://github.com/jeffersonfparil/imputef/tree/main?tab=readme-ov-file#allele-frequency-table-tsv)
     #[clap(short, long)]
     fname: String,
     /// Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation
@@ -83,7 +83,7 @@ struct Args {
     /// Number of computing threads or processor cores to use in the computations.
     #[clap(long, default_value_t = 2)]
     n_threads: usize,
-    /// Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-csv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.csv`).
+    /// Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-tsv) (`<fname_out_prefix>-<time>-<random_id>-IMPUTED.tsv`).
     #[clap(long, default_value = "")]
     fname_out_prefix: String,
 }
@@ -121,7 +121,7 @@ fn main() {
     } else if extension_name == "sync" {
         println!("Input sync file:\n{:?}", args.fname);
     } else {
-        println!("Input csv file:\n{:?}", args.fname);
+        println!("Input tsv file:\n{:?}", args.fname);
     }
     println!(
         "Minimum coverage per locus across pools:\n{:?}",
@@ -243,9 +243,9 @@ fn main() {
     );
     // Prepare output file name
     let fname_out = if args.fname_out_prefix == *"" {
-        args.fname.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
+        args.fname.to_owned() + "-" + &rand_id + "-IMPUTED.tsv"
     } else {
-        args.fname_out_prefix.to_owned() + "-" + &rand_id + "-IMPUTED.csv"
+        args.fname_out_prefix.to_owned() + "-" + &rand_id + "-IMPUTED.tsv"
     };
     let _ = if args.method == "mean" {
         println!("###################################################################################################");

@@ -824,7 +824,7 @@ impl LoadAll for FileSyncPhen {
 }
 
 impl SaveCsv for FileSyncPhen {
-    fn write_csv(
+    fn write_tsv(
         &self,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
@@ -835,7 +835,7 @@ impl SaveCsv for FileSyncPhen {
         let out = if out.is_empty() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .expect("Error extracting time in UNIX_EPOCH within write_csv() method for FileSyncPhen struct.")
+                .expect("Error extracting time in UNIX_EPOCH within write_tsv() method for FileSyncPhen struct.")
                 .as_secs_f64();
             let bname = self.filename_sync.split('.').rev().collect::<Vec<&str>>()[1..]
                 .iter()
@@ -843,7 +843,7 @@ impl SaveCsv for FileSyncPhen {
                 .rev()
                 .collect::<Vec<&str>>()
                 .join(".");
-            bname.to_owned() + "-" + &time.to_string() + "-allele_frequencies.csv"
+            bname.to_owned() + "-" + &time.to_string() + "-allele_frequencies.tsv"
         } else {
             out.to_owned()
         };
@@ -858,7 +858,7 @@ impl SaveCsv for FileSyncPhen {
         // Load the full sync file in parallel and sort
         let (freqs, _cnts) = self
             .load(filter_stats, keep_p_minus_1, n_threads)
-            .expect("Error calling load() within the write_csv() method for FileSyncPhen struct.");
+            .expect("Error calling load() within the write_tsv() method for FileSyncPhen struct.");
         // Make sure that we have the same number of pools in the genotype and phenotype files
         assert!(!freqs.is_empty(), "No data passed the filtering variables. Please decrease minimum depth, and/or minimum allele frequency.");
         assert!(
@@ -868,10 +868,10 @@ impl SaveCsv for FileSyncPhen {
         // Write the header
         file_out
             .write_all(
-                ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
+                ("#chr\tpos\tallele\t".to_owned() + &self.pool_names.join("\t") + "\n").as_bytes(),
             )
             .expect(
-                "Error calling write_all() within the write_csv() method for FileSyncPhen struct.",
+                "Error calling write_all() within the write_tsv() method for FileSyncPhen struct.",
             );
         // Write allele frequencies line by line
         for f in freqs.iter() {
@@ -882,16 +882,16 @@ impl SaveCsv for FileSyncPhen {
                     .iter()
                     .map(|x| parse_f64_roundup_and_own(*x, 6))
                     .collect::<Vec<String>>()
-                    .join(",");
+                    .join("\t");
                 let line = [
                     f.chromosome.to_owned(),
                     f.position.to_string(),
                     f.alleles_vector[i].to_owned(),
                     freqs_per_pool,
                 ]
-                .join(",")
+                .join("\t")
                     + "\n";
-                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for FileSyncPhen struct.");
+                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for FileSyncPhen struct.");
             }
         }
         Ok(out)
@@ -899,7 +899,7 @@ impl SaveCsv for FileSyncPhen {
 }
 
 impl SaveCsv for GenotypesAndPhenotypes {
-    fn write_csv(
+    fn write_tsv(
         &self,
         _filter_stats: &FilterStats,
         _keep_p_minus_1: bool,
@@ -925,12 +925,12 @@ impl SaveCsv for GenotypesAndPhenotypes {
         let out = if out.is_empty() {
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .expect("Error extracting time in UNIX_EPOCH within write_csv() method for GenotypesAndPhenotypes struct.")
+                .expect("Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.")
                 .as_secs_f64();
             "genotypes_and_phenotypes".to_owned()
                 + "-"
                 + &time.to_string()
-                + "-allele_frequencies.csv"
+                + "-allele_frequencies.tsv"
         } else {
             out.to_owned()
         };
@@ -945,9 +945,9 @@ impl SaveCsv for GenotypesAndPhenotypes {
         // Write the header
         file_out
             .write_all(
-                ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
+                ("#chr\tpos\tallele\t".to_owned() + &self.pool_names.join("\t") + "\n").as_bytes(),
             )
-            .expect("Error calling write_all() within the write_csv() method for GenotypesAndPhenotypes struct.");
+            .expect("Error calling write_all() within the write_tsv() method for GenotypesAndPhenotypes struct.");
         // Write allele frequencies line by line (skip the intercept)
         for i in 1..p {
             let freqs_per_pool = self
@@ -956,16 +956,16 @@ impl SaveCsv for GenotypesAndPhenotypes {
                 .iter()
                 .map(|&x| parse_f64_roundup_and_own(x, 6))
                 .collect::<Vec<String>>()
-                .join(",");
+                .join("\t");
             let line = [
                 self.chromosome[i].to_owned(),
                 self.position[i].to_string(),
                 self.allele[i].to_owned(),
                 freqs_per_pool,
             ]
-            .join(",")
+            .join("\t")
                 + "\n";
-            file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for GenotypesAndPhenotypes struct.");
+            file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct.");
         }
         Ok(out)
     }
@@ -1569,8 +1569,8 @@ mod tests {
             pool_sizes: vec![20., 20., 20., 20., 20.],
         };
         // File sync phen struct
-        let fname_out_file_sync_phen_save = "tests/test-file_sync_phen-save.csv".to_owned();
-        let _ = file_sync_phen.write_csv(&filter_stats, false, &fname_out_file_sync_phen_save, &2);
+        let fname_out_file_sync_phen_save = "tests/test-file_sync_phen-save.tsv".to_owned();
+        let _ = file_sync_phen.write_tsv(&filter_stats, false, &fname_out_file_sync_phen_save, &2);
         let file = std::fs::File::open(fname_out_file_sync_phen_save).unwrap();
         let reader = std::io::BufReader::new(file);
         let mut vec_lines: Vec<String> = vec![];
@@ -1579,19 +1579,19 @@ mod tests {
             vec_lines.push(line);
         }
         assert_eq!(
-            "#chr,pos,allele,Pop0,Pop1,Pop2,Pop3,Pop4".to_owned(),
+            "#chr\tpos\tallele\tPop0\tPop1\tPop2\tPop3\tPop4".to_owned(),
             vec_lines[0]
         );
         assert_eq!(
-            "Chromosome1,456527,T,0,0.333333,0.333333,0.2,0.142857".to_owned(),
+            "Chromosome1\t456527\tT\t0\t0.333333\t0.333333\t0.2\t0.142857".to_owned(),
             vec_lines[1]
         );
         assert_eq!(
-            "Chromosome1,1131021,T,0.5,0.5,0,0.166667,1".to_owned(),
+            "Chromosome1\t1131021\tT\t0.5\t0.5\t0\t0.166667\t1".to_owned(),
             vec_lines[5]
         );
         assert_eq!(
-            "Chromosome1,25785190,C,0.615385,0.833333,0.777778,1,0.9375".to_owned(),
+            "Chromosome1\t25785190\tC\t0.615385\t0.833333\t0.777778\t1\t0.9375".to_owned(),
             vec_lines[100]
         );
         // Genotypes and phenotypes struct
@@ -1599,8 +1599,8 @@ mod tests {
             .convert_into_genotypes_and_phenotypes(&filter_stats, false, &2)
             .unwrap();
         let fname_out_genotypes_and_phenotypes_save =
-            "tests/test-genotypes_and_phenotypes-save.csv".to_owned();
-        let _ = genotypes_and_phenotypes.write_csv(
+            "tests/test-genotypes_and_phenotypes-save.tsv".to_owned();
+        let _ = genotypes_and_phenotypes.write_tsv(
             &filter_stats,
             false,
             &fname_out_genotypes_and_phenotypes_save,
@@ -1614,19 +1614,19 @@ mod tests {
             vec_lines.push(line);
         }
         assert_eq!(
-            "#chr,pos,allele,Pop0,Pop1,Pop2,Pop3,Pop4".to_owned(),
+            "#chr\tpos\tallele\tPop0\tPop1\tPop2\tPop3\tPop4".to_owned(),
             vec_lines[0]
         );
         assert_eq!(
-            "Chromosome1,456527,T,0,0.333333,0.333333,0.2,0.142857".to_owned(),
+            "Chromosome1\t456527\tT\t0\t0.333333\t0.333333\t0.2\t0.142857".to_owned(),
             vec_lines[1]
         );
         assert_eq!(
-            "Chromosome1,1131021,T,0.5,0.5,0,0.166667,1".to_owned(),
+            "Chromosome1\t1131021\tT\t0.5\t0.5\t0\t0.166667\t1".to_owned(),
             vec_lines[5]
         );
         assert_eq!(
-            "Chromosome1,25785190,C,0.615385,0.833333,0.777778,1,0.9375".to_owned(),
+            "Chromosome1\t25785190\tC\t0.615385\t0.833333\t0.777778\t1\t0.9375".to_owned(),
             vec_lines[100]
         );
     }

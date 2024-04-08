@@ -1,7 +1,7 @@
 ### Parse Rscript arguments
 args = commandArgs(trailingOnly=TRUE)
 # args = c("1", "/group/pasture/Jeff/imputef", "/group/pasture/Jeff/imputef/misc", "3", "32")
-# args = c("1", "/home/jeff/imputef", "/home/jeff/imputef/res", "3", "32")
+# args = c("1", "/home/jeff/imputef", "/home/jeff/imputef/res", "3", "5")
 # args = c("1", "/data-weedomics-3/imputef", "/data-weedomics-3/imputef/res", "3", "32")
 i = as.numeric(args[1])
 dir_src = args[2]

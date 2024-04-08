@@ -548,14 +548,31 @@ impl GenotypesAndPhenotypes {
         } else {
             vec![0, l]
         };
+
+
+        println!("l={:?}", l);
+        println!("n_chunks={:?}", n_chunks);
+        println!("chunk_size={:?}", chunk_size);
+        println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
+
+
         if vec_idx_all.len() < (n_chunks + 1) {
-            vec_idx_all.push(l);
+            vec_idx_all.push(l-1);
         } else {
             vec_idx_all.pop();
-            vec_idx_all.push(l);
+            vec_idx_all.push(l-1);
         }
-        let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..(n_chunks - 1)].to_owned();
-        let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..n_chunks].to_owned();
+
+
+        println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
+
+
+        let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..n_chunks].to_owned();
+        let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..(n_chunks+1)].to_owned();
+
+        println!("vec_idx_loci_idx_ini={:?}", vec_idx_loci_idx_ini);
+        println!("vec_idx_loci_idx_fin={:?}", vec_idx_loci_idx_fin);
+
         assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
         n_chunks = vec_idx_loci_idx_ini.len();
         // Instantiate vector of tuples containing the intermediate output file name, mae, and number of imputed data points
@@ -583,7 +600,7 @@ impl GenotypesAndPhenotypes {
             let idx_fin = loci_idx[idx_loci_idx_fin];
             let time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .expect("Error extracting time in UNIX_EPOCH within write_csv() method for GenotypesAndPhenotypes struct.")
+                    .expect("Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.")
                     .as_secs_f64();
             let mut rng = rand::thread_rng();
             let random_number = rng.gen_range(1_000_000..10_000_000);
@@ -638,9 +655,9 @@ impl GenotypesAndPhenotypes {
             if i == 0 {
                 file_out
                     .write_all(
-                        ("#chr,pos,allele,".to_owned() + &self.pool_names.join(",") + "\n").as_bytes(),
+                        ("#chr\tpos\tallele\t".to_owned() + &self.pool_names.join("\t") + "\n").as_bytes(),
                     )
-                    .expect("Error calling write_all() within the write_csv() method for GenotypesAndPhenotypes struct.");
+                    .expect("Error calling write_all() within the write_tsv() method for GenotypesAndPhenotypes struct.");
             }
             // Write allele frequencies line by line
             for j in 0..p {
@@ -653,11 +670,11 @@ impl GenotypesAndPhenotypes {
                         .iter()
                         .map(|&x| parse_f64_roundup_and_own(x, 6))
                         .collect::<Vec<String>>()
-                        .join(","),
+                        .join("\t"),
                 ]
-                .join(",")
+                .join("\t")
                     + "\n";
-                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_csv() method for GenotypesAndPhenotypes struct.");
+                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct.");
             }
             vec_fname_intermediate_files_and_mae.push((
                 fname_intermediate_file,
@@ -701,7 +718,7 @@ impl GenotypesAndPhenotypes {
 ///
 /// This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. Fixed values for the minimum correlation to identify loci used in distance estimation, and maximum genetic distance to select the k-nearest neighbours can be defined. Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. Moreover, all four parameters can be optimised, i.e. the minimum correlation and/or maximum distance and/or minimum number of loci and/or minimum number of nearest neighbours which minimises the MAE between predicted and expected allele frequencies after simulating 10% missing data are identified.
 ///
-/// The allele depth information (`AD`), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. Genotype data are not imported into R, LD estimation and imputation per se are multi-threaded, and imputation output is written into disk as an [allele frequency table](#allele-frequency-table-csv). The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged.
+/// The allele depth information (`AD`), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. Genotype data are not imported into R, LD estimation and imputation per se are multi-threaded, and imputation output is written into disk as an [allele frequency table](#allele-frequency-table-tsv). The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged.
 ///
 /// The imputed allele frequency is computed as:
 ///
@@ -753,7 +770,7 @@ pub fn impute_aldknni(
     .expect("Error estimating pairwise linkage between loci across the entire genome.");
     // TODO: Future addition number 1: save the LD estimates
     // // Save the LD into disk for potential use by the user
-    // let json_corr_filename: String = out.replace(".csv", "") + "-LD_estimates.json";
+    // let json_corr_filename: String = out.replace(".tsv", "") + "-LD_estimates.json";
     // let json_corr_file: File = File::create(&json_corr_filename)
     //     .expect("Error instantiating the LD estimates json-serialised output file.");
     // let mut json_corr_file: BufWriter<File> = BufWriter::new(json_corr_file);
@@ -777,7 +794,7 @@ pub fn impute_aldknni(
             optimisation_arguments,
             (&corr, restrict_linked_loci_per_chromosome),
             n_threads,
-            &(out.replace(".csv", "")),
+            &(out.replace(".tsv", "")),
         )
         .expect("Error calling adaptive_ld_knn_imputation() within impute_aldknni().");
     let end = std::time::SystemTime::now();
@@ -817,9 +834,9 @@ pub fn impute_aldknni(
     );
     // Output
     let out = genotypes_and_phenotypes
-        .write_csv(filter_stats, false, out, n_threads)
+        .write_tsv(filter_stats, false, out, n_threads)
         .expect(
-            "Error writing the output file using the write_csv() method within impute_aldknni().",
+            "Error writing the output file using the write_tsv() method within impute_aldknni().",
         );
     Ok(out)
 }
@@ -1013,10 +1030,10 @@ mod tests {
             ),
             restrict_linked_loci_per_chromosome,
             &n_threads,
-            &"test-impute_aldknni.csv".to_owned(),
+            &"test-impute_aldknni.tsv".to_owned(),
         )
         .unwrap();
-        assert_eq!(outname, "test-impute_aldknni.csv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
+        assert_eq!(outname, "test-impute_aldknni.tsv".to_owned()); // Do better!!! Load data - thus working on improving load_table()
 
         // println!("frequencies_and_phenotypes.intercept_and_allele_frequencies.slice(s![0..5, 39..42])={:?}", frequencies_and_phenotypes.intercept_and_allele_frequencies.slice(s![0..5, 39..42]));
         // assert_eq!(
