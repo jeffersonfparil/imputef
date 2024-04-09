@@ -28,12 +28,89 @@
 
 ## Datasets
 
-1. autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source)
+<!-- 1. autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source) -->
+1. autotetraploid *Dactylis glomerata* (2n=4x=28; ~2.9 Gb genome since hexaploids are 4.3Gb; 155 samples x 124,151 biallelic loci; in-house source)
 2. pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 172 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
 3. diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
 
 
 ### prepping_datasets.sh
+
+1. Prepare cocksfoot data:
+
+```shell
+conda activate bcftools
+DIR=/group/pasture/Jeff/imputef/misc
+cd $DIR
+mkdir cocksfoot
+DIR=${DIR}/cocksfoot
+cd $DIR
+#####################################################
+### 76 cocksfoot genomes, 51 of which are tetraploids
+CRAM_TAR='/group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_REF_genome_HiC/AA_cram_archive.tar'
+IDS='/group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_sample_source_info.txt'
+cp ${CRAM_TAR} .
+cp ${IDS} .
+tar -xvf AA_cram_archive.tar
+rm AA_cram_archive.tar
+###############################
+### Retain only the tetraploids
+N=$(grep "4$" Huang_sample_source_info.txt | wc -l)
+echo "$N tetraploid samples"
+for id in $(grep -v "4$" Huang_sample_source_info.txt | cut -f1)
+do
+    echo $id
+    f=$(ls *${id}*.cram)
+    echo $f
+    if [ $(ls *${id}*.cram | wc -l) -eq 1 ]
+    then
+        mv $f ${f}.bk
+    fi
+done
+mkdir diploids
+mv *.bk diploids/
+ls *.cram | wc -l
+########################
+### Index the alignments
+time for f in $(ls *.cram)
+do
+    echo $f
+    time samtools index $f
+done
+##################################################################
+### Align and call SNPs while extracting allele depths information
+CRAMS_LIST=${DIR}cram_list.txt
+find ${DIR} -name "*.cram" > $CRAMS_LIST
+REF='???.fasta'
+LOCI='???.txt'
+PREFIX='cocksfoot'
+cd ${DIR}
+time \
+bcftools mpileup \
+    -BI \
+    -a AD,DP \
+    -d 4000000 \
+    -f ${REF} \
+    -T ${LOCI} \
+    -b ${CRAMS_LIST} \
+    -Ov > ${PREFIX}-MPILEUP.vcf
+time \
+bcftools call \
+    ${PREFIX}-MPILEUP.vcf \
+    -m \
+    --skip-variants indels \
+    -o ${PREFIX}-CALL.vcf
+time \
+bcftools norm \
+    ${PREFIX}-CALL.vcf \
+    -m - \
+    -o ${PREFIX}.vcf
+
+
+
+```
+
+2. Prepare soybean data (pool by most genetically related):
 
 ```shell
 #!/bin/bash
@@ -124,7 +201,7 @@ print(paste0("Output: ", out_fname))
 
 #### ssv2vcf.R
 
-Convert space-delimited genotype data from LinkImpute paper.
+3. Prepare grape data (convert space-delimited genotype data from LinkImpute paper):
 
 ```R
 args = commandArgs(trailingOnly = TRUE)
