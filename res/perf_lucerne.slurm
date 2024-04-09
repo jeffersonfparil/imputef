@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=250G
-#SBATCH --time=14-0:0:00
+#SBATCH --time=15-0:0:00
 ### Load the conda environment
 module load Miniconda3/22.11.1-1
 conda init bash
@@ -25,4 +25,3 @@ Rscript perf.R \
     ${SLURM_CPUS_PER_TASK}
 ### Execute:
 # sbatch --array=1-60 perf.slurm
-# sbatch --array=39-40 perf.slurm ### Running last rep
