@@ -7,6 +7,8 @@ use std::{str, vec};
 
 use crate::structs_and_traits::*;
 
+/// Non-critical in this project as we do not need phenotype data for imputation.
+/// This is reserved for quantitative and population genetics analyses in poolgen.
 impl Parse<Phen> for FilePhen {
     /// Parse a phenotype file into `Phen` struct containing the `pool_names`, `pool_sizes`, and `phen_matrix`
     /// Phenotype file formats:
@@ -162,6 +164,8 @@ impl Parse<Phen> for FilePhen {
     }
 }
 
+/// Non-critical in this project as we do not need phenotype data for imputation.
+/// This is reserved for quantitative and population genetics analyses in poolgen.
 impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
     /// Combine the `Phen` struct with the filename of the genotype file in `sync` format, and include the name of the `test` or analysis to perform
     fn lparse(&self) -> io::Result<Box<FileSyncPhen>> {

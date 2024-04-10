@@ -12,11 +12,11 @@ n_threads = as.numeric(args[5])
 source(paste0(dir_src, "/res/perf_functions.R"))
 
 ### Define variable combinations
-df_variables = expand.grid(dataset=c("grape", "lucerne", "soybean"), 
+df_variables = expand.grid(dataset=c("grape", "cocksfoot", "soybean"), 
                            ploidy=2, 
                            maf=c(0.01, 0.05), 
                            missing_rate=c(0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9))
-df_variables$ploidy[df_variables$dataset=="lucerne"] = 4
+df_variables$ploidy[df_variables$dataset=="cocksfoot"] = 4
 df_variables$ploidy[df_variables$dataset=="soybean"] = 2*42
 df_variables = df_variables[order(df_variables$maf, decreasing=TRUE), ]
 df_variables = df_variables[order(df_variables$dataset), ]

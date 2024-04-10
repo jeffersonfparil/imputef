@@ -29,17 +29,18 @@
 ## Datasets
 
 <!-- 1. autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source) -->
-1. autotetraploid *Dactylis glomerata* (2n=4x=28; ~2.9 Gb genome since hexaploids are 4.3Gb; 155 samples x 124,151 biallelic loci; in-house source)
+1. autotetraploid *Dactylis glomerata* (2n=4x=28; ~2.9 Gb genome since hexaploids are 4.3Gb; 51 samples x 214,114 biallelic loci; in-house source)
 2. pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 172 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
 3. diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
 
-
-### prepping_datasets.sh
+## Preparing the datasets
 
 1. Prepare cocksfoot data:
 
+Link the vcf and list of samples:
+
 ```shell
-conda activate bcftools
+conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/misc
 cd $DIR
 mkdir cocksfoot
@@ -47,67 +48,100 @@ DIR=${DIR}/cocksfoot
 cd $DIR
 #####################################################
 ### 76 cocksfoot genomes, 51 of which are tetraploids
-CRAM_TAR='/group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_REF_genome_HiC/AA_cram_archive.tar'
-IDS='/group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_sample_source_info.txt'
-cp ${CRAM_TAR} .
-cp ${IDS} .
-tar -xvf AA_cram_archive.tar
-rm AA_cram_archive.tar
-###############################
-### Retain only the tetraploids
-N=$(grep "4$" Huang_sample_source_info.txt | wc -l)
-echo "$N tetraploid samples"
-for id in $(grep -v "4$" Huang_sample_source_info.txt | cut -f1)
-do
-    echo $id
-    f=$(ls *${id}*.cram)
-    echo $f
-    if [ $(ls *${id}*.cram | wc -l) -eq 1 ]
-    then
-        mv $f ${f}.bk
-    fi
-done
-mkdir diploids
-mv *.bk diploids/
-ls *.cram | wc -l
-########################
-### Index the alignments
-time for f in $(ls *.cram)
-do
-    echo $f
-    time samtools index $f
-done
-##################################################################
-### Align and call SNPs while extracting allele depths information
-CRAMS_LIST=${DIR}cram_list.txt
-find ${DIR} -name "*.cram" > $CRAMS_LIST
-REF='???.fasta'
-LOCI='???.txt'
-PREFIX='cocksfoot'
-cd ${DIR}
-time \
-bcftools mpileup \
-    -BI \
-    -a AD,DP \
-    -d 4000000 \
-    -f ${REF} \
-    -T ${LOCI} \
-    -b ${CRAMS_LIST} \
-    -Ov > ${PREFIX}-MPILEUP.vcf
-time \
-bcftools call \
-    ${PREFIX}-MPILEUP.vcf \
-    -m \
-    --skip-variants indels \
-    -o ${PREFIX}-CALL.vcf
-time \
-bcftools norm \
-    ${PREFIX}-CALL.vcf \
-    -m - \
-    -o ${PREFIX}.vcf
+ln -s /group/pasture/forages/Cocksfoot/HamiltonGSS/genotype/Huang_genome_HiC/mpileup/Cocksfoot_HuangHiC-genome_VarDisc_maf.02.bial.mmiss.5.dp5.filtd.recode.vcf.gz $(pwd)/cocksfoot-raw.vcf.gz
+ln -s /group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_sample_source_info.txt $(pwd)/Huang_sample_source_info.txt
+```
 
+Extract the tetraploid genotypes, and retain only high-depth SNPs (10X-1x10^5X) without any missing data:
 
-
+```R
+dir="/group/pasture/Jeff/imputef/misc/cocksfoot"
+fname_input = file.path(dir, "cocksfoot-raw.vcf.gz")
+fname_output = file.path(dir, "cocksfoot.vcf.gz")
+fname_ids = file.path(dir, "Huang_sample_source_info.txt")
+minimum_depth = 10
+maximum_depth = 1e5
+maf = 0.05
+max_sparsity = 0.0
+### Load data
+vcf_orig = vcfR::read.vcfR(fname_input, verbose=TRUE) # dim: (12_739_113, 8, 328)
+df_ids = read.delim(fname_ids)
+### Remove multiallelic loci (i.e. >2 alleles per locus, hence represented here by more than 1 vcf row which translates to duplicated locus names)
+vec_loci_names = paste(vcfR::getCHROM(vcf_orig), vcfR::getPOS(vcf_orig), sep="_")
+vcf = vcf_orig[which(!(vec_loci_names %in% vec_loci_names[duplicated(vec_loci_names)])), , , drop=FALSE] # dim: (12_739_113, 8, 328)
+### Retain tetraploid samples
+idx_4x = which(df_ids$Ploidy == 4)
+vec_4x_ids = df_ids[idx_4x, 1]
+vec_samples = colnames(vcf@gt)[-1]
+idx_col = which(toupper(vec_samples) %in% toupper(vec_4x_ids)) # length: 51
+vcf = vcf[, , idx_col]
+### Extract depths per locus per entry
+mat_depth = vcfR::extract.gt(vcf, element="DP", as.numeric=TRUE)
+### Define the breadth of coverage for filtering by missingness
+mat_breadth = (mat_depth >= minimum_depth) & (mat_depth <= maximum_depth)
+### Filter-out loci with greater than maximum sparsity (missing data)
+idx_row = which(rowMeans(mat_breadth) >= (1-max_sparsity)) # length: 438_607
+vcf = vcf[idx_row, , ]
+mat_depth = mat_depth[idx_row, ]
+mat_breadth = mat_breadth[idx_row, ]
+### Calculate reference allele frequencies
+vcf_to_ref_allele_frequencies = function(vcf) {
+    ### Extract allele counts
+    mat_allele_counts = vcfR::extract.gt(vcf, element="AD")
+    mat_ref_counts = vcfR::masplit(mat_allele_counts, delim=',', record=1, sort=0)
+    mat_alt_counts = vcfR::masplit(mat_allele_counts, delim=',', record=2, sort=0)
+    ### Set missing allele counts to 0, if the other allele is non-missing and non-zero
+    idx_for_ref = !is.na(mat_alt_counts) & (mat_alt_counts != 0) & is.na(mat_ref_counts)
+    idx_for_alt = !is.na(mat_ref_counts) & (mat_ref_counts != 0) & is.na(mat_alt_counts)
+    mat_ref_counts[idx_for_ref] = 0
+    mat_alt_counts[idx_for_alt] = 0
+    ### Calculate reference allele frequencies
+    mat_genotypes = mat_ref_counts / (mat_ref_counts + mat_alt_counts)
+    return(mat_genotypes)
+}
+mat_genotypes = vcf_to_ref_allele_frequencies(vcf)
+### Remove loci with at least one missing data point
+idx_row = which(rowSums(is.na(mat_genotypes)) == 0) # length: 438_607
+vcf = vcf[idx_row, , ]
+mat_depth = mat_breadth[idx_row, ]
+mat_breadth = mat_breadth[idx_row, ]
+mat_genotypes = mat_genotypes[idx_row, ]
+### Filter by minimum allele frequency
+vec_mean_freqs = rowMeans(mat_genotypes, na.rm=TRUE)
+txtplot::txtdensity(vec_mean_freqs)
+idx_row = which((vec_mean_freqs > maf) & (vec_mean_freqs < (1-maf))) # length: 214_114
+vcf = vcf[idx_row, , ]
+mat_depth = mat_breadth[idx_row, ]
+mat_breadth = mat_breadth[idx_row, ]
+mat_genotypes = mat_genotypes[idx_row, ]
+### Stats
+print(paste0("Final vcf dimensions: (", paste(dim(vcf), collapse=", "), ")"))
+mean_depth = mean(mat_depth)
+mean_breadth = mean(mat_breadth)
+vec_depth_per_locus = rowMeans(mat_depth)
+vec_breadth_per_sample = colMeans(mat_breadth)
+vec_allele_frequencies_per_locus = rowMeans(mat_genotypes, na.rm=TRUE)
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+print("Distribution of genome coverage (i.e. depth):")
+print(paste0("Mean depth = ", mean_depth, "X"))
+txtplot::txtdensity(vec_depth_per_locus)
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+print("Distribution of breadth of genome coverage per sample:")
+print(paste0("Mean breadth of coverage = ", round(100*mean_breadth), "%"))
+txtplot::txtdensity(vec_breadth_per_sample)
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+print("Distribution of mean reference allele frequencies across samples:")
+txtplot::txtdensity(vec_allele_frequencies_per_locus)
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+print("How many scaffolds did we lose?")
+vec_chr_orig = vcfR::getCHROM(vcf_orig)
+vec_chr = vcfR::getCHROM(vcf)
+print("Original list:")
+print(table(vec_chr_orig))
+print("After filtering:")
+print(table(vec_chr))
+### Output
+vcfR::write.vcf(vcf, file=fname_output)
 ```
 
 2. Prepare soybean data (pool by most genetically related):
@@ -136,9 +170,10 @@ time Rscript \
 mv LinkImpute.data.grape.num.raw.txt.vcf grape.vcf
 ```
 
-#### poolify.R
 
-Generate pools from soybean individual genotype data, where we assume each individual per pool are perfectly equally represented (best-case scenario in the real-world).
+3. Generate pools from soybean individual genotype data, where we assume each individual per pool are perfectly equally represented (best-case scenario in the real-world).
+
+- **poolify.R**
 
 ```R
 args = commandArgs(trailingOnly=TRUE)
@@ -199,9 +234,9 @@ system(paste0("gunzip -f ", fname_vcf_gz))
 print(paste0("Output: ", out_fname))
 ```
 
-#### ssv2vcf.R
+4. Prepare grape data (convert space-delimited genotype data from LinkImpute paper):
 
-3. Prepare grape data (convert space-delimited genotype data from LinkImpute paper):
+- **ssv2vcf.R**
 
 ```R
 args = commandArgs(trailingOnly = TRUE)
@@ -284,11 +319,11 @@ print(vcf_new_loaded)
 ```
 
 
-### Assess the genetic relationships between samples per dataset
+## Assess the genetic relationships between samples per dataset
 
 ```R
 dir = "/group/pasture/Jeff/imputef/res/"
-vec_fnames = paste0("/group/pasture/Jeff/imputef/misc/", c("grape.vcf", "lucerne.vcf", "soybean.vcf"))
+vec_fnames = paste0("/group/pasture/Jeff/imputef/misc/", c("grape.vcf", "cocksfoot.vcf", "soybean.vcf"))
 setwd(dir)
 ### Allele frequency extraction
 fn_extract_allele_frequencies = function(vcf) {
@@ -330,18 +365,18 @@ for (i in 1:length(vec_fnames)) {
     # print(vcf)
     mat_geno = fn_extract_allele_frequencies(vcf)
     # str(mat_geno)
-    C = cor(mat_geno)
+    C = cor(mat_geno, use="complete.obs")
     png(fname_png, width=2000, height=2000)
     heatmap(C, scale="none", main=gsub(".vcf", "", basename(fname)))
     dev.off()
 }
 ```
 
-![estimated relationships between samples](../res/lucerne.png)
+![](../res/cocksfoot.png)
 
-![estimated relationships between samples](../res/soybean.png)
+![](../res/soybean.png)
 
-![estimated relationships between samples](../res/grape.png)
+![](../res/grape.png)
 
 
 ## Prepare LinkImpute for testing against diploid imputation
@@ -380,14 +415,14 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ### Create slurm scripts with specific memory and time limits per dataset
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
-for DATASET in "grape" "lucerne" "soybean"
+for DATASET in "grape" "cocksfoot" "soybean"
 do
     if [ $DATASET == "grape" ]
     then
         sed 's/--job-name="imputef"/--job-name="grapeImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=100G/g' | \
             sed 's/--time=14-0:0:00/--time=0-0:30:00/g' > perf_${DATASET}.slurm
-    elif [ $DATASET == "lucerne" ]
+    elif [ $DATASET == "cocksfoot" ]
     then
         sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm | \
             sed 's/--time=14-0:0:00/--time=15-0:0:00/g' > perf_${DATASET}.slurm
@@ -398,13 +433,13 @@ do
 done
 
 ### Submit array jobs for each dataset
-for DATASET in "grape" "lucerne" "soybean"
+for DATASET in "grape" "cocksfoot" "soybean"
 do
     if [ $DATASET == "grape" ]
     then
         INI=1
         FIN=20
-    elif [ $DATASET == "lucerne" ]
+    elif [ $DATASET == "cocksfoot" ]
     then
         INI=21
         FIN=40
@@ -421,8 +456,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-2773709*_*.out
-grep -n -i "err" slurm-2773709*_*.out | grep -v "mean absolute"
+tail slurm-2775079*_*.out
+grep -n -i "err" slurm-2775079*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}

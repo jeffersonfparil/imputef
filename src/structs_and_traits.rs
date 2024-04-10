@@ -31,6 +31,8 @@ pub struct FileGeno {
     pub filename: String,
 }
 
+/// Non-critical in this project as we do not need phenotype data for imputation.
+/// This is reserved for quantitative and population genetics analyses in poolgen.
 /// Filename of the phenotype file which can be a simple delimited file (e.g. csv,  tsv or even ssv; semi-colon-delimited) or a specialised GWAlpha phenotype information file in a python file.
 /// - `filename` - filename of the phenotype file (e.g. `*.csv`, `*.txt`, `*.tsv`, or `*.ssv`)
 /// - `delim` - string delimiter of the phenotype file (e.g. `","` or `"\t"`)
@@ -48,6 +50,8 @@ pub struct FilePhen {
     pub format: String,
 }
 
+/// Non-critical in this project as we do not need phenotype data for imputation.
+/// This is reserved for quantitative and population genetics analyses in poolgen.
 /// Phenotype data including the names of the pools, the size of each pool, and the trait values
 #[derive(Debug, Clone, PartialEq)]
 pub struct Phen {
@@ -57,6 +61,7 @@ pub struct Phen {
 }
 
 /// Filename of the synchronised pileup file and its corresponding phenotype data
+/// Note that in this project, the `phen_matrix` field is not used because imputation does not require phenotype data. This is reserved for quantitative and population genetics analyses in poolgen.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileSyncPhen {
     pub filename_sync: String,
@@ -98,7 +103,7 @@ pub struct LocusCounts {
     pub matrix: Array2<u64>, // n pools x p alleles
 }
 
-// Struct of allele frequencies to convert reads into syncx
+// Struct of allele frequencies to convert reads into sync
 // #[derive(Debug, Clone, PartialEq, PartialOrd)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocusFrequencies {
@@ -109,6 +114,7 @@ pub struct LocusFrequencies {
 }
 
 // Struct of allele counts and phenotypes per pool
+/// Note that in this project, the `phenotypes` field is not used because imputation does not require phenotype data. This is reserved for quantitative and population genetics analyses in poolgen.
 #[derive(Debug, Clone)]
 pub struct LocusCountsAndPhenotypes {
     pub locus_counts: LocusCounts,
@@ -116,8 +122,8 @@ pub struct LocusCountsAndPhenotypes {
     pub pool_names: Vec<String>,
 }
 
-// Struct of allele frequencies and phenotypes for genomic prediction
-#[derive(Debug, Clone)]
+// Struct of allele frequencies and phenotypes
+/// Note that in this project, the `phenotypes` field is not used because imputation does not require phenotype data. This is reserved for quantitative and population genetics analyses in poolgen.#[derive(Debug, Clone)]
 pub struct GenotypesAndPhenotypes {
     pub chromosome: Vec<String>,                       // 1 + p
     pub position: Vec<u64>,                            // 1 + p

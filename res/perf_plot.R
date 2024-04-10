@@ -125,7 +125,7 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
     for (algo in vec_algorithm) {
       # algo = vec_algorithm[1]
       par(mar=c(5,5,1,1))
-      idx_col_mae = which(grepl("mae_", colnames(subdf)))
+      idx_col_mae = which(grepl("^mae_", colnames(subdf)))
       plot(x=c(0,1), y=range(subdf[, idx_col_mae], na.rm=TRUE), type="n", xlab="Observed allele frequencies (5% MAF)", ylab="Imputation error\n(mean absolute error)", main=algo, las=1)
       colour = vec_colours[vec_algorithm==algo]
       for (missing_rate in vec_missing_rate) {
@@ -163,10 +163,13 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
         n0 = 1
         n2 = length(unique(subdf$missing_rate))
         n1 = floor(n2/2)
-        legend("topleft", legend=c("Sparsity", vec_missing_rate[n0:n1]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[n0:n1])), lwd=c(0, 5*vec_missing_rate[n0:n1]), bty="n")
-        legend("top", legend=c("", vec_missing_rate[(n1+1):n2]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[(n1+1):n2])), lwd=c(0, 5*vec_missing_rate[(n1+1):n2]), bty="n")
+        legend("topleft", legend=c("Sparsity", vec_missing_rate[n0:n1]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[n0:n1])), lwd=c(0, 7*vec_missing_rate[n0:n1]), bty="n")
+        legend("top", legend=c("", vec_missing_rate[(n1+1):n2]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[(n1+1):n2])), lwd=c(0, 7*vec_missing_rate[(n1+1):n2]), bty="n")
       }
-      par(mar=c(5, 4, 4, 2) +0.1)
+      par(mar=c(5, 4, 4, 2) + 0.1)
+    }
+    if (length(vec_algorithm) < 4) {
+      plot(0, type="n", xlab="", ylab="", bty="n", xaxt="n", yaxt="n")
     }
 
     ### Plot allele frequency variances per locus x mae (MAF=5% only)
@@ -199,8 +202,8 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
         n0 = 1
         n2 = length(unique(subdf$missing_rate))
         n1 = floor(n2/2)
-        legend("topleft", legend=c("Sparsity", vec_missing_rate[n0:n1]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[n0:n1])), lwd=c(0, 5*vec_missing_rate[n0:n1]), bty="n")
-        legend("top", legend=c("", vec_missing_rate[(n1+1):n2]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[(n1+1):n2])), lwd=c(0, 5*vec_missing_rate[(n1+1):n2]), bty="n")
+        legend("topleft", legend=c("Sparsity", vec_missing_rate[n0:n1]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[n0:n1])), lwd=c(0, 7*vec_missing_rate[n0:n1]), bty="n")
+        legend("top", legend=c("", vec_missing_rate[(n1+1):n2]), col=c(0, rgb(0,0,0,alpha=vec_missing_rate[(n1+1):n2])), lwd=c(0, 7*vec_missing_rate[(n1+1):n2]), bty="n")
       }
       par(mar=c(5, 4, 4, 2) +0.1)
     }
