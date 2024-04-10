@@ -419,15 +419,15 @@ for DATASET in "grape" "cocksfoot" "soybean"
 do
     if [ $DATASET == "grape" ]
     then
-        sed 's/--job-name="imputef"/--job-name="grapeImp"/g' perf.slurm | \
+        sed 's/--job-name="imputef"/--job-name="VvImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=100G/g' | \
             sed 's/--time=14-0:0:00/--time=0-0:30:00/g' > perf_${DATASET}.slurm
     elif [ $DATASET == "cocksfoot" ]
     then
-        sed 's/--job-name="imputef"/--job-name="lucerImp"/g' perf.slurm | \
+        sed 's/--job-name="imputef"/--job-name="DgImp"/g' perf.slurm | \
             sed 's/--time=14-0:0:00/--time=15-0:0:00/g' > perf_${DATASET}.slurm
     else
-        sed 's/--job-name="imputef"/--job-name="soyImp"/g' perf.slurm | \
+        sed 's/--job-name="imputef"/--job-name="GmImp"/g' perf.slurm | \
             sed 's/--mem=250G/--mem=200G/g' > perf_${DATASET}.slurm
     fi
 done
@@ -456,8 +456,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-2775079*_*.out
-grep -n -i "err" slurm-2775079*_*.out | grep -v "mean absolute"
+tail slurm-277510*_*.out
+grep -n -i "err" slurm-277510*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}

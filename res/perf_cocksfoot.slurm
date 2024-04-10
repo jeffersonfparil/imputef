@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="lucerImp"
+#SBATCH --job-name="DgImp"
 #SBATCH --account="dbiopast2"
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32

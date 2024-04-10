@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="grapeImp"
+#SBATCH --job-name="VvImp"
 #SBATCH --account="dbiopast2"
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
