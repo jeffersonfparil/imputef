@@ -124,6 +124,7 @@ pub struct LocusCountsAndPhenotypes {
 
 // Struct of allele frequencies and phenotypes
 /// Note that in this project, the `phenotypes` field is not used because imputation does not require phenotype data. This is reserved for quantitative and population genetics analyses in poolgen.#[derive(Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct GenotypesAndPhenotypes {
     pub chromosome: Vec<String>,                       // 1 + p
     pub position: Vec<u64>,                            // 1 + p
