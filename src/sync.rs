@@ -1009,6 +1009,7 @@ pub fn load_sync<'a, 'b>(
         }
     }
     let n = pool_names.len();
+    assert!(n > 0, "Error reading the header line of the sync file. Please make sure the header line starts with '#chr'.");
     // If a single pool size was supplied then we are assuming the same sizes across all pools
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];

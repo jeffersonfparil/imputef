@@ -119,7 +119,10 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 
 ### Variant call format (vcf)
 
-Canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+- canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool.
+- See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+- See [`tests/test.vcf`](./tests/test.vcf) for an example.
+
 
 ### Synchronised pileup (sync)
 - an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
@@ -129,11 +132,13 @@ Canonical variant calling or genotype data format for individual samples. This s
 - *Column 2*: locus position 
 - *Column 3*: reference allele, e.g. A, T, C, G 
 - *Column/s 4 to n*: colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+- See [`tests/test.sync`](./tests/test.sync) for an example.
 
 ### Allele frequency table (tsv)
 - tab-delimited
 - *Header line*: `#chr\tpos\tallele\t<pool_name_1>\t...\t<pool_name_n>`
 - each locus is represented by 1 or more rows, e.g. 1 for biallelic loci (representing the reference or alternative or minor allele), 2 for biallelic loci representing both alleles, and >2 for multi-allelic loci
+- See [`tests/test.tsv`](./tests/test.tsv) for an example.
 
 
 ## Details

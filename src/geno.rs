@@ -367,6 +367,7 @@ pub fn load_geno<'a, 'b>(
     } else {
         vec_header
     };
+    assert!(vec_header.len() > 3, "Error unable to properly parse the header line. Please make sure the allele frequency table file is separated by tabs, commas, or semi-colons.");
     let pool_names: Vec<String> = vec_header[3..vec_header.len()]
         .iter()
         .map(|&x| x.to_owned())
