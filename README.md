@@ -121,6 +121,8 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 
 - canonical variant calling or genotype data format for individual samples. This should include the `AD` field (allele depth), and may or may not have genotypes called (e.g. generated via bctools mpileup -a AD,DP ...). If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool.
 - See [VCFv4.2](https://samtools.github.io/hts-specs/VCFv4.2.pdf) and [VCFv4.3](https://samtools.github.io/hts-specs/VCFv4.3.pdf) for details in the format specifications.
+- The allele depth information (`AD`; i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters) is used to calculate allele frequencies.
+- If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. If both `GT` and `AD` fields are present, then the `AD` field takes priority.
 - See [`tests/test.vcf`](./tests/test.vcf) for an example.
 
 
@@ -138,12 +140,20 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 - tab-delimited
 - *Header line*: `#chr\tpos\tallele\t<pool_name_1>\t...\t<pool_name_n>`
 - each locus is represented by 1 or more rows, e.g. 1 for biallelic loci (representing the reference or alternative or minor allele), 2 for biallelic loci representing both alleles, and >2 for multi-allelic loci
+- This is the sole output format of the imputation process, regardless of the format of the input genotype file.
 - See [`tests/test.tsv`](./tests/test.tsv) for an example.
 
 
 ## Details
 
-Imputation of genotype data from sequencing of more than 2 sets of genomes, e.g. polyploid individuals, and pools of diploid individuals. This tool can also perform simple genotype data filtering prior to imputation. Two imputation methods are available: (1) mean value imputation which uses the arithmetic mean of the locus across non-missing samples; (2) adaptive linkage-informed k-nearest neighbour imputation. This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation across loci per pair of samples. Mean absolute difference in allele frequencies is used to define genetic distance between samples, instead of taxicab or Manhattan distance in LD-kNNi. Four parameters can be set by the user, (1) minimum loci correlation threshold: dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples; (2) maximum genetic distance threshold: sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies; (3) minimum number of loci linked to the locus requiring imputation: overrides minimum loci correlation threshold if this minimum is not met; and (4) minimum k-nearest neighbours: overrides maximum genetic distance threshold if this minimum is not met. The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus by simulating missing data to minimise the mean absolute error in imputation.
+Imputation of allele frequency from polyploids and pooled samples via (1) mean value imputation, and (2) linkage disequillibrium (LD) k-nearest neighbour (kNN)-based weighted allele frequency prediction. The latter is an extension of the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, LD is estimated using Pearson's product moment correlation per pair of loci. Mean absolute difference in allele frequencies is used to define the genetic distance between samples, instead of taxicab or Manhattan distance used in LD-kNNi. Four parameters can be set by the user:
+
+1. *minimum loci correlation threshold* - dictates the minimum LD between the locus requiring imputation and other loci which will be used to estimate genetic distance between samples;
+2. *maximum genetic distance threshold* - sets the maximum genetic distance between the sample requiring imputation and the samples (i.e. nearest neighbours) to be used in weighted mean imputation of missing allele frequencies;
+3. *minimum number of loci linked to the locus requiring imputation* - overrides minimum loci correlation threshold if this minimum is not met; and 
+4. *minimum k-nearest neighbours* - overrides maximum genetic distance threshold if this minimum is not met.
+
+The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus by setting `--min-loci-corr=-1.0` and/or `--max-pool-dist=-1.0`.
 
 ### `--method="mean"`: mean value imputation
 
@@ -162,9 +172,7 @@ where:
 
 ### `--method="aldknni"`: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data
 
-This is an attempt to extend the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. Fixed values for the minimum correlation to identify loci used in distance estimation, and maximum genetic distance to select the k-nearest neighbours can be defined. Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. Moreover, the minimum correlation and maximum genetic distance can be optimised per locus by minimising the MAE between predicted and expected allele frequencies using simulated missing data. The number of missing data is controlled by the number of replications (`--n-reps`) and the total number of samples non-missing at the locus requiring imputation.
-
-The allele depth information (`AD`), i.e. the unfiltered allele depth which includes the reads which did not pass the variant caller filters are used to calculate allele frequencies. If the `GT` field is present but the `AD` field is absent, then each sample is assumed to be an individual diploid, i.e., neither a polyploid nor a pool. Optional filtering steps based on minimum depth, minimum allele frequency, and maximum sparsity are available. LD estimation and imputation are multi-threaded, and imputation output is written into disk as an [allele frequency table](#allele-frequency-table-tsv). The structs, traits, methods, and functions defined in this library are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged. 
+This is an extension of the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. Fixed values for the minimum correlation threshold to identify loci used in distance estimation, and maximum genetic distance threshold to select the k-nearest neighbours can be defined. Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. Moreover, the minimum correlation and maximum genetic distance can be optimised per locus by minimising the MAE between predicted and expected allele frequencies using simulated missing or masked data. The number of masked data is controlled by the number of replications (`--n-reps`) and the total number of samples non-missing at the locus requiring imputation.
 
 The imputed allele frequency is computed as:
 
@@ -194,6 +202,8 @@ where:
 - $\delta_{i,r}$ is scaled $d_{i,r}$ which is the genetic distance between the $i^{\text {th}}$ sample and sample $r$. This distance is the mean absolute difference in allele frequencies between the two samples across $c$ linked loci.
 
 The variables $k$ and $c$ are proportional to the user inputs `--max-pool-dist` (default=0.1) and `--min-loci-corr` (default=0.9), respectively. The former defines the maximum distance of samples to be considered as one of the k-nearest neighbours, while the latter refers to the minimum correlation with the locus requiring imputation to be included in the estimation of the genetic distance.
+
+LD estimation and imputation *per se* are multi-threaded, and the imputation output is written into disk as an [allele frequency table](#allele-frequency-table-tsv). The structs, traits, methods, and functions defined in this tool are subsets of [poolgen](https://github.com/jeffersonfparil/poolgen), and will eventually be merged.
 
 ## Optimisation approaches
 

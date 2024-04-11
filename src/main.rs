@@ -262,7 +262,7 @@ fn main() {
         println!("###################################################################################################");
         println!("aldknni: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data");
         println!("###################################################################################################");
-        // Handling NA conversion into Rust's f64:NAN
+        // Optimise for the minimum loci correlation and maximum genetic distance thresholds if user input is less than zero
         let min_loci_corr = if args.min_loci_corr < 0.0 {
             f64::NAN
         } else {
