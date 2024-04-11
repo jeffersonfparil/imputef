@@ -89,31 +89,33 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 
 ### Arguments
 
-- **--fname**: Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-tsv). Details on these genotype formats are available below.
-- **--method**: Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation. [Default = "aldknni"]
-- **--min-coverage**: Minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default = 0]
-- **--min-allele-frequency**: Minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default = 0.0001]
-- **--max-missingness-rate-per-locus**: Maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default = 1.00]
-- **--pool-sizes**: Vector of pool sizes, i.e. the number of individuals included in each pool. Enter the pool sizes separated by commas `,`. This can also be set to a single arbitrarily large value for example 100 for individual polyploids or if allele frequency estimates are expected to be accurate. [Default = 100.0]
-- **--min-depth-below-which-are-missing**: Minimum depth at which loci with depth below this threshold are set to missing. Set to one if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default = 1.00]
-- **--max-depth-above-which-are-missing**: Maximum depth at which loci with depth above this threshold are set to missing. Set to some large arbitrarily large value (e.g. 1000000) if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default = 1000000.0]
-- **--frac-top-missing-pools**: Fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one. [Default = 0.0]
-- **--frac-top-missing-loci**: Fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default = 0.0]
-- **--min-loci-corr**: Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation. [Default = 0.9]
-- **--max-pool-dist**: Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation. [Default = 0.1]
-- **--min-l-loci**: Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples (minimum value of 1). This argument overrides `--min-loci-corr`, i.e. the minimum number of loci will be met regardless of the minimum loci correlation threshold. [Default = 20]
-- **--min-k-neighbours**: Minimum number of k-nearest neighbours of the pool or sample requiring imputation (minimum value of 1). This argument overrides `--max-pool-dist`, i.e. the minimum number of k-nearest neighbours will be met regardless of the maximum genetic distance threshold. [Default = 5]
-- **--restrict-linked-loci-per-chromosome**: Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false] [Default = false; i.e. no flag]
-- **--n-reps**: Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of random non-missing samples to use as replicates for the estimation of MAE and optimisation (minimum value of 1). [Default = 10]
-- **--n-threads**: Number of computing threads or processor cores to use in the computations. [Default = 2]
-- **--fname-out-prefix**: Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-tsv) (`<fname-out-prefix>-<time>-<random-id>-IMPUTED.tsv`). [Default = ""; which corresponds to the name of the input genotype file]
+| Argument or flag | Description |
+| :--------------- | :---------- |
+| **--fname** | Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-tsv). Details on these genotype formats are available below. |
+| **--method** | Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation. [Default = "aldknni"] |
+| **--min-coverage** | Minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default = 0] |
+| **--min-allele-frequency** | Minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default = 0.0001] |
+| **--max-missingness-rate-per-locus** | Maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default = 1.00] |
+| **--pool-sizes** | Vector of pool sizes, i.e. the number of individuals included in each pool. Enter the pool sizes separated by commas `,`. This can also be set to a single arbitrarily large value for example 100 for individual polyploids or if allele frequency estimates are expected to be accurate. [Default = 100.0] |
+| **--min-depth-below-which-are-missing** | Minimum depth at which loci with depth below this threshold are set to missing. Set to one if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default = 1.00] |
+| **--max-depth-above-which-are-missing** | Maximum depth at which loci with depth above this threshold are set to missing. Set to some large arbitrarily large value (e.g. 1000000) if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an integer above zero. [Default = 1000000.0] |
+| **--frac-top-missing-pools** | Fraction of pools with the highest number of missing loci to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to a decimal number between zero and one. [Default = 0.0] |
+| **--frac-top-missing-loci** | Fraction of loci with the highest number of pools with missing data to be omitted. Set to zero if the input vcf has already been filtered and the loci beyond the depth thresholds have been set to missing, otherwise set to an decimal number between zero and one. [Default = 0.0] |
+| **--min-loci-corr** | Minimum correlation (Pearson's correlation) between the locus requiring imputation and other loci deemed to be in linkage with it. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation. [Default = 0.9] |
+| **--max-pool-dist** | Maximum genetic distance (mean absolute difference in allele frequencies) between the pool or sample requiring imputation and pools or samples deemed to be the closest neighbours. Ranges from 0.0 to 1.0, but use -1.0 or any negative number to perform per locus optimisations to find the best value minimising imputation. [Default = 0.1] |
+| **--min-l-loci** | Minimum number of linked loci to be used in estimating genetic distances between the pool or sample requiring imputation and other pools or samples (minimum value of 1). This argument overrides `--min-loci-corr`, i.e. the minimum number of loci will be met regardless of the minimum loci correlation threshold. [Default = 20] |
+| **--min-k-neighbours** | Minimum number of k-nearest neighbours of the pool or sample requiring imputation (minimum value of 1). This argument overrides `--max-pool-dist`, i.e. the minimum number of k-nearest neighbours will be met regardless of the maximum genetic distance threshold. [Default = 5] |
+| **--restrict-linked-loci-per-chromosome** | Restrict the choice of linked loci to within the chromosome the locus requiring imputation belongs to? [default: false] [Default = false; i.e. no flag] |
+| **--n-reps** | Number of replications for the estimation of imputation accuracy in terms of mean absolute error (MAE). It is used to define the number of random non-missing samples to use as replicates for the estimation of MAE and optimisation (minimum value of 1). [Default = 10] |
+| **--n-threads** | Number of computing threads or processor cores to use in the computations. [Default = 2] |
+| **--fname-out-prefix** | Prefix of the output files including the [imputed allele frequency table](#allele-frequency-table-tsv) (`<fname-out-prefix>-<time>-<random-id>-IMPUTED.tsv`). [Default = ""; which corresponds to the name of the input genotype file] |
 
 
 ## Genotype data formats
 
 ### Note
 
-**Header line/s and comments should be prepended by '#'.**
+**Header line and comments should be prepended by '#'.**
 
 ### Variant call format (vcf)
 
@@ -122,16 +124,16 @@ Canonical variant calling or genotype data format for individual samples. This s
 ### Synchronised pileup (sync)
 - an extension of [popoolation2's](https://academic.oup.com/bioinformatics/article/27/24/3435/306737) sync or synchronised pileup file format, which includes a header line prepended by '#' showing the names of each column including the names of each pool. Additional header line/s and comments prepended with '#' may be added anywhere within the file.
 - tab-delimited
-- *Header line/s*:  optional header line/s including the names of the pools, e.g. `# chr pos ref pool1 pool2 pool3 pool4 pool5`
-- *Column 1*:       chromosome or scaffold name
-- *Column 2*:       locus position 
-- *Column 3*:       reference allele, e.g. A, T, C, G 
-- *Column/s 4 to n*:  colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
+- *Header line*: header line including the names of the samples or pools, i.e. `#chr\tpos\tref\t<id_1>\t<id_2>\t<id_3>\t<id_4>\t<id_5>`
+- *Column 1*: chromosome or scaffold name
+- *Column 2*: locus position 
+- *Column 3*: reference allele, e.g. A, T, C, G 
+- *Column/s 4 to n*: colon-delimited allele counts: A:T:C:G:DEL:N, where "DEL" refers to insertion/deletion, and "N" is unclassified. A pool or population or polyploid individual is represented by a single column of this colon-delimited allele counts.
 
 ### Allele frequency table (tsv)
 - tab-delimited
-- *Header line*: ` #chr\tpos\tallele\t<pool_name_1>\t...\t<pool_name_n>`
-- each locus is represented by 2 or more rows, i.e. 2 for biallelic loci, and >2 for multi-allelic loci
+- *Header line*: `#chr\tpos\tallele\t<pool_name_1>\t...\t<pool_name_n>`
+- each locus is represented by 1 or more rows, e.g. 1 for biallelic loci (representing the reference or alternative or minor allele), 2 for biallelic loci representing both alleles, and >2 for multi-allelic loci
 
 
 ## Details
