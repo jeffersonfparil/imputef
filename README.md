@@ -275,9 +275,9 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 
-### Autotetraploid (Lucerne) mean absolute error
+### Autotetraploid (Cocksfoot/Orchardgrass) mean absolute error
 
-![mae_barplots](./res/lucerne-Mean_absolute_error.svg)
+![mae_barplots](./res/cocksfoot-Mean_absolute_error.svg)
 
 ### Pool (Soybean pools) mean absolute error
 
@@ -291,9 +291,9 @@ This is used for genotype classes, i.e., binned allele frequencies: $g = {{1 \ov
 ------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------
 
-### Autotetraploid (Lucerne) concordance of observed and imputed genotype classes
+### Autotetraploid (Cocksfoot/Orchardgrass) concordance of observed and imputed genotype classes
 
-![concordance_genotype_classes_barplots](./res/lucerne-Concordance.svg)
+![concordance_genotype_classes_barplots](./res/cocksfoot-Concordance.svg)
 
 ### Pool (Soybean pools) concordance of observed and imputed genotype classes
 

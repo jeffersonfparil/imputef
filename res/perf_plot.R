@@ -228,21 +228,21 @@ for (dataset in vec_datasets) {
       df = rbind(df, df_tmp)
     }
   }
-  if ((dataset == "lucerne") | (dataset == "soybean")) {
+  if ((dataset == "cocksfoot") | (dataset == "soybean")) {
     df = droplevels(df[df$algorithm != "linkimpute", ])
   }
   print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
   print(dataset)
   if (dataset == "grape") {
     vec_fnames_svg = plot_metrics(df=df, dataset=dataset, vec_2_metrics=c("mae_classes", "concordance_classes"))
-  } else if (dataset == "lucerne") {
+  } else if (dataset == "cocksfoot") {
     vec_fnames_svg = plot_metrics(df=df, dataset=dataset)
     vec_fnames_svg_2 = plot_metrics(df=df, dataset=dataset, vec_2_metrics=c("highConf_mae_frequencies", "highConf_concordance_classes"), vec_2_metrics_labels=c("Mean absolute error high confidence data", "Concordance high confidence data"))
   } else {
     vec_fnames_svg = plot_metrics(df=df, dataset=dataset)
   }
   print(vec_fnames_svg)
-  # if (dataset == "lucerne") {
+  # if (dataset == "cocksfoot") {
   #   vec_fnames_svg = plot_metrics(df=df, dataset=dataset, vec_2_metrics=c("highConf_mae_frequencies", "highConf_concordance_classes"), vec_2_metrics_labels=c("Mean absolute error high confidence data", "Concordance high confidence data"))
   #   print(vec_fnames_svg)
   # }
