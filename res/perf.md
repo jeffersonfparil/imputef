@@ -2,7 +2,7 @@
 
 ## Variables
 
-### 3 imputation algorithms
+### Four imputation algorithms
 
 1. **MVI**: mean value imputation
 2. **AFIXED**: adaptive LD-kNN imputation using fixed/default minimum loci correlation (0.9), and maximum pool distance (0.1)
