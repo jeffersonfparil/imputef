@@ -29,7 +29,7 @@
 ## Datasets
 
 <!-- 1. autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source) -->
-1. autotetraploid *Dactylis glomerata* (2n=4x=28; ~2.9 Gb genome since hexaploids are 4.3Gb; 51 samples x 214,114 biallelic loci; in-house source)
+1. autotetraploid *Dactylis glomerata* (2n=4x=28; ~3.5 Gb genome since diploids are 1.77Gb see Huang et al., 2020; 51 samples x 196,149 biallelic loci; in-house source)
 2. pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 172 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
 3. diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 biallelic loci; source: [021667_FileS1 - zip file](https://academic.oup.com/g3journal/article/5/11/2383/6025349#supplementary-data))
 
@@ -55,12 +55,13 @@ ln -s /group/pasture/forages/Cocksfoot/Huang_Genomes/Huang_sample_source_info.tx
 Extract the tetraploid genotypes, and retain only high-depth SNPs (10X-1x10^5X) without any missing data:
 
 ```R
-dir="/group/pasture/Jeff/imputef/misc/cocksfoot"
+# dir = "/group/pasture/Jeff/imputef/misc/cocksfoot"
+dir = "/group/pasture/Jeff/imputef/misc/bk/cocksfoot"
 fname_input = file.path(dir, "cocksfoot-raw.vcf.gz")
 fname_output = file.path(dir, "cocksfoot.vcf.gz")
 fname_ids = file.path(dir, "Huang_sample_source_info.txt")
 minimum_depth = 10
-maximum_depth = 1e5
+maximum_depth = 1e3
 maf = 0.05
 max_sparsity = 0.0
 ### Load data
@@ -80,7 +81,7 @@ mat_depth = vcfR::extract.gt(vcf, element="DP", as.numeric=TRUE)
 ### Define the breadth of coverage for filtering by missingness
 mat_breadth = (mat_depth >= minimum_depth) & (mat_depth <= maximum_depth)
 ### Filter-out loci with greater than maximum sparsity (missing data)
-idx_row = which(rowMeans(mat_breadth) >= (1-max_sparsity)) # length: 438_607
+idx_row = which(rowMeans(mat_breadth) >= (1-max_sparsity))
 vcf = vcf[idx_row, , ]
 mat_depth = mat_depth[idx_row, ]
 mat_breadth = mat_breadth[idx_row, ]
@@ -101,17 +102,30 @@ vcf_to_ref_allele_frequencies = function(vcf) {
 }
 mat_genotypes = vcf_to_ref_allele_frequencies(vcf)
 ### Remove loci with at least one missing data point
-idx_row = which(rowSums(is.na(mat_genotypes)) == 0) # length: 438_607
-vcf = vcf[idx_row, , ]
-mat_depth = mat_breadth[idx_row, ]
-mat_breadth = mat_breadth[idx_row, ]
-mat_genotypes = mat_genotypes[idx_row, ]
+idx_row = which(rowSums(is.na(mat_genotypes)) == 0)
+if (length(idx_row) < nrow(mat_genotypes)) {
+    vcf = vcf[idx_row, , ]
+    mat_depth = mat_depth[idx_row, ]
+    mat_breadth = mat_breadth[idx_row, ]
+    mat_genotypes = mat_genotypes[idx_row, ]
+}
 ### Filter by minimum allele frequency
 vec_mean_freqs = rowMeans(mat_genotypes, na.rm=TRUE)
 txtplot::txtdensity(vec_mean_freqs)
 idx_row = which((vec_mean_freqs > maf) & (vec_mean_freqs < (1-maf))) # length: 214_114
 vcf = vcf[idx_row, , ]
-mat_depth = mat_breadth[idx_row, ]
+mat_depth = mat_depth[idx_row, ]
+mat_breadth = mat_breadth[idx_row, ]
+mat_genotypes = mat_genotypes[idx_row, ]
+### Retain only the 7 superscaffolds or pseudochromosomes (i.e. the largest scaffolds in the original vcf)
+vec_chr_orig = vcfR::getCHROM(vcf_orig)
+tab_chr_orig = sort(table(vec_chr_orig), decreasing=TRUE)
+print(tab_chr_orig[1:10])
+vec_7chr_names = names(tab_chr_orig)[1:7]
+vec_chr = vcfR::getCHROM(vcf)
+idx_row = which(vec_chr %in% vec_7chr_names) # length: 196_149
+vcf = vcf[idx_row, , ]
+mat_depth = mat_depth[idx_row, ]
 mat_breadth = mat_breadth[idx_row, ]
 mat_genotypes = mat_genotypes[idx_row, ]
 ### Stats
@@ -456,8 +470,8 @@ conda activate rustenv
 DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
-tail slurm-277510*_*.out
-grep -n -i "err" slurm-277510*_*.out | grep -v "mean absolute"
+tail slurm-*_*.out
+grep -n -i "err" slurm-*_*.out | grep -v "mean absolute"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
