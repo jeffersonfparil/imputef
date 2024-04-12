@@ -113,11 +113,11 @@ impl Parse<Phen> for FilePhen {
             let sig = all_lines[1].split('=').collect::<Vec<&str>>()[1].replace(';', "").trim().parse::<f64>().expect("T_T Error parsing the standard deviation of the trait as f64 in the GWAlpha formatted phenotype file.");
             let min = all_lines[2].split('=').collect::<Vec<&str>>()[1].replace(';', "").trim().parse::<f64>().expect("T_T Error parsing the minimum value of the trait as f64 in the GWAlpha formatted phenotype file.");
             let max = all_lines[3].split('=').collect::<Vec<&str>>()[1].replace(';', "").trim().parse::<f64>().expect("T_T Error parsing the maximum value of the trait as f64 in the GWAlpha formatted phenotype file.");
-            let perc = all_lines[4].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim().to_string()
+            let perc = all_lines[4].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim()
                                              .split(',').collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
                                              .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool percentiles as f64 in the GWAlpha formatted phenotype file."))
                                              .collect::<Vec<f64>>();
-            let q = all_lines[5].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim().to_string()
+            let q = all_lines[5].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim()
                                           .split(',').collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
                                           .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool quantiles as f64 in the GWAlpha formatted phenotype file."))
                                           .collect::<Vec<f64>>();
