@@ -60,7 +60,7 @@ dir = "/group/pasture/Jeff/imputef/misc/bk/cocksfoot"
 fname_input = file.path(dir, "cocksfoot-raw.vcf.gz")
 fname_output = file.path(dir, "cocksfoot.vcf.gz")
 fname_ids = file.path(dir, "Huang_sample_source_info.txt")
-minimum_depth = 10
+minimum_depth = 17
 maximum_depth = 1e3
 maf = 0.05
 max_sparsity = 0.0
@@ -471,7 +471,7 @@ DIR=/group/pasture/Jeff/imputef/res
 cd $DIR
 squeue -u jp3h | sort
 tail slurm-*_*.out
-grep -n -i "err" slurm-*_*.out | grep -v "mean absolute"
+grep -n -i "err" slurm-*_*.out | grep -v "mean absolute" | grep -v "CANCELLED AT 2024-04-15T16"
 wc -l *-performance_assessment-maf_*missing_rate_*.csv
 ls -lhtr
 time Rscript perf_plot.R ${DIR}
