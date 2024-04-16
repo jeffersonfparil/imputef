@@ -250,9 +250,9 @@ awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' g
 
 Datasets: 
 
-- autotetraploid *Medicago sativa* (2n=4x=32; 2.74 Gb genome; 155 samples x 124,151 biallelic loci; in-house source)
-- diploid *Vitis vinifera* (2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 loci biallelic; [Money et al., 2015](https://doi.org/10.1534/g3.115.021667)) with the 2.90% missing data prior to sparsity simulations
-- pools of diploid *Glycine max* (2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
+- autotetraploid *Dactylis glomerata* (Cocksfoot/Orchardgrass; 2n=4x=28; ~3.5 Gb genome since diploids are 1.77Gb see Huang et al., 2020; 51 samples x 50,281 biallelic loci; [Huang et al., 2020](https://doi.org/10.1111/pbi.13205) using biallelic SNPs filtered by minimum depth of 17X, maximum depth of 1000X, and minimum allele frequency of 0.05)
+- diploid *Vitis vinifera* (Grape; 2n=2x=38; 0.5 Gb genome; 77 samples x 8,506 loci biallelic; [Money et al., 2015](https://doi.org/10.1534/g3.115.021667)) with the 2.90% missing data prior to sparsity simulations
+- pools of diploid *Glycine max* (Soybean; 2n=2x=20; 1.15 Gb genome; 478 pools (each pool comprised of 42 individuals) x 39,636 biallelic loci; source: [http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean](http://gong_lab.hzau.edu.cn/Plant_imputeDB/#!/download_soybean))
 
 Performance metrics:
 
