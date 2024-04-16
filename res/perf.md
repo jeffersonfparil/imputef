@@ -485,9 +485,4 @@ time Rscript perf_plot.R \
 
 ## Take-home message
 
-The adaptive LD-kNN imputation algorithm works reasonably well even across the entire range of sparsity levels (0.1% to 90% missing data).
-
-Note that the discrepancy between our imputation algorithm and LinkImpute's algorithm in the context of imputing binary genotypes is attributed to 3 differences:
-- the main one is our optimisation per locus, i.e. per locus with at least one pool missing allele frequencies, we simulate pools to be missing data and perform a pseudo-grid search across combinations of the `min_loci_corr` and `max_pool_dist` threshold values which breaks out of the inner loop (`max_pool_dist`) if estimated MAE is larger than the current lowest MAE, then continues the outer loop to restart the inner looop and so on.
-- the use of mean weighted allele frequencies in our case and weighted mode genotype class in LinkImpute, and
-- the use of mean absolute error to measure accuracy in our case and concordance in LinkImpute.
+The allele frequency LD-kNN imputation algorithm works well across the entire range of sparsity levels (0.1% to 90% missing data).
