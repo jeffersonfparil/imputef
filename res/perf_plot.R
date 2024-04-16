@@ -61,11 +61,6 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
     # i = 1
     metric = vec_2_metrics[i]
     metric_label = vec_2_metrics_labels[i]
-    # if (grepl("mae", metric) | grepl("rmse", metric)) {
-    #   eval(parse(text=paste0("ylim = c(0, max(df$", metric, ", na.rm=TRUE)+(2*sd(df$", metric, ", na.rm=TRUE)))")))
-    # } else {
-    #   ylim = c(0, 1.17)
-    # }
     fname_svg = paste0(dataset, "-", gsub(" ", "_", metric_label), ".svg")
     vec_fnames_svg = c(vec_fnames_svg, fname_svg)
     svg(fname_svg, width=15, height=9)
@@ -107,7 +102,12 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
       mat_sd = mat_sd[idx_sort, ]
       ### Barplot
       par(xpd=TRUE) ### xpd=TRUE allows us to place the legend outside the plot area
-      bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, ylim=c(0, max(mat_mu, na.rm=TRUE)+max(c(0.01, max(agg_sd[,3], na.rm=TRUE)))), border=NA, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
+      if (grepl("concordance", metric) == TRUE) {
+        y_lim = c(0, 1.00+max(c(0.01, max(agg_sd[,3], na.rm=TRUE))))
+      } else {
+        y_lim = c(0, max(mat_mu, na.rm=TRUE)+max(c(0.01, max(agg_sd[,3], na.rm=TRUE))))
+      }
+      bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, ylim=y_lim, border=NA, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
       if (maf==min(vec_maf)) {
         legend("topleft", inset=c(-0.001, -0.5), legend=vec_algorithm, fill=vec_colours, bty="n", horiz=TRUE)
         legend("topright", inset=c(-0.001, -0.5), legend="Error bars refer to ± 3 standard deviations", bty="n", horiz=TRUE)
