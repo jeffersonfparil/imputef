@@ -81,6 +81,16 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
                     9,10,11,12
                    ), byrow=TRUE, ncol=4))
     par(mar=c(5,5,5,1))
+    ### Defile ylim
+    eval(parse(text=paste0("agg_mu = aggregate(", metric, " ~ algorithm + maf + missing_rate, data=df, FUN=mean, na.rm=TRUE)")))
+    eval(parse(text=paste0("agg_sd = aggregate(", metric, " ~ algorithm + maf + missing_rate, data=df, FUN=function(x){3*sd(x,na.rm=TRUE)})")))
+    eval(parse(text=paste0("mat_mu = matrix(agg_mu$", metric, ", nrow=length(unique(agg_mu$algorithm)), byrow=FALSE)")))
+    y = eval(parse(text=paste0("agg_sd$", metric)))
+    if (grepl("concordance", metric) == TRUE) {
+      y_lim = c(0, 1.00+max(c(0.01, max(y, na.rm=TRUE))))
+    } else {
+      y_lim = c(0, max(mat_mu, na.rm=TRUE)+max(c(0.01, max(y, na.rm=TRUE))))
+    }
     for (maf in vec_maf) {
       # maf = vec_maf[1]
       subdf = df[df$maf == maf, ]
@@ -102,11 +112,6 @@ plot_metrics = function(df, dataset, vec_2_metrics=c("mae_frequencies", "concord
       mat_sd = mat_sd[idx_sort, ]
       ### Barplot
       par(xpd=TRUE) ### xpd=TRUE allows us to place the legend outside the plot area
-      if (grepl("concordance", metric) == TRUE) {
-        y_lim = c(0, 1.00+max(c(0.01, max(agg_sd[,3], na.rm=TRUE))))
-      } else {
-        y_lim = c(0, max(mat_mu, na.rm=TRUE)+max(c(0.01, max(agg_sd[,3], na.rm=TRUE))))
-      }
       bplot = barplot(mat_mu, beside=TRUE, col=vec_colours, ylim=y_lim, border=NA, main=paste0("maf = ", maf), xlab="Sparsity (missing/total)", ylab=metric_label, las=1)
       if (maf==min(vec_maf)) {
         legend("topleft", inset=c(-0.001, -0.5), legend=vec_algorithm, fill=vec_colours, bty="n", horiz=TRUE)
