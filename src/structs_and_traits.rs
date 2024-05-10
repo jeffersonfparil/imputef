@@ -1,7 +1,22 @@
 //! Structs and Traits
 
 use ndarray::prelude::*;
-use std::io;
+use std::fmt;
+
+////////////////////////////////////////////////////////////////////////////////
+/// # ERROR TYPE AND DISPLAY TRAIT
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone)]
+pub struct ImputefError {
+    pub code: usize,
+    pub message: String,
+}
+
+impl fmt::Display for ImputefError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Code: {}; Message: {}", self.code, self.message)
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// # STRUCTS
@@ -149,29 +164,29 @@ pub struct ParametersOfLinkedLociAndNearestNeighbours {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub trait CheckStruct {
-    fn check(&self) -> io::Result<()>;
+    fn check(&self) -> Result<(), ImputefError>;
 }
 
 pub trait Count {
-    fn count_loci(&self) -> io::Result<(Vec<usize>, Vec<String>, Vec<u64>)>;
+    fn count_loci(&self) -> Result<(Vec<usize>, Vec<String>, Vec<u64>), ImputefError>;
 }
 
 pub trait Parse<T> {
-    fn lparse(&self) -> io::Result<Box<T>>;
+    fn lparse(&self) -> Result<Box<T>, ImputefError>;
 }
 
 pub trait Filter {
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>>;
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>>;
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self>;
+    fn to_counts(&self) -> Result<Box<LocusCounts>, ImputefError>;
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, ImputefError>;
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<&mut Self, ImputefError>;
 }
 
 pub trait Sort {
-    fn sort_by_allele_freq(&mut self, decreasing: bool) -> io::Result<&mut Self>;
+    fn sort_by_allele_freq(&mut self, decreasing: bool) -> Result<&mut Self, ImputefError>;
 }
 
 pub trait RemoveMissing {
-    fn remove_missing(&mut self) -> io::Result<&mut Self>;
+    fn remove_missing(&mut self) -> Result<&mut Self, ImputefError>;
 }
 
 pub trait ChunkyReadAnalyseWrite<T, F> {
@@ -182,7 +197,7 @@ pub trait ChunkyReadAnalyseWrite<T, F> {
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: F,
-    ) -> io::Result<String>
+    ) -> Result<String, ImputefError>
     where
         F: Fn(&mut T, &FilterStats) -> Option<String>;
     fn read_analyse_write(
@@ -191,7 +206,7 @@ pub trait ChunkyReadAnalyseWrite<T, F> {
         out: &str,
         n_threads: &usize,
         function: F,
-    ) -> io::Result<String>
+    ) -> Result<String, ImputefError>
     where
         F: Fn(&mut T, &FilterStats) -> Option<String>;
 }
@@ -203,19 +218,19 @@ pub trait LoadAll {
         end: &u64,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)>; // Allele frequencies and counts across pools and alleles per locus
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError>; // Allele frequencies and counts across pools and alleles per locus
     fn load(
         &self,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)>; // Allele frequencies and counts across pools and alleles per locus
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError>; // Allele frequencies and counts across pools and alleles per locus
     fn convert_into_genotypes_and_phenotypes(
         &self,
         filter_stats: &FilterStats,
         keep_n_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<GenotypesAndPhenotypes>;
+    ) -> Result<GenotypesAndPhenotypes, ImputefError>;
 }
 
 pub trait SaveCsv {
@@ -225,5 +240,5 @@ pub trait SaveCsv {
         keep_p_minus_1: bool,
         out: &str,
         n_threads: &usize,
-    ) -> io::Result<String>;
+    ) -> Result<String, ImputefError>;
 }
