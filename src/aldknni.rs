@@ -150,7 +150,9 @@ fn find_l_linked_loci(
                 (true, true) => Ordering::Equal,
                 (true, false) => Ordering::Greater,
                 (false, true) => Ordering::Less,
-                (false, false) => vec_corr[b].partial_cmp(&vec_corr[a]).unwrap(),
+                (false, false) => vec_corr[b]
+                    .partial_cmp(&vec_corr[a])
+                    .expect("Error comparing a pair of loci correlations as both as f64::NAN."),
             },
         );
         let l_linked_loci = if vec_corr.len() < *min_l_loci {
@@ -208,7 +210,9 @@ fn find_k_nearest_neighbours(
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Greater,
             (false, true) => Ordering::Less,
-            (false, false) => distances[a].partial_cmp(&distances[b]).unwrap(),
+            (false, false) => distances[a]
+                .partial_cmp(&distances[b])
+                .expect("Error comparing a pair fo distances as both are f64::NAN."),
         },
     );
     // Are we filtering by maximum distance?
