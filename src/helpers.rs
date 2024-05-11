@@ -5,8 +5,9 @@ use ndarray::prelude::*;
 use statrs::distribution::{ContinuousCDF, StudentsT};
 
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader, SeekFrom};
-use std::io::{Error, ErrorKind};
+use std::io::{prelude::*, BufReader, SeekFrom};
+
+use crate::ImputefError;
 
 // use crate::structs_and_traits::*;
 
@@ -30,7 +31,7 @@ fn find_start_of_next_line(fname: &str, pos: u64) -> u64 {
 pub fn define_chunks(
     loci_idx: &[usize],
     n_threads: &usize,
-) -> io::Result<(Vec<usize>, Vec<usize>)> {
+) -> Result<(Vec<usize>, Vec<usize>), ImputefError> {
     let mut n_chunks = *n_threads; // can be more than the number of threads due to unequal division of the loci
     let l = loci_idx.len();
     let chunk_size = (l as f64 / n_chunks as f64).floor() as usize;
@@ -40,36 +41,43 @@ pub fn define_chunks(
     } else {
         vec![0, l]
     };
-    // println!("l={:?}", l);
-    // println!("n_chunks={:?}", n_chunks);
-    // println!("chunk_size={:?}", chunk_size);
-    // println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
     if vec_idx_all.len() < (n_chunks + 1) {
         vec_idx_all.push(l - 1);
     } else {
         vec_idx_all.pop();
         vec_idx_all.push(l - 1);
     }
-    // println!("vec_idx_all[vec_idx_all.len()-1]={:?}", vec_idx_all[vec_idx_all.len()-1]);
-    // println!("vec_idx_all={:?}", vec_idx_all);
     n_chunks = vec_idx_all.len();
     let vec_idx_loci_idx_ini: Vec<usize> = vec_idx_all[0..(n_chunks - 1)].to_owned();
     let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..n_chunks].to_owned();
-    // println!("vec_idx_loci_idx_ini={:?}", vec_idx_loci_idx_ini);
-    // println!("vec_idx_loci_idx_fin={:?}", vec_idx_loci_idx_fin);
-    assert_eq!(vec_idx_loci_idx_ini.len(), vec_idx_loci_idx_fin.len());
+    match vec_idx_loci_idx_ini.len() == vec_idx_loci_idx_fin.len() {
+        true => (),
+        false => return Err(ImputefError {
+            code: 401,
+            message: "Error defining chunks: the number of initial and final indices are different.".to_owned()
+        })
+    };
     Ok((vec_idx_loci_idx_ini, vec_idx_loci_idx_fin))
 }
 
 /// Detect the cursor positions across the input file corresponding to the splits for parallel computation
-pub fn find_file_splits(fname: &str, n_threads: &usize) -> io::Result<Vec<u64>> {
+pub fn find_file_splits(fname: &str, n_threads: &usize) -> Result<Vec<u64>, ImputefError> {
     let mut file = match File::open(fname) {
         Ok(x) => x,
-        Err(_) => return Err(Error::new(ErrorKind::Other, "The input file: ".to_owned() + fname + " does not exist. Please make sure you are entering the correct filename and/or the correct path.")),
+        Err(_) => return Err(ImputefError {
+            code:402,
+            message: "The input file: ".to_owned() + fname + " does not exist. Please make sure you are entering the correct filename and/or the correct path."
+        }),
     };
     let _ = file.seek(SeekFrom::End(0));
     let mut reader = BufReader::new(file);
-    let end = reader.stream_position().expect("Error navigating file.");
+    let end = match reader.stream_position() {
+        Ok(x) => x,
+        Err(_) => return Err(ImputefError {
+            code: 403,
+            message: "Error navigating file: ".to_owned() + fname
+        })
+    };
     let mut out = (0..end)
         .step_by((end as usize) / n_threads)
         .collect::<Vec<u64>>();
@@ -82,26 +90,37 @@ pub fn find_file_splits(fname: &str, n_threads: &usize) -> io::Result<Vec<u64>> 
 }
 
 /// Round-up an `f64` to `n_digits` decimal points
-pub fn sensible_round(x: f64, n_digits: usize) -> f64 {
-    let factor = ("1e".to_owned() + &n_digits.to_string())
-        .parse::<f64>()
-        .expect("Error parsing String into f64.");
-    (x * factor).round() / factor
+pub fn sensible_round(x: f64, n_digits: usize) -> Result<f64, ImputefError> {
+    let factor = match ("1e".to_owned() + &n_digits.to_string())
+        .parse::<f64>() {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 404,
+                message: "Error parsing String into f64: ".to_owned() + &x.to_string()
+            })
+        };
+    Ok((x * factor).round() / factor)
 }
 
 /// Round-up an `f64` to `n_digits` decimal points and cast into a `String`
-pub fn parse_f64_roundup_and_own(x: f64, n_digits: usize) -> String {
+pub fn parse_f64_roundup_and_own(x: f64, n_digits: usize) -> Result<String, ImputefError> {
     let s = x.to_string();
     if s.len() < n_digits {
-        return s;
+        return Ok(s);
     }
-    sensible_round(x, n_digits).to_string()
+    match sensible_round(x, n_digits) {
+        Ok(x) => Ok(x.to_string()),
+        Err(e) => Err(ImputefError{
+            code: 405,
+            message: "Error in parse_f64_roundup_and_own() | ".to_owned() + &e.message
+        })
+    }
 }
 
 /// Calculate the mean of a 1D array ignoring NaN
 pub fn mean_array1_ignore_nan(
     x: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
-) -> io::Result<f64> {
+) -> Result<f64, ImputefError> {
     // let sum = x.fold(0.0, |sum, &a| if a.is_nan() { sum } else { sum + a });
     // let counts = x.iter().filter(|&a| !a.is_nan()).count() as f64;
     // Ok(sum / counts)
@@ -120,7 +139,7 @@ pub fn mean_array1_ignore_nan(
 pub fn mean_axis_ignore_nan<D>(
     a: &Array<f64, D>,
     axis: usize,
-) -> io::Result<Array<f64, <D>::Smaller>>
+) -> Result<Array<f64, <D>::Smaller>, ImputefError>
 where
     D: ndarray::Dimension + ndarray::RemoveAxis,
 {
@@ -147,14 +166,15 @@ where
 pub fn pearsons_correlation_pairwise_complete(
     x: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
     y: &ArrayBase<ndarray::ViewRepr<&f64>, Dim<[usize; 1]>>,
-) -> io::Result<(f64, f64)> {
+) -> Result<(f64, f64), ImputefError> {
     let n = x.len();
-    if n != y.len() {
-        return Err(Error::new(
-            ErrorKind::Other,
-            "Input vectors are not the same size.",
-        ));
-    }
+    match n == y.len() {
+        true => (),
+        false => return Err(ImputefError {
+            code: 406,
+            message: "Error in pearsons_correlation_pairwise_complete(): input vectors are not the same size.".to_owned()
+        })
+    };
     // Using pairs of values with non-missing data across the pair of vectors
     // Note that this may result in unreasonable correlations is used for a matrix, i.e. column vectors may be comparing different sets of rows
     let filtered_vectors: (Vec<f64>, Vec<f64>) = x
@@ -166,10 +186,20 @@ pub fn pearsons_correlation_pairwise_complete(
     let x = Array1::from_vec(filtered_vectors.0);
     let y = Array1::from_vec(filtered_vectors.1);
     // Make sure we are handling NAN properly
-    let mu_x = mean_array1_ignore_nan(&x.view())
-        .expect("Error calculating the mean of x while ignoring NANs.");
-    let mu_y = mean_array1_ignore_nan(&y.view())
-        .expect("Error calculating the mean of y while ignoring NANs.");
+    let mu_x = match mean_array1_ignore_nan(&x.view()) {
+        Ok(x) => x,
+        Err(_) => return Err(ImputefError {
+            code: 407,
+            message: "Error in pearsons_correlation_pairwise_complete() in calculating the mean of x while ignoring NANs.".to_owned()
+        })
+    };
+    let mu_y = match mean_array1_ignore_nan(&y.view()) {
+        Ok(x) => x,
+        Err(_) => return Err(ImputefError {
+            code: 408,
+            message: "Error in pearsons_correlation_pairwise_complete() in calculating the mean of y while ignoring NANs.".to_owned()
+        })
+    };
     let x_less_mu_x = x
         .iter()
         .filter(|&x| !x.is_nan())
@@ -203,13 +233,26 @@ pub fn pearsons_correlation_pairwise_complete(
     let sigma_r = sigma_r_denominator.sqrt();
     let t = r / sigma_r;
     let pval = if n > 2 {
-        let d = StudentsT::new(0.0, 1.0, n as f64 - 2.0)
-            .expect("Error defining Student's t-distribution.");
+        let d = match StudentsT::new(0.0, 1.0, n as f64 - 2.0) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 409,
+                message: "Error in pearsons_correlation_pairwise_complete() in defining Student's t-distribution.".to_owned()
+            })
+        };
         2.00 * (1.00 - d.cdf(t.abs()))
     } else {
         f64::NAN
     };
-    Ok((sensible_round(r, 7), pval))
+    let r = match sensible_round(r, 7) {
+        Ok(x) => x,
+        Err(e) => return Err(ImputefError{
+            code: 410,
+            message: "Error in pearsons_correlation_pairwise_complete() | ".to_owned() +
+            &e.message
+        })
+    };
+    Ok((r, pval))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,9 +291,9 @@ mod tests {
             define_chunks(&vec![0, 1, 2, 3, 4, 5, 6], &5).unwrap(),
             (vec![0, 1, 2, 3, 4, 5], vec![1, 2, 3, 4, 5, 6])
         );
-        assert_eq!(sensible_round(0.420000012435, 4), 0.42);
+        assert_eq!(sensible_round(0.420000012435, 4).unwrap(), 0.42);
         assert_eq!(
-            parse_f64_roundup_and_own(0.690000012435, 4),
+            parse_f64_roundup_and_own(0.690000012435, 4).unwrap(),
             "0.69".to_owned()
         );
         let _a: Array2<f64> =

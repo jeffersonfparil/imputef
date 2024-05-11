@@ -554,7 +554,13 @@ impl GenotypesAndPhenotypes {
         //      - Input vcf file will have all alleles per locus extracted.
         //      - Similarly, input sync file will have all alleles per locus extracted.
         //      - Finally, input allele frequency table file which can be represented by all alleles or one less allele per locus will be appended with the alternative allele if the sum of allele frequencies per locus do not add up to one.
-        self.check();
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 108,
+                message: "Error checking GenotypesAndPhenotypes type in method adaptive_ld_knn_imputation() | ".to_owned() + &e.message
+            })
+        };
         // Parse arguments
         let min_loci_corr: &f64 = optimisation_arguments.0;
         let max_pool_dist: &f64 = optimisation_arguments.1;
@@ -591,7 +597,7 @@ impl GenotypesAndPhenotypes {
             Ok(x) => x,
             Err(_) => {
                 return Err(ImputefError {
-                    code: 108,
+                    code: 109,
                     message: "Error defining chunks of the file for parallel imputation."
                         .to_owned(),
                 })
@@ -619,7 +625,7 @@ impl GenotypesAndPhenotypes {
                 Ok(x) => x,
                 Err(_) => {
                     return Err(ImputefError {
-                        code: 109,
+                        code: 110,
                         message: "Error executing per_chunk_aldknni() method on self_clone."
                             .to_owned(),
                     })
@@ -632,7 +638,7 @@ impl GenotypesAndPhenotypes {
                     .duration_since(UNIX_EPOCH) {
                         Ok(x) => x.as_secs_f64(),
                         Err(_) => return Err(ImputefError{
-                            code: 110,
+                            code: 111,
                             message: "Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.".to_owned()
                         })
                     };
@@ -642,7 +648,7 @@ impl GenotypesAndPhenotypes {
                 Some(x) => x.to_owned().to_string().len(),
                 None => {
                     return Err(ImputefError {
-                        code: 111,
+                        code: 112,
                         message: "Error extracting the last element of loci_idx. Probably empty."
                             .to_owned(),
                     })
@@ -672,15 +678,23 @@ impl GenotypesAndPhenotypes {
             match chromosome.len() == p {
                     true => (),
                     false => return Err(ImputefError{
-                        code: 112,
+                        code: 113,
                         message: "Error, the number of chromosome names and the total number of loci are not equal.".to_owned()
                     })
                 };
             // Instantiate output file
+            let mae_intermediate = match sensible_round(sum_mae / n_missing, 4) {
+                Ok(x) => x,
+                Err(e) => return Err(ImputefError {
+                    code: 114,
+                    message: "Error printing the MAE for the intermediate file: ".to_owned() +
+                    &fname_intermediate_file
+                })
+            };
             println!(
                 "--> {}: Writing out intermediate file with expected MAE of {}: {}",
                 i,
-                sensible_round(sum_mae / n_missing, 4),
+                mae_intermediate,
                 &fname_intermediate_file
             );
             let mut file_out = match OpenOptions::new()
@@ -692,7 +706,7 @@ impl GenotypesAndPhenotypes {
                 Ok(x) => x,
                 Err(_) => {
                     return Err(ImputefError {
-                        code: 113,
+                        code: 115,
                         message: "Unable to create file: ".to_owned() + &fname_intermediate_file,
                     })
                 }
@@ -705,7 +719,7 @@ impl GenotypesAndPhenotypes {
                     ) {
                         Ok(x) => x,
                         Err(_) => return Err(ImputefError{
-                            code: 114,
+                            code: 116,
                             message: "Error calling write_all() within the write_tsv() method for GenotypesAndPhenotypes struct. Unable to create file: ".to_owned() + &fname_intermediate_file
                         })
                     };
@@ -722,7 +736,7 @@ impl GenotypesAndPhenotypes {
                         allele_frequencies
                             .column(j)
                             .iter()
-                            .map(|&x| parse_f64_roundup_and_own(x, 6))
+                            .map(|&x| parse_f64_roundup_and_own(x, 6).expect("Error in rounding and converting the allele frequencies into String."))
                             .collect::<Vec<String>>()
                             .join("\t"),
                     ]
@@ -731,7 +745,7 @@ impl GenotypesAndPhenotypes {
                     match file_out.write_all(line.as_bytes()) {
                         Ok(x) => x,
                         Err(_) => return Err(ImputefError{
-                            code: 115,
+                            code: 117,
                             message: "Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct. Unable to create file: ".to_owned() + &fname_intermediate_file
                         })
                     };
@@ -760,7 +774,7 @@ impl GenotypesAndPhenotypes {
             Ok(x) => x,
             Err(_) => {
                 return Err(ImputefError {
-                    code: 116,
+                    code: 118,
                     message: "Error opening the intermediate file of the first chunk: ".to_owned()
                         + &vec_fname_intermediate_files_and_mae[0].0,
                 })
@@ -773,7 +787,7 @@ impl GenotypesAndPhenotypes {
                 Ok(x) => x,
                 Err(_) => {
                     return Err(ImputefError {
-                        code: 117,
+                        code: 119,
                         message: "Error opening the intermediate file of a chunk: ".to_owned()
                             + &name_and_mae.0,
                     })
@@ -783,7 +797,7 @@ impl GenotypesAndPhenotypes {
                 Ok(x) => x,
                 Err(_) => {
                     return Err(ImputefError {
-                        code: 118,
+                        code: 120,
                         message: "Error concatenating intermediate output files: ".to_owned()
                             + &vec_fname_intermediate_files_and_mae[0].0
                             + " and "
@@ -795,7 +809,7 @@ impl GenotypesAndPhenotypes {
                 Ok(x) => x,
                 Err(_) => {
                     return Err(ImputefError {
-                        code: 119,
+                        code: 121,
                         message: "Error removing the intermediate file of a chunk: ".to_owned()
                             + &name_and_mae.0,
                     })
@@ -804,7 +818,14 @@ impl GenotypesAndPhenotypes {
             sum_mae += name_and_mae.1;
             n_missing += name_and_mae.2;
         }
-        let mae = sensible_round(sum_mae / n_missing, 4);
+        let mae = match sensible_round(sum_mae / n_missing, 4) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError {
+                code: 122,
+                message: "Error in adaptive_ld_knn_imputation() method | ".to_owned() +
+                &e.message
+            })
+        };
         Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae))
     }
 }
@@ -865,7 +886,7 @@ pub fn impute_aldknni(
         Ok(x) => x,
         Err(e) => {
             return Err(ImputefError {
-                code: 120,
+                code: 121,
                 message: e.message,
             })
         }
@@ -900,7 +921,7 @@ pub fn impute_aldknni(
         Ok(x) => x,
         Err(e) => {
             return Err(ImputefError {
-                code: 121,
+                code: 122,
                 message: e.message,
             })
         }
@@ -909,7 +930,7 @@ pub fn impute_aldknni(
     let duration = match end.duration_since(start) {
         Ok(x) => x,
         Err(e) => return Err(ImputefError{
-            code: 122,
+            code: 123,
             message: "Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().".to_owned()
         })
     };
@@ -928,7 +949,7 @@ pub fn impute_aldknni(
         Ok(x) => x,
         Err(_) => {
             return Err(ImputefError {
-                code: 123,
+                code: 124,
                 message: "Error loading the imputed genotype file: ".to_owned() + &fname_imputed,
             })
         }
@@ -937,7 +958,7 @@ pub fn impute_aldknni(
         Ok(x) => x,
         Err(_) => {
             return Err(ImputefError {
-                code: 124,
+                code: 125,
                 message: "Error removing concatenated intermediate file: ".to_owned()
                     + &fname_imputed,
             })
@@ -950,7 +971,7 @@ pub fn impute_aldknni(
         match genotypes_and_phenotypes.missing_rate() {
             Ok(x) => x,
             Err(_) => return Err(ImputefError{
-                code: 125,
+                code: 126,
                 message: "Error measuring sparsity of the data using missing_rate() method within impute_aldknni().".to_owned()
             })
         },
@@ -962,7 +983,7 @@ pub fn impute_aldknni(
         Ok(x) => x,
         Err(_) => {
             return Err(ImputefError {
-                code: 126,
+                code: 127,
                 message:
                     "Error calling filter_out_top_missing_loci() method within impute_aldknni()."
                         .to_owned(),
@@ -978,7 +999,7 @@ pub fn impute_aldknni(
         match genotypes_and_phenotypes.missing_rate() {
             Ok(x) => x,
             Err(_) => return Err(ImputefError{
-                code: 127,
+                code: 128,
                 message: "Error measuring sparsity of the data using missing_rate() method after filtering for missing top loci within impute_aldknni().".to_owned()
             })
         },
@@ -989,7 +1010,7 @@ pub fn impute_aldknni(
         .write_tsv(filter_stats, false, out, n_threads) {
             Ok(x) => x,
             Err(_) => return Err(ImputefError{
-                code: 127,
+                code: 129,
                 message: "Error writing the output file using the write_tsv() method within impute_aldknni(): ".to_owned() + &out
             })
         };

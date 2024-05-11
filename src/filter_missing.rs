@@ -1,5 +1,4 @@
 use ndarray::prelude::*;
-use std::io::{self, Error, ErrorKind};
 
 use crate::helpers::*;
 use crate::structs_and_traits::*;
@@ -9,18 +8,17 @@ impl GenotypesAndPhenotypes {
         &mut self,
         min_depth_below_which_are_missing: &f64,
         max_depth_above_which_are_missing: &f64,
-    ) -> io::Result<&mut Self> {
-        self.check().expect("Error calling check() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
+    ) -> Result<&mut Self, ImputefError> {
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 201,
+                message: "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | ".to_owned() +
+                &e.message
+            })
+        };
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
-        // println!(
-        //     "self.intercept_and_allele_frequencies.dim()={:?}",
-        //     self.intercept_and_allele_frequencies.dim()
-        // );
-        // println!("self.chromosome.len()={:?}", self.chromosome.len());
-        // println!("self.position.len()={:?}", self.position.len());
-        // println!("self.allele.len()={:?}", self.allele.len());
-        // println!("self.coverages.dim()={:?}", self.coverages.dim());
         let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
         for i in 0..n {
             for j in 0..l {
@@ -37,11 +35,18 @@ impl GenotypesAndPhenotypes {
                 }
             }
         }
-        self.check().expect("Error calling check() method within set_missing_by_depth() method for GenotypesAndPhenotypes struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 202,
+                message: "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | ".to_owned() +
+                &e.message
+            })
+        };
         Ok(self)
     }
 
-    pub fn missing_rate(&mut self) -> io::Result<f64> {
+    pub fn missing_rate(&mut self) -> Result<f64, ImputefError> {
         let (n, l) = self.coverages.dim();
         let sum = self.coverages.fold(0, |sum, &x| {
             if (x.is_nan()) || (x == 0.0) {
@@ -50,14 +55,21 @@ impl GenotypesAndPhenotypes {
                 sum
             }
         });
-        Ok(sensible_round(sum as f64 * 100.0 / ((n * l) as f64), 5))
+        sensible_round(sum as f64 * 100.0 / ((n * l) as f64), 5)
     }
 
     pub fn filter_out_top_missing_pools(
         &mut self,
         frac_top_missing_pools: &f64,
-    ) -> io::Result<&mut Self> {
-        self.check().expect("Error calling check() method within filter_out_top_missing_pools() method for GenotypesAndPhenotypes struct.");
+    ) -> Result<&mut Self, ImputefError> {
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 203,
+                message: "Error checking GenotypesAndPhenotypes in the method filter_out_top_missing_pools() | ".to_owned() +
+                &e.message
+            })
+        };
         let n = self.intercept_and_allele_frequencies.nrows();
         let p = self.intercept_and_allele_frequencies.ncols() - 1;
         let missingness_per_pool: Array1<f64> = self
@@ -75,10 +87,10 @@ impl GenotypesAndPhenotypes {
             missingness_per_pool.fold(0.0, |sum, &x| if x > 0.0 { sum + 1.0 } else { sum });
         let n_after_filtering = n - (n_missing * frac_top_missing_pools).ceil() as usize;
         if n_after_filtering == 0 {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "No pools left after filtering, please reduce 'frac_top_missing_pools'".to_owned(),
-            ));
+            return Err(ImputefError{
+                code: 204,
+                message: "No pools left after filtering, please reduce 'frac_top_missing_pools'".to_owned(),
+            });
         }
         // Sort by increasing missingness
         let mut idx = (0..n).collect::<Vec<usize>>();
@@ -127,7 +139,14 @@ impl GenotypesAndPhenotypes {
         // println!("self.allele.len()={:?}", self.allele.len());
         // println!("self.intercept_and_allele_frequencies.dim()={:?}", self.intercept_and_allele_frequencies.dim());
         // println!("self.coverages.len()={:?}", self.coverages.dim());
-        self.check().expect("Error calling check() method within filter_out_top_missing_pools() method for GenotypesAndPhenotypes struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 205,
+                message: "Error checking GenotypesAndPhenotypes in the method filter_out_top_missing_pools() | ".to_owned() +
+                &e.message
+            })
+        };
         Ok(self)
     }
 
@@ -135,8 +154,15 @@ impl GenotypesAndPhenotypes {
     pub fn filter_out_top_missing_loci(
         &mut self,
         frac_top_missing_loci: &f64,
-    ) -> io::Result<&mut Self> {
-        self.check().expect("Error calling check() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
+    ) -> Result<&mut Self, ImputefError> {
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 206,
+                message: "Error checking GenotypesAndPhenotypes in the method filter_out_top_missing_loci() | ".to_owned() +
+                &e.message
+            })
+        };
         let n = self.intercept_and_allele_frequencies.nrows();
         let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
         let l = loci_idx.len() - 1; // Less one for the trailing locus
@@ -159,10 +185,10 @@ impl GenotypesAndPhenotypes {
         // Define the number of loci kept after filtering
         let l_after_filtering = l - (l_missing * frac_top_missing_loci).ceil() as usize;
         if l_after_filtering == 0 {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "No loci left after filtering, please reduce 'frac_top_missing_loci'".to_owned(),
-            ));
+            return Err(ImputefError {
+                code: 207,
+                message: "No loci left after filtering, please reduce 'frac_top_missing_loci'".to_owned(),
+            });
         }
         // Sort by increasing missingness
         let mut idx = (0..l).collect::<Vec<usize>>();
@@ -224,13 +250,14 @@ impl GenotypesAndPhenotypes {
         self.allele = new_allele;
         self.intercept_and_allele_frequencies = new_intercept_and_allele_frequencies;
         self.coverages = new_coverages;
-        // println!("self={:?}", self);
-        // println!("self.chromosome.len()={:?}", self.chromosome.len());
-        // println!("self.position.len()={:?}", self.position.len());
-        // println!("self.allele.len()={:?}", self.allele.len());
-        // println!("self.intercept_and_allele_frequencies.dim()={:?}", self.intercept_and_allele_frequencies.dim());
-        // println!("self.coverages.len()={:?}", self.coverages.dim());
-        self.check().expect("Error calling check() method within filter_out_top_missing_loci() method for GenotypesAndPhenotypes struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 208,
+                message: "Error checking GenotypesAndPhenotypes in the method filter_out_top_missing_loci() | ".to_owned() +
+                &e.message
+            })
+        };
         Ok(self)
     }
 }
