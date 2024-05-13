@@ -11,11 +11,13 @@ impl GenotypesAndPhenotypes {
     ) -> Result<&mut Self, ImputefError> {
         match self.check() {
             Ok(x) => x,
-            Err(e) => return Err(ImputefError{
+            Err(e) => return Err(ImputefError {
                 code: 201,
-                message: "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | ".to_owned() +
-                &e.message
-            })
+                message:
+                    "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | "
+                        .to_owned()
+                        + &e.message,
+            }),
         };
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
@@ -37,11 +39,13 @@ impl GenotypesAndPhenotypes {
         }
         match self.check() {
             Ok(x) => x,
-            Err(e) => return Err(ImputefError{
+            Err(e) => return Err(ImputefError {
                 code: 202,
-                message: "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | ".to_owned() +
-                &e.message
-            })
+                message:
+                    "Error checking GenotypesAndPhenotypes in the method set_missing_by_depth() | "
+                        .to_owned()
+                        + &e.message,
+            }),
         };
         Ok(self)
     }
@@ -87,9 +91,10 @@ impl GenotypesAndPhenotypes {
             missingness_per_pool.fold(0.0, |sum, &x| if x > 0.0 { sum + 1.0 } else { sum });
         let n_after_filtering = n - (n_missing * frac_top_missing_pools).ceil() as usize;
         if n_after_filtering == 0 {
-            return Err(ImputefError{
+            return Err(ImputefError {
                 code: 204,
-                message: "No pools left after filtering, please reduce 'frac_top_missing_pools'".to_owned(),
+                message: "No pools left after filtering, please reduce 'frac_top_missing_pools'"
+                    .to_owned(),
             });
         }
         // Sort by increasing missingness
@@ -187,7 +192,8 @@ impl GenotypesAndPhenotypes {
         if l_after_filtering == 0 {
             return Err(ImputefError {
                 code: 207,
-                message: "No loci left after filtering, please reduce 'frac_top_missing_loci'".to_owned(),
+                message: "No loci left after filtering, please reduce 'frac_top_missing_loci'"
+                    .to_owned(),
             });
         }
         // Sort by increasing missingness

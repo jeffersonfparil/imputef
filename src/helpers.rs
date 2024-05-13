@@ -52,10 +52,14 @@ pub fn define_chunks(
     let vec_idx_loci_idx_fin: Vec<usize> = vec_idx_all[1..n_chunks].to_owned();
     match vec_idx_loci_idx_ini.len() == vec_idx_loci_idx_fin.len() {
         true => (),
-        false => return Err(ImputefError {
-            code: 401,
-            message: "Error defining chunks: the number of initial and final indices are different.".to_owned()
-        })
+        false => {
+            return Err(ImputefError {
+                code: 401,
+                message:
+                    "Error defining chunks: the number of initial and final indices are different."
+                        .to_owned(),
+            })
+        }
     };
     Ok((vec_idx_loci_idx_ini, vec_idx_loci_idx_fin))
 }
@@ -73,10 +77,12 @@ pub fn find_file_splits(fname: &str, n_threads: &usize) -> Result<Vec<u64>, Impu
     let mut reader = BufReader::new(file);
     let end = match reader.stream_position() {
         Ok(x) => x,
-        Err(_) => return Err(ImputefError {
-            code: 403,
-            message: "Error navigating file: ".to_owned() + fname
-        })
+        Err(_) => {
+            return Err(ImputefError {
+                code: 403,
+                message: "Error navigating file: ".to_owned() + fname,
+            })
+        }
     };
     let mut out = (0..end)
         .step_by((end as usize) / n_threads)
@@ -91,14 +97,15 @@ pub fn find_file_splits(fname: &str, n_threads: &usize) -> Result<Vec<u64>, Impu
 
 /// Round-up an `f64` to `n_digits` decimal points
 pub fn sensible_round(x: f64, n_digits: usize) -> Result<f64, ImputefError> {
-    let factor = match ("1e".to_owned() + &n_digits.to_string())
-        .parse::<f64>() {
-            Ok(x) => x,
-            Err(_) => return Err(ImputefError{
+    let factor = match ("1e".to_owned() + &n_digits.to_string()).parse::<f64>() {
+        Ok(x) => x,
+        Err(_) => {
+            return Err(ImputefError {
                 code: 404,
-                message: "Error parsing String into f64: ".to_owned() + &x.to_string()
+                message: "Error parsing String into f64: ".to_owned() + &x.to_string(),
             })
-        };
+        }
+    };
     Ok((x * factor).round() / factor)
 }
 
@@ -110,10 +117,10 @@ pub fn parse_f64_roundup_and_own(x: f64, n_digits: usize) -> Result<String, Impu
     }
     match sensible_round(x, n_digits) {
         Ok(x) => Ok(x.to_string()),
-        Err(e) => Err(ImputefError{
+        Err(e) => Err(ImputefError {
             code: 405,
-            message: "Error in parse_f64_roundup_and_own() | ".to_owned() + &e.message
-        })
+            message: "Error in parse_f64_roundup_and_own() | ".to_owned() + &e.message,
+        }),
     }
 }
 
@@ -246,11 +253,13 @@ pub fn pearsons_correlation_pairwise_complete(
     };
     let r = match sensible_round(r, 7) {
         Ok(x) => x,
-        Err(e) => return Err(ImputefError{
-            code: 410,
-            message: "Error in pearsons_correlation_pairwise_complete() | ".to_owned() +
-            &e.message
-        })
+        Err(e) => {
+            return Err(ImputefError {
+                code: 410,
+                message: "Error in pearsons_correlation_pairwise_complete() | ".to_owned()
+                    + &e.message,
+            })
+        }
     };
     Ok((r, pval))
 }

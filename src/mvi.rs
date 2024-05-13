@@ -4,16 +4,28 @@ use ndarray::prelude::*;
 use rand::prelude::IteratorRandom;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use std::io;
 
 type SparsitySimulationOutput = (f64, Vec<usize>, Vec<f64>, Vec<Vec<f64>>);
 
 impl GenotypesAndPhenotypes {
-    pub fn mean_imputation(&mut self) -> io::Result<&mut Self> {
-        self.check().expect("Error calling check() method within mean_imputation() method for GenotypesAndPhenotypes struct.");
+    pub fn mean_imputation(&mut self) -> Result<&mut Self, ImputefError> {
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 501,
+                message: "Error checking GenotypesAndPhenotypes type in method mean_imputation() | ".to_owned() + &e.message
+            })
+        };
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
         let (n, p) = self.intercept_and_allele_frequencies.dim();
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within mean_imputation() method for GenotypesAndPhenotypes struct.");
+        let (loci_idx, _loci_chr, _loci_pos) = match self.count_loci() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 502,
+                message: "Error defining loci indexes and identities within mean_imputation() method for GenotypesAndPhenotypes struct | ".to_owned() +
+                &e.message
+            })
+        };
         let l = loci_idx.len() - 1; // less the final position, this is equivalent to the the number of columns of self.coverages
         for j in 0..l {
             // Use the indexes of each locus
@@ -23,7 +35,14 @@ impl GenotypesAndPhenotypes {
                 .intercept_and_allele_frequencies
                 .slice(s![.., idx_ini..idx_fin])
                 .to_owned();
-            let mean_freqs = mean_axis_ignore_nan(&freqs, 0).expect("Error calculating axis-wise mean ignoring NANs within mean_imputation() method for GenotypesAndPhenotypes struct.");
+            let mean_freqs = match mean_axis_ignore_nan(&freqs, 0) {
+                Ok(x) => x,
+                Err(e) => return Err(ImputefError{
+                    code: 503,
+                    message: "Error calculating axis-wise mean ignoring NANs within mean_imputation() method for GenotypesAndPhenotypes struct | ".to_owned() +
+                    &e.message
+                })
+            };
             let sum_freqs = mean_freqs.sum();
             // We need to correct for imputations resulting in a sum of allele frequencies greater or less than 1
             let mean_freqs = if sum_freqs != 1.0 {
@@ -68,8 +87,14 @@ impl GenotypesAndPhenotypes {
         loci_idx: &[usize],
         max_sparsity: &f64,
         rep: &usize,
-    ) -> io::Result<(&mut Self, SparsitySimulationOutput)> {
-        self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
+    ) -> Result<(&mut Self, SparsitySimulationOutput), ImputefError> {
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 504,
+                message: "Error checking GenotypesAndPhenotypes type in method simulate_missing() | ".to_owned() + &e.message
+            })
+        };
         let (n, l) = self.coverages.dim();
         // let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error defining loci indexes and identities via count_loci() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
         // Limit max_sparsity to 90%
@@ -118,7 +143,13 @@ impl GenotypesAndPhenotypes {
                 idx += 1;
             }
         }
-        self.check().expect("Error calling check() method within simulate_missing() method for GenotypesAndPhenotypes struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 505,
+                message: "Error checking GenotypesAndPhenotypes type in method simulate_missing() | ".to_owned() + &e.message
+            })
+        };
         Ok((
             self,
             (
@@ -134,7 +165,7 @@ impl GenotypesAndPhenotypes {
         &self,
         loci_idx: &[usize],
         vec_masked_loci_idx: &[usize],
-    ) -> io::Result<Vec<Vec<f64>>> {
+    ) -> Result<Vec<Vec<f64>>, ImputefError> {
         let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
         let mut vec_vec_imputed_mask: Vec<Vec<f64>> = vec![];
@@ -161,7 +192,7 @@ impl GenotypesAndPhenotypes {
         Ok(vec_vec_imputed_mask)
     }
 
-    pub fn estimate_expected_mae_in_mvi(&self) -> io::Result<f64> {
+    pub fn estimate_expected_mae_in_mvi(&self) -> Result<f64, ImputefError> {
         let mut genotype_data_for_optimisation = self.clone();
         let (n, p) = genotype_data_for_optimisation
             .intercept_and_allele_frequencies
@@ -172,24 +203,46 @@ impl GenotypesAndPhenotypes {
             10_000.0 / ((n * p) as f64)
         };
         // Extract loci indices
-        let (loci_idx, _loci_chr, _loci_pos) = self.count_loci().expect("Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct.");
+        let (loci_idx, _loci_chr, _loci_pos) = match self.count_loci() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 506,
+                message: "Error calling count_loci() method within adaptive_ld_knn_imputation() method for GenotypesAndPhenotypes struct | ".to_owned() +
+                &e.message
+            })
+        };
         let (
             _,
             (max_sparsity,
             vec_masked_loci_idx,
             _vec_masked_coverages,
             vec_vec_masked_alleles_freqs),
-        ) = genotype_data_for_optimisation
-            .simulate_missing(&loci_idx, &missing_rate_sim, &0)
-            .expect("Error calling simulate_missing() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
-        assert_eq!(
-            max_sparsity, missing_rate_sim,
-            "Ooops! Missing unexpected simulated sparsity!"
-        );
+        ) = match genotype_data_for_optimisation
+            .simulate_missing(&loci_idx, &missing_rate_sim, &0) {
+                Ok(x) => x,
+                Err(e) => return Err(ImputefError{
+                    code: 507,
+                    message: "Error calling simulate_missing() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct | ".to_owned() +
+                    &e.message
+                })
+            };
+        match max_sparsity == missing_rate_sim {
+            true => (),
+            false => return Err(ImputefError{
+                code: 508,
+                message: "Error: the simulated sparsity does not match the sparsity level requested.".to_owned()
+            })
+        };
         let _ = genotype_data_for_optimisation.mean_imputation().expect("Error calling mean_imputation() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
-        let vec_vec_imputed_mask = genotype_data_for_optimisation
-            .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx)
-            .expect("Error calling extract_imputed_mask() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct.");
+        let vec_vec_imputed_mask = match genotype_data_for_optimisation
+            .extract_imputed_mask(&loci_idx, &vec_masked_loci_idx) {
+                Ok(x) => x,
+                Err(e) => return Err(ImputefError{
+                    code: 509,
+                    message: "Error calling extract_imputed_mask() within estimate_expected_mae_in_mvi() method for GenotypesAndPhenotypes struct | ".to_owned() +
+                    &e.message
+                })
+            };
         // Compare imputed and expected frequencies
         let m = vec_vec_masked_alleles_freqs.len(); // total number of loci
         let mean_absolute_error = if m == 0 {
@@ -242,11 +295,17 @@ pub fn impute_mean(
     filter_stats: &FilterStats,
     n_threads: &usize,
     out: &str,
-) -> io::Result<String> {
+) -> Result<String, ImputefError> {
     // Estimate predicted imputation accuracy
-    let mae = genotypes_and_phenotypes
-        .estimate_expected_mae_in_mvi()
-        .expect("Error calling estimate_expected_mae_in_mvi() method within impute_mean().");
+    let mae = match genotypes_and_phenotypes
+        .estimate_expected_mae_in_mvi() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 510,
+                message: "Error calling estimate_expected_mae_in_mvi() method within impute_mean() | ".to_owned() +
+                &e.message
+            })
+        };
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     println!(
         "Expected imputation accuracy in terms of mean absolute error: {}",
@@ -254,45 +313,80 @@ pub fn impute_mean(
     );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes
-        .mean_imputation()
-        .expect("Error calling mean_imputation() method within impute_mean().");
+    match genotypes_and_phenotypes
+        .mean_imputation() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 511,
+                message: "Error calling mean_imputation() method within impute_mean() | ".to_owned() +
+                &e.message
+            })
+        };
     let end = std::time::SystemTime::now();
-    let duration = end
-        .duration_since(start)
-        .expect("Error measuring the duration of mean value imputation within impute_mean()");
+    let duration = match end
+        .duration_since(start) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 512,
+                message: "Error measuring the duration of mean value imputation within impute_mean()".to_owned()
+            })
+        };
     println!(
         "Mean value imputation: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes
-            .missing_rate()
-            .expect("Error measuring sparsity after mean value imputation within impute_mean()."),
+        match genotypes_and_phenotypes.missing_rate() {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 513,
+                message: "Error measuring sparsity after mean value imputation within impute_mean().".to_owned()
+            })
+        },
         duration.as_secs_f64()
     );
-
-    // println!("genotypes_and_phenotypes={:?}", genotypes_and_phenotypes);
-
     // Remove 100% of the loci with missing data
     let start = std::time::SystemTime::now();
-    genotypes_and_phenotypes
-        .filter_out_top_missing_loci(&1.00)
-        .expect("Error calling filter_out_top_missing_loci() method within impute_mean().");
+    match genotypes_and_phenotypes
+        .filter_out_top_missing_loci(&1.00) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 514,
+                message: "Error calling filter_out_top_missing_loci() method within impute_mean() | ".to_owned() +
+                &e.message
+            })
+        };
     let end = std::time::SystemTime::now();
-    let duration = end.duration_since(start).expect(
-        "Error measuring the duration of filter_out_top_missing_loci() within impute_mean()",
-    );
+    let duration = match end
+        .duration_since(start) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 515,
+                message: "Error measuring the duration of mean value imputation within impute_mean()".to_owned()
+            })
+        };
     println!(
         "Missing data removed, i.e. loci which cannot be imputed because of extreme sparsity: {} pools x {} loci | Missingness: {}% | Duration: {} seconds",
         genotypes_and_phenotypes.coverages.nrows(),
         genotypes_and_phenotypes.coverages.ncols(),
-        genotypes_and_phenotypes.missing_rate().expect("Error measuring sparsity after filter_out_top_missing_loci(0) within impute_mean()."),
+        match genotypes_and_phenotypes.missing_rate() {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 516,
+                message: "Error measuring sparsity after filter_out_top_missing_loci() within impute_mean().".to_owned()
+            })
+        },
         duration.as_secs_f64()
     );
     // Output
-    let out = genotypes_and_phenotypes
-        .write_tsv(filter_stats, false, out, n_threads)
-        .expect("Error writing the output of mean value imputation within impute_mean().");
+    let out = match genotypes_and_phenotypes
+        .write_tsv(filter_stats, false, out, n_threads) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 517,
+                message: "Error writing the output of mean value imputation within impute_mean() | ".to_owned() +
+                &e.message
+            })
+        };
 
     Ok(out)
 }

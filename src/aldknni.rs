@@ -685,17 +685,17 @@ impl GenotypesAndPhenotypes {
             // Instantiate output file
             let mae_intermediate = match sensible_round(sum_mae / n_missing, 4) {
                 Ok(x) => x,
-                Err(e) => return Err(ImputefError {
-                    code: 114,
-                    message: "Error printing the MAE for the intermediate file: ".to_owned() +
-                    &fname_intermediate_file
-                })
+                Err(e) => {
+                    return Err(ImputefError {
+                        code: 114,
+                        message: "Error printing the MAE for the intermediate file: ".to_owned()
+                            + &fname_intermediate_file,
+                    })
+                }
             };
             println!(
                 "--> {}: Writing out intermediate file with expected MAE of {}: {}",
-                i,
-                mae_intermediate,
-                &fname_intermediate_file
+                i, mae_intermediate, &fname_intermediate_file
             );
             let mut file_out = match OpenOptions::new()
                 .create_new(true)
@@ -820,11 +820,13 @@ impl GenotypesAndPhenotypes {
         }
         let mae = match sensible_round(sum_mae / n_missing, 4) {
             Ok(x) => x,
-            Err(e) => return Err(ImputefError {
-                code: 122,
-                message: "Error in adaptive_ld_knn_imputation() method | ".to_owned() +
-                &e.message
-            })
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 122,
+                    message: "Error in adaptive_ld_knn_imputation() method | ".to_owned()
+                        + &e.message,
+                })
+            }
         };
         Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae))
     }

@@ -13,8 +13,8 @@ impl Parse<LocusFrequencies> for String {
         if self.as_bytes()[0] == 35_u8 {
             return Err(ImputefError {
                 code: 301,
-                message: "Commented out line: ".to_owned() + &self
-            })
+                message: "Commented out line: ".to_owned() + &self,
+            });
         }
         let vec_line: Vec<&str> = self.split('\t').collect();
         let vec_line: Vec<&str> = if vec_line.len() == 1 {
@@ -36,7 +36,9 @@ impl Parse<LocusFrequencies> for String {
             Err(_) => {
                 return Err(ImputefError {
                     code: 302,
-                    message: "Please check format of the file: position is not and integer: ".to_owned() + &self
+                    message: "Please check format of the file: position is not and integer: "
+                        .to_owned()
+                        + &self,
                 })
             }
         };
@@ -143,12 +145,12 @@ impl LoadAll for FileGeno {
                 Err(x) => match x {
                     ImputefError => continue,
                     _ => {
-                        return Err(ImputefError{
+                        return Err(ImputefError {
                             code: 308,
                             message: "T_T Input sync file error, i.e. '".to_owned()
-                            + &fname
-                            + "' at line with the first 20 characters as: "
-                            + &line
+                                + &fname
+                                + "' at line with the first 20 characters as: "
+                                + &line,
                         })
                     }
                 },
@@ -213,11 +215,15 @@ impl LoadAll for FileGeno {
         for thread in thread_objects {
             match thread.join() {
                 Ok(x) => x,
-                Err(_) => return Err(ImputefError{
-                    code: 310,
-                    message: "Unknown thread error occured in load() method for FileGeno struct: ".to_owned() +
-                    &fname
-                })
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 310,
+                        message:
+                            "Unknown thread error occured in load() method for FileGeno struct: "
+                                .to_owned()
+                                + &fname,
+                    })
+                }
             };
         }
         // Extract output filenames from each thread into a vector and sort them
@@ -423,21 +429,25 @@ pub fn load_geno<'a, 'b>(
     // Extract pool names from the txt file
     let file: File = File::open(fname).expect("Error reading the allele frequency table file.");
     let reader = io::BufReader::new(file);
-    let mut header: String = match reader
-        .lines()
-        .next() {
-            Some(x) => match x {
-                Ok(y) => y,
-                Err(_) => return Err(ImputefError {
+    let mut header: String = match reader.lines().next() {
+        Some(x) => match x {
+            Ok(y) => y,
+            Err(_) => {
+                return Err(ImputefError {
                     code: 316,
-                    message: "Error reading the allele frequency table file: ".to_owned() + &fname
+                    message: "Error reading the allele frequency table file: ".to_owned() + &fname,
                 })
-            },
-            None => return Err(ImputefError{
+            }
+        },
+        None => {
+            return Err(ImputefError {
                 code: 317,
-                message: "Please check the format of the allele frequency table text file: ".to_owned() + &fname
+                message: "Please check the format of the allele frequency table text file: "
+                    .to_owned()
+                    + &fname,
             })
-        };
+        }
+    };
     if header.ends_with('\n') {
         header.pop();
         if header.ends_with('\r') {
@@ -475,23 +485,31 @@ pub fn load_geno<'a, 'b>(
         true => (),
         false => return Err(ImputefError {
             code: 319,
-            message: "Error in the number of pools and the pool sizes do not match in the input file: ".to_owned() +
-            &fname
+            message:
+                "Error in the number of pools and the pool sizes do not match in the input file: "
+                    .to_owned()
+                    + &fname,
         }),
     };
     let file_geno = FileGeno {
         filename: fname.to_owned(),
     };
-    let genotypes_and_phenotypes = match file_geno
-    .convert_into_genotypes_and_phenotypes(filter_stats, false, n_threads) {
+    let genotypes_and_phenotypes = match file_geno.convert_into_genotypes_and_phenotypes(
+        filter_stats,
+        false,
+        n_threads,
+    ) {
         Ok(x) => x,
         Err(e) => return Err(ImputefError {
             code: 320,
-            message: "Error parsing the genotype data (extracted from allele frequency table text file: ".to_owned() + &fname + ") via convert_into_genotypes_and_phenotypes() method within impute()."
-        })
+            message:
+                "Error parsing the genotype data (extracted from allele frequency table text file: "
+                    .to_owned()
+                    + &fname
+                    + ") via convert_into_genotypes_and_phenotypes() method within impute().",
+        }),
     };
-    Ok((genotypes_and_phenotypes, 
-        filter_stats))
+    Ok((genotypes_and_phenotypes, filter_stats))
 }
 
 #[cfg(test)]

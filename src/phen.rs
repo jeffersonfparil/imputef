@@ -20,7 +20,7 @@ impl Parse<Phen> for FilePhen {
     /// - *Line 4*: maximum phenotype value
     /// - *Line 5*: cummulative pool sizes percentiles (e.g. `0.2,0.4,0.6,0.8,1.0`)
     /// - *Line 6*: phenotype values corresponding to each percentile (e.g. `0.16,0.20,0.23,0.27,0.42`)
-    fn lparse(&self) -> io::Result<Box<Phen>> {
+    fn lparse(&self) -> Result<Box<Phen>, ImputefError> {
         let mut pool_names: Vec<String> = vec![];
         let mut pool_sizes: Vec<f64> = vec![];
         if self.format == *"default" {
@@ -34,11 +34,22 @@ impl Parse<Phen> for FilePhen {
             let trait_values_column_ids = self.trait_values_column_ids.clone();
             let k = trait_values_column_ids.len();
             let mut phen_vec: Vec<f64> = vec![];
-            let file = File::open(filename_phen.clone())
-                .expect(&("Input phenotype file not found: ".to_owned() + &filename_phen[..]));
+            let file = match File::open(filename_phen.clone()) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 601,
+                    message: "Input phenotype file not found: ".to_owned() + &filename_phen
+                })
+            };
             let reader = BufReader::new(file);
             for l in reader.lines() {
-                let mut line = l.expect("Error parsing the phenotype file within the lparse() method for the FilePhen struct.");
+                let mut line = match l {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 602,
+                        message: "Error parsing the phenotype file within the lparse() method for the FilePhen struct.".to_owned()
+                    })
+                };
                 // Remove trailing newline character in Unix-like (\n) and Windows (\r)
                 if line.ends_with('\n') {
                     line.pop();
@@ -76,8 +87,14 @@ impl Parse<Phen> for FilePhen {
                     {
                         phen_vec.push(f64::NAN)
                     } else {
-                        phen_vec.push(vec_line[trait_values_column_ids[j]].parse::<f64>()
-                                                            .expect("T_T Error parsing the phenotype file. The trait values specified cannot be casted into float64."))
+                        phen_vec.push(match vec_line[trait_values_column_ids[j]].parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => return Err(ImputefError{
+                                code: 603,
+                                message: "Error parsing the phenotype file. The trait values specified cannot be casted into float64. File: ".to_owned() +
+                                &filename_phen
+                            })
+                        })
                     };
                 }
             }
@@ -99,12 +116,24 @@ impl Parse<Phen> for FilePhen {
             // GWAlpha format //
             ////////////////////
             let filename_phen = self.filename.clone();
-            let file = File::open(filename_phen.clone())
-                .expect(&("Input phenotype file not found: ".to_owned() + &filename_phen[..]));
+            let file = match File::open(filename_phen.clone()) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 604,
+                    message: "Input phenotype file not found: ".to_owned() + &filename_phen
+                })
+            };
             let reader = BufReader::new(file);
             let mut all_lines: Vec<String> = vec![];
             for line in reader.lines() {
-                all_lines.push(line.expect("T_T Phenotype file in GWAlpha format is missing some lines, e.g. Pheno_name, sig, MIN, MAX, perc and/or q."));
+                all_lines.push(match line {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 605,
+                        message: "Error: phenotype file in GWAlpha format is missing some lines, e.g. Pheno_name, sig, MIN, MAX, perc and/or q. File: ".to_owned() +
+                        &filename_phen
+                    })
+                });
             }
             let _name = all_lines[0].split('=').collect::<Vec<&str>>()[1]
                 .replace(';', "")
@@ -115,11 +144,11 @@ impl Parse<Phen> for FilePhen {
             let max = all_lines[3].split('=').collect::<Vec<&str>>()[1].replace(';', "").trim().parse::<f64>().expect("T_T Error parsing the maximum value of the trait as f64 in the GWAlpha formatted phenotype file.");
             let perc = all_lines[4].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim()
                                              .split(',').collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
-                                             .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool percentiles as f64 in the GWAlpha formatted phenotype file."))
+                                             .map(|x| x.parse::<f64>().expect("Error parsing the pool percentiles as f64 in the GWAlpha formatted phenotype file."))
                                              .collect::<Vec<f64>>();
             let q = all_lines[5].split('=').collect::<Vec<&str>>()[1].replace([';', '[', ']'], "").trim()
                                           .split(',').collect::<Vec<&str>>().into_iter().map(|x| x.trim().to_string())
-                                          .map(|x| x.parse::<f64>().expect("T_T Error parsing the pool quantiles as f64 in the GWAlpha formatted phenotype file."))
+                                          .map(|x| x.parse::<f64>().expect("Error parsing the pool quantiles as f64 in the GWAlpha formatted phenotype file."))
                                           .collect::<Vec<f64>>();
             // For ML
             let mut _perc0 = perc.clone();
@@ -156,10 +185,10 @@ impl Parse<Phen> for FilePhen {
                 phen_matrix,
             }));
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'",
-            ));
+            return Err(ImputefError{
+                code: 606,
+                message: "Error: invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'. File: ".to_owned()
+            })
         }
     }
 }
@@ -168,14 +197,21 @@ impl Parse<Phen> for FilePhen {
 /// This is reserved for quantitative and population genetics analyses in poolgen.
 impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
     /// Combine the `Phen` struct with the filename of the genotype file in `sync` format, and include the name of the `test` or analysis to perform
-    fn lparse(&self) -> io::Result<Box<FileSyncPhen>> {
+    fn lparse(&self) -> Result<Box<FileSyncPhen>, ImputefError> {
         let filename_sync = self.0.filename.clone();
         let test = self.0.test.clone();
         if self.1.format == *"default" {
             ////////////////////
             // Default format //
             ////////////////////
-            let phen = self.1.lparse().expect("Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct.");
+            let phen = match self.1.lparse() {
+                Ok(x) => x,
+                Err(e) => return Err(ImputefError{
+                    code: 607,
+                    message: "Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct. File: ".to_owned() +
+                    &filename_sync
+                })
+            };
             Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,
@@ -187,7 +223,14 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             // GWAlpha format //
             ////////////////////
-            let phen = self.1.lparse().expect("Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct.");
+            let phen = match self.1.lparse() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 609,
+                    message: "Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct. File: ".to_owned() + 
+                    &filename_sync
+                })
+            };
             return Ok(Box::new(FileSyncPhen {
                 filename_sync,
                 pool_names: phen.pool_names,
@@ -196,10 +239,10 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
                 test,
             }));
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "Invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'",
-            ));
+            return Err(ImputefError{
+                code: 610,
+                message: "Erro: invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'".to_owned()
+            })
         }
     }
 }
