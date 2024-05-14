@@ -2,7 +2,7 @@
 
 use ndarray::prelude::*;
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader, Error, ErrorKind};
+use std::io::{prelude::*, BufReader};
 use std::{str, vec};
 
 use crate::structs_and_traits::*;
@@ -36,10 +36,12 @@ impl Parse<Phen> for FilePhen {
             let mut phen_vec: Vec<f64> = vec![];
             let file = match File::open(filename_phen.clone()) {
                 Ok(x) => x,
-                Err(_) => return Err(ImputefError{
-                    code: 601,
-                    message: "Input phenotype file not found: ".to_owned() + &filename_phen
-                })
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 601,
+                        message: "Input phenotype file not found: ".to_owned() + &filename_phen,
+                    })
+                }
             };
             let reader = BufReader::new(file);
             for l in reader.lines() {
@@ -118,10 +120,12 @@ impl Parse<Phen> for FilePhen {
             let filename_phen = self.filename.clone();
             let file = match File::open(filename_phen.clone()) {
                 Ok(x) => x,
-                Err(_) => return Err(ImputefError{
-                    code: 604,
-                    message: "Input phenotype file not found: ".to_owned() + &filename_phen
-                })
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 604,
+                        message: "Input phenotype file not found: ".to_owned() + &filename_phen,
+                    })
+                }
             };
             let reader = BufReader::new(file);
             let mut all_lines: Vec<String> = vec![];
@@ -188,7 +192,7 @@ impl Parse<Phen> for FilePhen {
             return Err(ImputefError{
                 code: 606,
                 message: "Error: invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'. File: ".to_owned()
-            })
+            });
         }
     }
 }
@@ -206,7 +210,7 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
             ////////////////////
             let phen = match self.1.lparse() {
                 Ok(x) => x,
-                Err(e) => return Err(ImputefError{
+                Err(_e) => return Err(ImputefError{
                     code: 607,
                     message: "Error calling lparse() within the lparse() method for the (FileSync, FilePhen) struct. File: ".to_owned() +
                     &filename_sync
@@ -239,10 +243,12 @@ impl Parse<FileSyncPhen> for (FileSync, FilePhen) {
                 test,
             }));
         } else {
-            return Err(ImputefError{
+            return Err(ImputefError {
                 code: 610,
-                message: "Erro: invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'".to_owned()
-            })
+                message:
+                    "Erro: invalid phenotype format. Please select: 'default' or 'gwalpha_fmt'"
+                        .to_owned(),
+            });
         }
     }
 }

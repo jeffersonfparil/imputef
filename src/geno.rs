@@ -142,18 +142,7 @@ impl LoadAll for FileGeno {
             // Parse the geno line
             let allele_freqs: LocusFrequencies = match line.lparse() {
                 Ok(x) => *x,
-                Err(x) => match x {
-                    ImputefError => continue,
-                    _ => {
-                        return Err(ImputefError {
-                            code: 308,
-                            message: "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line,
-                        })
-                    }
-                },
+                Err(_x) => continue,
             };
             freq.push(allele_freqs);
         }
@@ -500,7 +489,7 @@ pub fn load_geno<'a, 'b>(
         n_threads,
     ) {
         Ok(x) => x,
-        Err(e) => return Err(ImputefError {
+        Err(_e) => return Err(ImputefError {
             code: 320,
             message:
                 "Error parsing the genotype data (extracted from allele frequency table text file: "

@@ -685,7 +685,7 @@ impl GenotypesAndPhenotypes {
             // Instantiate output file
             let mae_intermediate = match sensible_round(sum_mae / n_missing, 4) {
                 Ok(x) => x,
-                Err(e) => {
+                Err(_e) => {
                     return Err(ImputefError {
                         code: 114,
                         message: "Error printing the MAE for the intermediate file: ".to_owned()
@@ -931,7 +931,7 @@ pub fn impute_aldknni(
     let end = std::time::SystemTime::now();
     let duration = match end.duration_since(start) {
         Ok(x) => x,
-        Err(e) => return Err(ImputefError{
+        Err(_e) => return Err(ImputefError{
             code: 123,
             message: "Error measuring the duration of running adaptive_ld_knn_imputation() within impute_aldknni().".to_owned()
         })
@@ -956,7 +956,7 @@ pub fn impute_aldknni(
             })
         }
     };
-    match remove_file(fname_imputed) {
+    match remove_file(&fname_imputed) {
         Ok(x) => x,
         Err(_) => {
             return Err(ImputefError {
