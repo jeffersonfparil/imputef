@@ -140,7 +140,7 @@ impl Count for GenotypesAndPhenotypes {
             true => (),
             false => return Err(ImputefError{
                 code: 710,
-                message: "The number of loci with coverage information and the total number of loci are incompatible. You may have duplicate loci in the input genotype file (vcf, sync, or txt). Please check the 'intercept_and_allele_frequencies' and 'coverages' fields of 'GenotypesAndPhenotypes' struct.".to_owned()
+                message: "The number of loci with coverage information and the total number of loci are incompatible. You may have duplicate loci in the input genotype file (vcf, sync, or txt). If your input data is in vcf format please make sure to remove duplicate loci resulting from multi-allelic loci where additional alternative alleles are located in subsequent adjacent rows. Please check the 'intercept_and_allele_frequencies' and 'coverages' fields of 'GenotypesAndPhenotypes' struct.".to_owned()
             })
         };
         Ok((loci_idx, loci_chr, loci_pos))
