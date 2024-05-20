@@ -1,6 +1,6 @@
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
+use std::io::{prelude::*, BufReader, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -9,55 +9,70 @@ use crate::helpers::*;
 use crate::structs_and_traits::*;
 
 impl CheckStruct for LocusCounts {
-    fn check(&self) -> io::Result<()> {
+    fn check(&self) -> Result<(), ImputefError> {
         let (_n, p) = self.matrix.dim();
         let a = self.alleles_vector.len();
         match p == a {
             true => Ok(()),
             false => {
-                let locus = [self.chromosome.clone(), self.position.to_string()].join("-");
-                Err(Error::new(ErrorKind::Other, locus + " ::: LocusCounts error: the counts matrix does not have the same the number columns as the number of alleles."))
+                let _locus = [self.chromosome.clone(), self.position.to_string()].join("-");
+                Err(ImputefError{
+                    code: 701,
+                    message: "Error: LocusCounts' counts matrix does not have the same the number columns as the number of alleles.".to_owned()
+                })
             }
         }
     }
 }
 
 impl CheckStruct for LocusFrequencies {
-    fn check(&self) -> io::Result<()> {
+    fn check(&self) -> Result<(), ImputefError> {
         let (_n, p) = self.matrix.dim();
         let a = self.alleles_vector.len();
         match p == a {
             true => Ok(()),
             false => {
-                let locus = [self.chromosome.clone(), self.position.to_string()].join("-");
-                Err(Error::new(ErrorKind::Other, locus + " ::: LocusFrequencies error: the frequencies matrix does not have the same the number columns as the number of alleles."))
+                let _locus = [self.chromosome.clone(), self.position.to_string()].join("-");
+                Err(ImputefError{
+                    code: 702,
+                    message: "Error: LocusFrequencies' frequencies matrix does not have the same the number columns as the number of alleles.".to_owned()
+                })
             }
         }
     }
 }
 
 impl CheckStruct for LocusCountsAndPhenotypes {
-    fn check(&self) -> io::Result<()> {
-        self.locus_counts.check().expect("Error checking locus counts within check() method for LocusCountsAndPhenotypes struct.");
+    fn check(&self) -> Result<(), ImputefError> {
+        match self.locus_counts.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 703,
+                message: "Error checking locus counts within check() method for LocusCountsAndPhenotypes struct | ".to_owned() + &e.message
+            })
+        };
         let (n, _p) = self.locus_counts.matrix.dim();
         let (n_, _k) = self.phenotypes.dim();
         let n__ = self.pool_names.len();
         match (n == n_) && (n_ == n__) {
             true => Ok(()),
             false => {
-                let locus = [
+                let _locus = [
                     self.locus_counts.chromosome.clone(),
                     self.locus_counts.position.to_string(),
                 ]
                 .join("-");
-                Err(Error::new(ErrorKind::Other, locus + " ::: LocusCountsAndPhenotypes error: the number of pools are inconsistent in the locus counts, and/or phenotypes matrix and/or pool names."))
+                Err(ImputefError{
+                    code: 704,
+                    message: "Error in LocusCountsAndPhenotypes: the number of pools are inconsistent in the locus counts, and/or phenotypes matrix and/or pool names.".to_owned()
+                })
             }
         }
     }
 }
 
 impl CheckStruct for GenotypesAndPhenotypes {
-    fn check(&self) -> io::Result<()> {
+    fn check(&self) -> Result<(), ImputefError> {
         let p = self.chromosome.len();
         let p_ = self.position.len();
         let (n, p__) = self.intercept_and_allele_frequencies.dim();
@@ -66,16 +81,31 @@ impl CheckStruct for GenotypesAndPhenotypes {
         let (n___, l) = self.coverages.dim();
         match (p == p_) && (p_ == p__) && (n == n_) && (n_ == n__) && (n__ == n___) && (l <= p) {
             true => Ok(()),
-            false => Err(Error::new(ErrorKind::Other, "GenotypesAndPhenotypes: there are at least 1 mismatch in the number of pools and loci."))
+            false => Err(ImputefError{
+                code: 705,
+                message: "Error in GenotypesAndPhenotypes: there are at least 1 mismatch in the number of pools and loci.".to_owned()
+            })
         }
     }
 }
 
 impl Count for GenotypesAndPhenotypes {
-    fn count_loci(&self) -> io::Result<(Vec<usize>, Vec<String>, Vec<u64>)> {
+    fn count_loci(&self) -> Result<(Vec<usize>, Vec<String>, Vec<u64>), ImputefError> {
         let (_, p) = self.intercept_and_allele_frequencies.dim();
-        assert_eq!(p, self.chromosome.len(), "The number of entries in the 'chromosome' field and the total number of loci are incompatible. Please check the 'intercept_and_allele_frequencies' and 'chromosome' fields of 'GenotypesAndPhenotypes' struct.");
-        assert_eq!(p, self.position.len(), "The number of entries in the 'position' field and the total number of loci are incompatible. Please check the 'intercept_and_allele_frequencies' and 'chromosome' fields of 'GenotypesAndPhenotypes' struct.");
+        match p == self.chromosome.len() {
+            true => (),
+            false => return Err(ImputefError{
+                code: 706,
+                message: "Error: the number of entries in the 'chromosome' field and the total number of loci are incompatible. Please check the 'intercept_and_allele_frequencies' and 'chromosome' fields of 'GenotypesAndPhenotypes' struct.".to_owned()
+            })
+        };
+        match p == self.position.len() {
+            true => (),
+            false => return Err(ImputefError{
+                code: 707,
+                message: "Error: the number of entries in the 'position' field and the total number of loci are incompatible. Please check the 'intercept_and_allele_frequencies' and 'chromosome' fields of 'GenotypesAndPhenotypes' struct.".to_owned()
+            })
+        };
         // Count the number of loci (Note: assumes the loci are sorted) and extract the loci coordinates
         let mut loci_idx: Vec<usize> = vec![];
         let mut loci_chr: Vec<String> = vec![];
@@ -91,17 +121,35 @@ impl Count for GenotypesAndPhenotypes {
             }
         }
         loci_idx.push(p); // last allele of the last locus
-        loci_chr.push(self.chromosome.last().expect("Error accessing the last element of self.chromosome within the count_loci() method for GenotypesAndPhenotypes struct.").to_owned()); // last allele of the last locus
-        loci_pos.push(self.position.last().expect("Error accessing the last element of self.position within the count_loci() method for GenotypesAndPhenotypes struct.").to_owned()); // last allele of the last locus
+        loci_chr.push(match self.chromosome.last(){
+            Some(x) => x,
+            None => return Err(ImputefError{
+                code: 708,
+                message: "Error accessing the last element of self.chromosome within the count_loci() method for GenotypesAndPhenotypes struct.".to_owned()
+            })
+        }.to_owned()); // last allele of the last locus
+        loci_pos.push(match self.position.last(){
+            Some(x) => x,
+            None => return Err(ImputefError{
+                code: 709,
+                message: "Error accessing the last element of self.position within the count_loci() method for GenotypesAndPhenotypes struct.".to_owned()
+            })
+        }.to_owned()); // last allele of the last locus
         let l = loci_idx.len();
-        assert_eq!(l-1, self.coverages.ncols(), "The number of loci with coverage information and the total number of loci are incompatible. You may have duplicate loci in the input genotype file (vcf, sync, or txt). Please check the 'intercept_and_allele_frequencies' and 'coverages' fields of 'GenotypesAndPhenotypes' struct.");
+        match l-1 == self.coverages.ncols() {
+            true => (),
+            false => return Err(ImputefError{
+                code: 710,
+                message: "The number of loci with coverage information and the total number of loci are incompatible. You may have duplicate loci in the input genotype file (vcf, sync, or txt). If your input data is in vcf format please make sure to remove duplicate loci resulting from multi-allelic loci where additional alternative alleles are located in subsequent adjacent rows. Please check the 'intercept_and_allele_frequencies' and 'coverages' fields of 'GenotypesAndPhenotypes' struct.".to_owned()
+            })
+        };
         Ok((loci_idx, loci_chr, loci_pos))
     }
 }
 
 impl Parse<LocusCounts> for String {
     // Parse a line of pileup into PileupLine struct
-    fn lparse(&self) -> io::Result<Box<LocusCounts>> {
+    fn lparse(&self) -> Result<Box<LocusCounts>, ImputefError> {
         // Remove trailing newline character in Unix-like (\n) and Windows (\r)
         let mut line = self.clone();
         if line.ends_with('\n') {
@@ -112,7 +160,10 @@ impl Parse<LocusCounts> for String {
         }
         // Ignore commented-out lines (i.e. '#' => 35)
         if line.as_bytes()[0] == 35_u8 {
-            return Err(Error::new(ErrorKind::Other, "Commented out line"));
+            return Err(ImputefError {
+                code: 711,
+                message: "Commented out line: ".to_owned() + &line,
+            });
         }
         // Parse the sync line
         let vec_line = line
@@ -127,10 +178,10 @@ impl Parse<LocusCounts> for String {
         let position = match vec_line[1].parse::<u64>() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Please check format of the file: position is not and integer.",
-                ))
+                return Err(ImputefError {
+                    code: 712,
+                    message: "Error position field is not an integer: ".to_owned() + &line,
+                })
             }
         };
         let alleles_vector = vec!["A", "T", "C", "G", "N", "D"]
@@ -159,13 +210,13 @@ impl Parse<LocusCounts> for String {
 
 impl Filter for LocusCounts {
     // PileupLine to AlleleCounts
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, ImputefError> {
         let out = self.clone();
         Ok(Box::new(out))
     }
 
     // PileupLine to AlleleFrequencies
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, ImputefError> {
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         // let row_sums = self.matrix.sum_axis(Axis(1)); // summation across the columns which means sum of all elements per row
@@ -194,11 +245,19 @@ impl Filter for LocusCounts {
     }
 
     // Filter PileupLine by minimum coverage, minimum quality
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<&mut Self, ImputefError> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Preliminary check of the structure format
-        self.check()
-            .expect("Error calling check() within filter() method for LocusCounts struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError {
+                code: 713,
+                message:
+                    "Error checking locus counts within filter() method for LocusCounts struct | "
+                        .to_owned()
+                        + &e.message,
+            }),
+        };
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -228,8 +287,12 @@ impl Filter for LocusCounts {
                 .iter()
                 .fold(sum_coverage[0], |min, &x| if x < min { x } else { min });
         if min_sum_coverage < filter_stats.min_coverage as f64 {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 714,
+                message: "Locus is filtered out: min_sum_coverage < filter_stats.min_coverage"
+                    .to_owned(),
+            });
+        };
         // // TODO: convert loci failing the minimum coverage threshold into missing instead of omitting the entire locus
         // for i in 0..self.matrix.nrows() {
         //     if sum_coverage[i] < filter_stats.min_coverage as f64 {
@@ -244,20 +307,24 @@ impl Filter for LocusCounts {
         //// First convert allele counts into frequencies
         let mut allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
-            Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert locus counts to locus frequencies.",
-                ))
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 715,
+                    message: "Error: cannot convert locus counts to locus frequencies.".to_owned()
+                        + &e.message,
+                })
             }
         };
         //// Next account for pool sizes to get the proper minimum allele frequency across all pools
         let n = allele_frequencies.matrix.nrows();
         let mut p = allele_frequencies.matrix.ncols();
-        assert!(
-            n == filter_stats.pool_sizes.len(),
-            "Please make that the number of pools and the pool sizes in FilterStats match."
-        );
+        match n == filter_stats.pool_sizes.len() {
+            true => (),
+            false => return Err(ImputefError{
+                code: 716,
+                message: "Error: the number of pools and the number of pool sizes in FilterStats do not match.".to_owned()
+            })
+        };
         let mut q: f64;
         let mut j: usize = 0;
         while j < p {
@@ -285,8 +352,11 @@ impl Filter for LocusCounts {
         }
         // Check if all alleles have failed the minimum allele frequency, i.e. the locus has been filtered out
         if p < 2 {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 717,
+                message: "Locus is filtered out: p < 2".to_owned(),
+            });
+        };
         // Filter out if the locus is missing across all pools using the first allele where if the locus is missing then all
         let (n, _p) = allele_frequencies.matrix.dim();
         let n_missing_across_pools = allele_frequencies
@@ -294,12 +364,18 @@ impl Filter for LocusCounts {
             .slice(s![.., 0])
             .fold(0, |sum, &x| if x.is_nan() { sum + 1 } else { sum });
         if n_missing_across_pools == n {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 718,
+                message: "Locus is filtered out: n_missing_across_pools == n".to_owned(),
+            });
+        };
         // Filter-out the locus if the rate of missingness, i.e. the fraction of the pools missing coverage of the current locus is below the minimum threshold
         if (n_missing_across_pools as f64 / n as f64) > filter_stats.max_missingness_rate {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError{
+                code: 719,
+                message: "Locus is filtered out: n_missing_across_pools/n > filter_stats.max_missingness_rate".to_owned()
+            });
+        };
         // Return the locus if it passed all the filtering steps
         self.matrix = matrix;
         Ok(self)
@@ -308,7 +384,7 @@ impl Filter for LocusCounts {
 
 impl Filter for LocusFrequencies {
     // PileupLine to AlleleCounts
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, ImputefError> {
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         let mut matrix: Array2<u64> = Array2::from_elem((n, p), 0);
@@ -320,11 +396,11 @@ impl Filter for LocusFrequencies {
                 .filter(|&&x| x != 0.0)
                 .fold(1.0, |min, &x| if x < min { x } else { min });
             if min == 0.0 {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "At least one of the pools have no coverage.",
-                ));
-            }
+                return Err(ImputefError{
+                    code: 720,
+                    message: "Error: at least one of the pools have no coverage (LocusFrequencies::to_counts)".to_owned()
+                });
+            };
             max_n = 1.00 / min;
             for j in 0..p {
                 matrix[(i, j)] = (max_n * self.matrix[(i, j)]).round() as u64;
@@ -339,7 +415,7 @@ impl Filter for LocusFrequencies {
     }
 
     // PileupLine to AlleleFrequencies
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, ImputefError> {
         // Recompute the frequencies using frequencies when the number of colulmns or one or more alleles have been filtered out/removed
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
@@ -348,18 +424,7 @@ impl Filter for LocusFrequencies {
             r.iter()
                 .filter(|&&x| !x.is_nan())
                 .fold(0.0, |sum, &x| sum + x)
-        }); // summation across the columns which means sum of all elements per row while ignoring NANs!
-            // // Make sure all pools have been convered
-            // if row_sums
-            //     .iter()
-            //     .fold(row_sums[0], |min, &x| if x < min { x } else { min })
-            //     == 0.0
-            // {
-            //     return Err(Error::new(
-            //         ErrorKind::Other,
-            //         "At least one pool did not have coverage.",
-            //     ));
-            // }
+        });
         let mut matrix: Array2<f64> = Array2::from_elem((n, p), 0.0_f64);
         for i in 0..n {
             for j in 0..p {
@@ -379,12 +444,17 @@ impl Filter for LocusFrequencies {
     }
 
     // Filter PileupLine by minimum coverage, minimum quality
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<&mut Self, ImputefError> {
         // Cannot filter by base qualities as this information is lost and we are assuming this has been performed during pileup to sync conversion
         // Also, cannot filter by minimum coverage as that data is lost from counts to frequencies conversion
         // Preliminary check of the structure format
-        self.check()
-            .expect("Error calling check() within filter() method for LocusFrequencies struct.");
+        match self.check() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 721,
+                message: "Error checking locus counts within filter() method for LocusFrequencies struct | ".to_owned() + &e.message
+            })
+        };
         // Remove Ns
         if filter_stats.remove_ns {
             let i = match self
@@ -404,11 +474,12 @@ impl Filter for LocusFrequencies {
         // Recompute frequencies after removing Ns
         let recomputed_self = match self.to_frequencies() {
             Ok(x) => x,
-            Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "T_T Cannot convert locus counts to locus frequencies.",
-                ))
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 722,
+                    message: "Error: cannot convert locus counts to locus frequencies.".to_owned()
+                        + &e.message,
+                })
             }
         };
         self.alleles_vector = recomputed_self.alleles_vector;
@@ -419,11 +490,12 @@ impl Filter for LocusFrequencies {
         //// First convert allele counts into frequencies
         let mut allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
-            Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert locus counts to locus frequencies.",
-                ))
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 723,
+                    message: "Error: cannot convert locus counts to locus frequencies.".to_owned()
+                        + &e.message,
+                })
             }
         };
         //// Next account for pool sizes to get the proper minmum allele frequency across all pools
@@ -457,8 +529,11 @@ impl Filter for LocusFrequencies {
         }
         // Check if all alleles have failed the minimum allele frequency, i.e. the locus has been filtered out
         if p < 2 {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 724,
+                message: "Locus is filtered out: p < 2".to_owned(),
+            });
+        };
         // Filter out if the locus is missing across all pools using the first allele where if the locus is missing then all
         let (n, _p) = allele_frequencies.matrix.dim();
         let n_missing_across_pools = allele_frequencies
@@ -466,12 +541,18 @@ impl Filter for LocusFrequencies {
             .slice(s![.., 0])
             .fold(0, |sum, &x| if x.is_nan() { sum + 1 } else { sum });
         if n_missing_across_pools == n {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 725,
+                message: "Locus is filtered out: n_missing_across_pools == n".to_owned(),
+            });
+        };
         // Filter-out the locus if the rate of missingness, i.e. the fraction of the pools missing coverage of the current locus is below the minimum threshold
         if (n_missing_across_pools as f64 / n as f64) > filter_stats.max_missingness_rate {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError{
+                code: 726,
+                message: "Locus is filtered out: n_missing_across_pools/n > filter_stats.max_missingness_rate".to_owned()
+            });
+        };
         // Correct allele frequencies if one or more alleles were filtered out
         for i in 0..matrix.nrows() {
             let row_sum = matrix.row(i).sum();
@@ -486,7 +567,7 @@ impl Filter for LocusFrequencies {
 }
 
 impl Sort for LocusFrequencies {
-    fn sort_by_allele_freq(&mut self, decreasing: bool) -> io::Result<&mut Self> {
+    fn sort_by_allele_freq(&mut self, decreasing: bool) -> Result<&mut Self, ImputefError> {
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         let mut sorted_matrix: Array2<f64> = Array2::from_elem((n, p), f64::NAN);
@@ -516,13 +597,31 @@ impl Sort for LocusFrequencies {
 
 impl RemoveMissing for LocusCountsAndPhenotypes {
     // Remove pools with missing data in the phenotype file
-    fn remove_missing(&mut self) -> io::Result<&mut Self> {
+    fn remove_missing(&mut self) -> Result<&mut Self, ImputefError> {
         let (n, k) = self.phenotypes.dim();
         let n_ = self.pool_names.len();
         let (n__, p) = self.locus_counts.matrix.dim();
-        assert_eq!(n, n_);
-        assert_eq!(n, n__);
-        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).expect("Error calculating phenotype means per pool within the remove_missing() method for LocusCountsAndPhenotypes struct.");
+        match n == n_ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 727,
+                message: "Error: the number of pools in the phenotype matrix is not equal to the number of pool names (LocusCountsAndPhenotypes::remove_missing).".to_owned()
+            })
+        };
+        match n == n__ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 728,
+                message: "Error: the number of pools in the phenotype matrix is not equal to the number of pool in the allele counts matrix (LocusCountsAndPhenotypes::remove_missing).".to_owned()
+            })
+        };
+        let pool_means: Array1<f64> = match self.phenotypes.mean_axis(Axis(1)) {
+            Some(x) => x,
+            None => return Err(ImputefError{
+                code: 729,
+                message: "Error calculating phenotype means per pool within the remove_missing() method for LocusCountsAndPhenotypes struct.".to_owned()
+            })
+        };
         let mut idx: Vec<usize> = vec![];
         for i in 0..n {
             if !pool_means[i].is_nan() {
@@ -546,26 +645,51 @@ impl RemoveMissing for LocusCountsAndPhenotypes {
             self.pool_names = new_pool_names;
             self.locus_counts.matrix = new_locus_counts_matrix;
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "All pools have missing data. Please check the phenotype file.",
-            ));
-        }
+            return Err(ImputefError {
+                code: 730,
+                message: "All pools have missing data. Please check the phenotype file: "
+                    .to_owned(),
+            });
+        };
         Ok(self)
     }
 }
 
 impl RemoveMissing for GenotypesAndPhenotypes {
     // Remove pools with missing data in the phenotype file
-    fn remove_missing(&mut self) -> io::Result<&mut Self> {
+    fn remove_missing(&mut self) -> Result<&mut Self, ImputefError> {
         let (n, k) = self.phenotypes.dim();
         let n_ = self.pool_names.len();
         let (n__, p) = self.intercept_and_allele_frequencies.dim();
         let (n___, l) = self.coverages.dim();
-        assert_eq!(n, n_);
-        assert_eq!(n, n__);
-        assert_eq!(n, n___);
-        let pool_means: Array1<f64> = self.phenotypes.mean_axis(Axis(1)).expect("Error calculating phenotype means per pool within the remove_missing() method for GenotypesAndPhenotypes struct.");
+        match n == n_ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 731,
+                message: "Error: the number of pools in the phenotype matrix is not equal to the number of pool names (LocusCountsAndPhenotypes::remove_missing).".to_owned()
+            })
+        };
+        match n == n__ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 732,
+                message: "Error: the number of pools in the phenotype matrix is not equal to the number of pool in the allele frequency matrix (LocusCountsAndPhenotypes::remove_missing).".to_owned()
+            })
+        };
+        match n == n___ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 733,
+                message: "Error: the number of pools in the phenotype matrix is not equal to the number of pool in the coverages matrix (LocusCountsAndPhenotypes::remove_missing).".to_owned()
+            })
+        };
+        let pool_means: Array1<f64> = match self.phenotypes.mean_axis(Axis(1)) {
+            Some(x) => x,
+            None => return Err(ImputefError{
+                code: 734,
+                message: "Error calculating phenotype means per pool within the remove_missing() method for GenotypesAndPhenotypes struct.".to_owned()
+            })
+        };
         let mut idx: Vec<usize> = vec![];
         for i in 0..n {
             if !pool_means[i].is_nan() {
@@ -596,14 +720,12 @@ impl RemoveMissing for GenotypesAndPhenotypes {
             self.intercept_and_allele_frequencies = new_intercept_and_allele_frequencies;
             self.coverages = new_coverages;
         } else {
-            return Err(Error::new(
-                ErrorKind::Other,
-                "All pools have missing data. Please check the phenotype file.",
-            ));
-        }
-        // println!("self={:?}", self);
-        // println!("self.phenotypes={:?}", self.phenotypes);
-        // println!("idx={:?}", idx);
+            return Err(ImputefError {
+                code: 735,
+                message: "All pools have missing data. Please check the phenotype file: "
+                    .to_owned(),
+            });
+        };
         Ok(self)
     }
 }
@@ -615,7 +737,7 @@ impl LoadAll for FileSyncPhen {
         end: &u64,
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError> {
         // Input syn file
         let fname = self.filename_sync.clone();
 
@@ -623,21 +745,52 @@ impl LoadAll for FileSyncPhen {
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let mut cnts: Vec<LocusCounts> = Vec::new();
         // Input file chunk
-        let file = File::open(fname.clone()).expect(
-            "Error opening input sync file within per_chunk_load() method for FileSyncPhen struct.",
-        );
+        let file = match File::open(fname.clone()) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 736,
+                message: "Error opening input sync file within per_chunk_load() method for FileSyncPhen struct. File: ".to_owned() +
+                &fname
+            })
+        };
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).expect("Error navigating input sync file within per_chunk_load() method for FileSyncPhen struct.");
+        match reader.seek(SeekFrom::Start(*start)) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 737,
+                message: "Error navigating input sync file within per_chunk_load() method for FileSyncPhen struct. File: ".to_owned() +
+                &fname + " at file index: " + start.to_string().as_str() + "."
+            })
+        };
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically movesthe cursor position to the next line
-            let _ = reader.read_line(&mut line).expect("Error reading input sync file within per_chunk_load() method for FileSyncPhen struct.");
+            let _ = match reader.read_line(&mut line) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError {
+                    code: 738,
+                    message: "Error reading input sync file: ".to_owned()
+                        + &fname
+                        + " within per_chunk_load() method for FileSyncPhen struct at file index: "
+                        + i.to_string().as_str()
+                        + ".",
+                }),
+            };
             // Find the new cursor position
-            i = reader.stream_position().expect("Error navigating input sync file within per_chunk_load() method for FileSyncPhen struct.");
+            i = match reader.stream_position() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 739,
+                    message: "Error navigating input sync file: ".to_owned() + 
+                        &fname +
+                        " within per_chunk_load() method for FileSyncPhen struct to move away from the file index: " + 
+                        i.to_string().as_str() + "."
+                })
+            };
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -648,19 +801,7 @@ impl LoadAll for FileSyncPhen {
             // Parse the pileup line
             let mut locus_counts: LocusCounts = match line.lparse() {
                 Ok(x) => *x,
-                Err(x) => match x.kind() {
-                    ErrorKind::Other => continue,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line[0..20]
-                                + ".",
-                        ))
-                    }
-                },
+                Err(_x) => continue,
             };
             match locus_counts.filter(filter_stats) {
                 Ok(x) => x,
@@ -672,7 +813,13 @@ impl LoadAll for FileSyncPhen {
             };
             // Remove minor allele
             if keep_p_minus_1 {
-                locus_frequencies.sort_by_allele_freq(true).expect("Error sorting alleles by decreasing mean frequencies within the per_chunk_load() method for FileSyncPhen struct.");
+                match locus_frequencies.sort_by_allele_freq(true) {
+                    Ok(x) => x,
+                    Err(_e) => return Err(ImputefError{
+                        code: 741,
+                        message: "Error sorting alleles by decreasing mean frequencies within the per_chunk_load() method for FileSyncPhen struct.".to_owned()
+                    })
+                };
                 locus_frequencies.matrix.remove_index(Axis(1), 0);
                 locus_frequencies.alleles_vector.remove(0);
             }
@@ -687,12 +834,20 @@ impl LoadAll for FileSyncPhen {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError> {
         let fname = self.filename_sync.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).expect(
-            "Error splitting the input sync file within the load() method for FileSyncPhen struct.",
-        );
+        let chunks = match find_file_splits(&fname, n_threads) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 742,
+                    message: "Error splitting the input sync file: ".to_owned()
+                        + &fname
+                        + " within the load() method for FileSyncPhen struct.",
+                })
+            }
+        };
         let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
@@ -722,7 +877,13 @@ impl LoadAll for FileSyncPhen {
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            thread.join().expect("Unknown thread error occured.");
+            match thread.join() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 743,
+                    message: "Unknown thread error occurred with the load() method of FileSyncPhen struct.".to_owned()
+                })
+            };
         }
         // Extract output filenames from each thread into a vector and sort them
         let mut freq: Vec<LocusFrequencies> = Vec::new();
@@ -752,8 +913,15 @@ impl LoadAll for FileSyncPhen {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<GenotypesAndPhenotypes> {
-        let (freqs, cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the convert_into_genotypes_and_phenotypes() method for FileSyncPhen struct.");
+    ) -> Result<GenotypesAndPhenotypes, ImputefError> {
+        let (freqs, cnts) = match self.load(filter_stats, keep_p_minus_1, n_threads) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError {
+                code: 744,
+                message: "Error calling load() within the convert_into_genotypes_and_phenotypes() method for FileSyncPhen struct | ".to_owned() +
+                &e.message
+            })
+        };
         let n = self.pool_names.len();
         let m = freqs.len(); // total number of loci
                              // Find the total number of alleles across all loci
@@ -771,11 +939,15 @@ impl LoadAll for FileSyncPhen {
         let mut coverages: Array2<f64> = Array2::from_elem((n, m), f64::NAN);
         let mut mat: Array2<f64> = Array2::from_elem((n, p), 1.0);
         let mut j: usize = 1; // SNP index across loci, start after the intercept
-        assert_eq!(
-            freqs.len(),
-            cnts.len(),
-            "Frequencies and counts not the same length."
-        );
+        match freqs.len() == cnts.len() {
+            true => (),
+            false => {
+                return Err(ImputefError {
+                    code: 745,
+                    message: "Frequencies and counts not the same length.".to_owned(),
+                })
+            }
+        };
         for (l, idx) in (0..freqs.len()).enumerate() {
             // Allele frequencies
             let f = &freqs[idx];
@@ -800,17 +972,6 @@ impl LoadAll for FileSyncPhen {
                 coverages[(i, l)] = cov[i];
             }
         }
-        // println!("coverages={:?}", coverages);
-        // println!("mat={:?}", mat);
-        // println!("mat={:?}", mat.slice(s![0..5, 0..4]));
-        // println!("chromosome[0]={:?}", chromosome[0]);
-        // println!("chromosome[1]={:?}", chromosome[1]);
-        // println!("chromosome[2]={:?}", chromosome[2]);
-        // println!("chromosome[3]={:?}", chromosome[3]);
-        // println!("position[0]={:?}", position[0]);
-        // println!("position[1]={:?}", position[1]);
-        // println!("position[2]={:?}", position[2]);
-        // println!("position[3]={:?}", position[3]);
         Ok(GenotypesAndPhenotypes {
             chromosome,
             position,
@@ -830,12 +991,17 @@ impl SaveCsv for FileSyncPhen {
         keep_p_minus_1: bool,
         out: &str,
         n_threads: &usize,
-    ) -> io::Result<String> {
+    ) -> Result<String, ImputefError> {
         // Output filename
         let out = if out.is_empty() {
-            let time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Error extracting time in UNIX_EPOCH within write_tsv() method for FileSyncPhen struct.")
+            let time = match SystemTime::now()
+                .duration_since(UNIX_EPOCH) {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 746,
+                        message: "Error extracting time in UNIX_EPOCH within write_tsv() method for FileSyncPhen struct.".to_owned()
+                    })
+                }
                 .as_secs_f64();
             let bname = self.filename_sync.split('.').rev().collect::<Vec<&str>>()[1..]
                 .iter()
@@ -848,31 +1014,58 @@ impl SaveCsv for FileSyncPhen {
             out.to_owned()
         };
         // Instantiate output file
-        let error_writing_file = "Unable to create file: ".to_owned() + &out;
-        let mut file_out = OpenOptions::new()
+        let mut file_out = match OpenOptions::new()
             .create_new(true)
             .write(true)
             .append(false)
             .open(&out)
-            .expect(&error_writing_file);
+        {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 747,
+                    message: "Unable to create file: ".to_owned()
+                        + &out
+                        + "within write_tsv() method for FileSyncPhen struct.",
+                })
+            }
+        };
         // Load the full sync file in parallel and sort
-        let (freqs, _cnts) = self
-            .load(filter_stats, keep_p_minus_1, n_threads)
-            .expect("Error calling load() within the write_tsv() method for FileSyncPhen struct.");
+        let (freqs, _cnts) = match self.load(filter_stats, keep_p_minus_1, n_threads) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError {
+                code: 748,
+                message:
+                    "Error calling load() within the write_tsv() method for FileSyncPhen struct | "
+                        .to_owned()
+                        + &e.message,
+            }),
+        };
         // Make sure that we have the same number of pools in the genotype and phenotype files
-        assert!(!freqs.is_empty(), "No data passed the filtering variables. Please decrease minimum depth, and/or minimum allele frequency.");
-        assert!(
-            freqs[0].matrix.nrows() == self.pool_names.len(),
-            "Please check that the pools are consistent across the genotype and phenotype files."
-        );
+        match !freqs.is_empty() {
+            true => (),
+            false => return Err(ImputefError{
+                code: 749,
+                message: "No data passed the filtering variables. Please decrease minimum depth, and/or minimum allele frequency within the write_tsv() method for FileSyncPhen struct.".to_owned()
+            })};
+        match freqs[0].matrix.nrows() == self.pool_names.len() {
+            true => (),
+            false => return  Err(ImputefError{
+                code: 750,
+                message: "Please check that the pools are consistent across the genotype and phenotype files within the write_tsv() method for FileSyncPhen struct.".to_owned()
+            })
+        };
         // Write the header
-        file_out
+        match file_out
             .write_all(
                 ("#chr\tpos\tallele\t".to_owned() + &self.pool_names.join("\t") + "\n").as_bytes(),
-            )
-            .expect(
-                "Error calling write_all() within the write_tsv() method for FileSyncPhen struct.",
-            );
+            ) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 751,
+                    message: "Error calling write_all() within the write_tsv() method for FileSyncPhen struct within the write_tsv() method for FileSyncPhen struct.".to_owned()
+                })
+            };
         // Write allele frequencies line by line
         for f in freqs.iter() {
             for i in 0..f.alleles_vector.len() {
@@ -880,7 +1073,7 @@ impl SaveCsv for FileSyncPhen {
                     .matrix
                     .column(i)
                     .iter()
-                    .map(|x| parse_f64_roundup_and_own(*x, 6))
+                    .map(|x| parse_f64_roundup_and_own(*x, 6).expect("Error rounding allele frequencies within the write_tsv() method for FileSyncPhen struct."))
                     .collect::<Vec<String>>()
                     .join("\t");
                 if (f.alleles_vector[i] == "N") || (f.alleles_vector[i] == "UNKNOWN") {
@@ -895,7 +1088,18 @@ impl SaveCsv for FileSyncPhen {
                 ]
                 .join("\t")
                     + "\n";
-                file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for FileSyncPhen struct.");
+                match file_out.write_all(line.as_bytes()) {
+                    Ok(x) => x,
+                    Err(_) => {
+                        return Err(ImputefError {
+                            code: 752,
+                            message: "Error calling write_all() per line of the output file: "
+                                .to_owned()
+                                + &out
+                                + " within the write_tsv() method for FileSyncPhen struct.",
+                        })
+                    }
+                };
             }
         }
         Ok(out)
@@ -909,7 +1113,7 @@ impl SaveCsv for GenotypesAndPhenotypes {
         _keep_p_minus_1: bool,
         out: &str,
         _n_threads: &usize,
-    ) -> io::Result<String> {
+    ) -> Result<String, ImputefError> {
         // Note: All input parameters are not used except for one - out, the rest are for other implementations of this trait i.e. filter_stats, keep_p_minus_1, and n_threads
         // Sanity checks
         let (n, p) = self.intercept_and_allele_frequencies.dim();
@@ -919,18 +1123,58 @@ impl SaveCsv for GenotypesAndPhenotypes {
         let p_ = self.chromosome.len();
         let p__ = self.position.len();
         let p___ = self.allele.len();
-        assert_eq!(p_, p__, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the positions vector.");
-        assert_eq!(p_, p___, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the alleles vector.");
-        assert_eq!(p_, p, "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of columns in the allele frequencies matrix.");
-        assert_eq!(n___, n__, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the phenotypes matrix.");
-        assert_eq!(n___, n_, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the coverages matrix.");
-        assert_eq!(n___, n, "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the allele frequencies matrix.");
+        match p_ == p__ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 753,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the positions vector.".to_owned()
+            })
+        };
+        match p_ == p___ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 754,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of elements in the alleles vector.".to_owned()
+            })
+        };
+        match p_ == p {
+            true => (),
+            false => return Err(ImputefError{
+                code: 755,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the chromosome names vector is not equal to the number of columns in the allele frequencies matrix.".to_owned()
+            })
+        };
+        match n___ == n__ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 756,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the phenotypes matrix.".to_owned()
+            })
+        };
+        match n___ == n_ {
+            true => (),
+            false => return Err(ImputefError{
+                code: 757,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the coverages matrix.".to_owned()
+            })
+        };
+        match n___ == n {
+            true => (),
+            false => return Err(ImputefError{
+                code: 758,
+                message: "Please check the genotypes and phenotypes data: the number of elements in the pool names vector is not equal to the number of rows in the allele frequencies matrix.".to_owned()
+            })
+        };
         // Output filename
         let out = if out.is_empty() {
-            let time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.")
-                .as_secs_f64();
+            let time = match SystemTime::now()
+                .duration_since(UNIX_EPOCH) {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 759,
+                        message: "Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.".to_owned()
+                    })
+                }.as_secs_f64();
             "genotypes_and_phenotypes".to_owned()
                 + "-"
                 + &time.to_string()
@@ -939,26 +1183,40 @@ impl SaveCsv for GenotypesAndPhenotypes {
             out.to_owned()
         };
         // Instantiate output file
-        let error_writing_file = "Unable to create file: ".to_owned() + &out;
-        let mut file_out = OpenOptions::new()
+        let mut file_out = match OpenOptions::new()
             .create_new(true)
             .write(true)
             .append(false)
             .open(&out)
-            .expect(&error_writing_file);
+        {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 760,
+                    message: "Unable to create file: ".to_owned()
+                        + &out
+                        + "within write_tsv() method for GenotypesAndPhenotypes struct.",
+                })
+            }
+        };
         // Write the header
-        file_out
+        match file_out
             .write_all(
                 ("#chr\tpos\tallele\t".to_owned() + &self.pool_names.join("\t") + "\n").as_bytes(),
-            )
-            .expect("Error calling write_all() within the write_tsv() method for GenotypesAndPhenotypes struct.");
+            ) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 761,
+                    message: "Error calling write_all() within the write_tsv() method for GenotypesAndPhenotypes struct.".to_owned()
+                })
+            };
         // Write allele frequencies line by line (skip the intercept)
         for i in 1..p {
             let freqs_per_pool = self
                 .intercept_and_allele_frequencies
                 .column(i)
                 .iter()
-                .map(|&x| parse_f64_roundup_and_own(x, 6))
+                .map(|&x| parse_f64_roundup_and_own(x, 6).expect("Error rounding allele frequencies within the write_tsv() method for GenotypesAndPhenotypes struct."))
                 .collect::<Vec<String>>()
                 .join("\t");
             if (self.allele[i] == "N") || (self.allele[i] == "UNKNOWN") {
@@ -973,7 +1231,18 @@ impl SaveCsv for GenotypesAndPhenotypes {
             ]
             .join("\t")
                 + "\n";
-            file_out.write_all(line.as_bytes()).expect("Error calling write_all() per line of the output file within the write_tsv() method for GenotypesAndPhenotypes struct.");
+            match file_out.write_all(line.as_bytes()) {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 762,
+                        message: "Error calling write_all() per line of the output file: "
+                            .to_owned()
+                            + &out
+                            + " within the write_tsv() method for GenotypesAndPhenotypes struct.",
+                    })
+                }
+            };
         }
         Ok(out)
     }
@@ -985,13 +1254,29 @@ pub fn load_sync<'a, 'b>(
     _fname_out_prefix: &'a str,
     _rand_id: &'a str,
     n_threads: &'a usize,
-) -> io::Result<(GenotypesAndPhenotypes, &'b FilterStats)> {
+) -> Result<(GenotypesAndPhenotypes, &'b FilterStats), ImputefError> {
     // Extract pool names from the sync file
     let mut pool_names: Vec<String> = vec![];
-    let file = File::open(fname).expect("Error reading the input vcf file.");
+    let file = match File::open(fname) {
+        Ok(x) => x,
+        Err(_) => {
+            return Err(ImputefError {
+                code: 763,
+                message: "Error reading the input vcf file: ".to_owned() + &fname,
+            })
+        }
+    };
     let reader = BufReader::new(file);
     for l in reader.lines() {
-        let mut line = l.expect("Error reading the input sync file.");
+        let mut line = match l {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 764,
+                    message: "Error reading the input sync file: ".to_owned() + &fname,
+                })
+            }
+        };
         // Remove trailing newline character in Unix-like (\n) and Windows (\r)
         if line.ends_with('\n') {
             line.pop();
@@ -1009,16 +1294,33 @@ pub fn load_sync<'a, 'b>(
         }
     }
     let n = pool_names.len();
-    assert!(n > 0, "Error reading the header line of the sync file. Please make sure the header line starts with '#chr'.");
+    match n > 0 {
+        true => (),
+        false => {
+            return Err(ImputefError {
+                code: 765,
+                message: "Error reading the header line of the sync file: ".to_owned()
+                    + &fname
+                    + ". Please make sure the header line starts with '#chr'.",
+            })
+        }
+    };
     // If a single pool size was supplied then we are assuming the same sizes across all pools
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
     }
-    assert_eq!(
-        filter_stats.pool_sizes.len(),
-        n,
-        "Error: the number of pools and the pool sizes do not match."
-    );
+    match filter_stats.pool_sizes.len() == n {
+        true => (),
+        false => {
+            return Err(ImputefError {
+                code: 766,
+                message:
+                    "Error: the number of pools and the pool sizes do not match in the sync file: "
+                        .to_owned()
+                        + &fname,
+            })
+        }
+    };
     // Initialise dummy phen struct (for other poolgen analyses)
     let file_sync_phen = FileSyncPhen {
         filename_sync: fname.to_owned(),

@@ -1,7 +1,7 @@
 //! Vcf data (i.e. variant calling format canonical in human genetics) processing (`Parse` and `Filter` traits and `vcf_to_sync` format conversion function) and parallel I/O (`ChunkyReadAnalyseWrite` trait)
 use ndarray::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::io::{self, prelude::*, BufReader, BufWriter, Error, ErrorKind, SeekFrom};
+use std::io::{self, prelude::*, BufReader, BufWriter, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,15 +11,22 @@ use crate::structs_and_traits::*;
 
 impl Parse<VcfLine> for String {
     /// Parse a line of vcf into a `VcfLine` struct corresponding to a locus, i.e. representing the allele counts of one or more pools in a single locus
-    fn lparse(&self) -> io::Result<Box<VcfLine>> {
+    fn lparse(&self) -> Result<Box<VcfLine>, ImputefError> {
         let raw_locus_data: Box<Vec<&str>> = Box::new(self.split('\t').collect());
         // Chromosome or scaffold name
         let chromosome: String = raw_locus_data[0].to_owned();
         // Position or locus coordinate in the genome assembly
-        let position = match raw_locus_data[1].parse::<u64>() {
-            Ok(x) => x,
-            Err(_) => return Err(Error::new(ErrorKind::Other, "Please check the format of the input vcf file as position is not a valid integer (i.e. u64).".to_owned())),
-        };
+        let position =
+            match raw_locus_data[1].parse::<u64>() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError {
+                    code: 801,
+                    message:
+                        "Error in vcf file as position is not a valid integer (i.e. u64) on line: "
+                            .to_owned()
+                            + &self,
+                }),
+            };
         // Allele in the reference genome assembly
         let reference_allele = raw_locus_data[3].to_owned().parse::<char>().unwrap_or('D');
         // Alternative alleles
@@ -53,7 +60,14 @@ impl Parse<VcfLine> for String {
                         .collect::<Vec<&str>>()
                         .into_iter()
                         .enumerate() {
-                            d[j] = x.parse::<u64>().expect("Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct.");
+                            d[j] = match x.parse::<u64>() {
+                                Ok(x) => x,
+                                Err(_) => return Err(ImputefError{
+                                    code: 802,
+                                    message: "Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct on line: ".to_owned() +
+                                    &self
+                                })
+                            };
                     }
                     d
                 });
@@ -117,7 +131,7 @@ impl Parse<VcfLine> for String {
 
 impl Filter for VcfLine {
     /// Parse the `VcfLine` into `AlleleCounts`
-    fn to_counts(&self) -> io::Result<Box<LocusCounts>> {
+    fn to_counts(&self) -> Result<Box<LocusCounts>, ImputefError> {
         let mut alleles_vector = vec![self.reference_allele.to_string()];
         for a in &self.alternative_alleles {
             alleles_vector.push(a.to_string());
@@ -139,10 +153,15 @@ impl Filter for VcfLine {
     }
 
     /// Parse `VcfLine` into `AlleleFrequencies`
-    fn to_frequencies(&self) -> io::Result<Box<LocusFrequencies>> {
-        let locus_counts = self.to_counts().expect(
-            "Error calling to_counts() within the to_frequencies() method for VcfLine struct.",
-        );
+    fn to_frequencies(&self) -> Result<Box<LocusFrequencies>, ImputefError> {
+        let locus_counts = match self.to_counts() {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError{
+                code: 803,
+                message: "Error calling to_counts() within the to_frequencies() method for VcfLine struct | ".to_owned() +
+                &e.message
+            })
+        };
         let n = locus_counts.matrix.nrows();
         let p = locus_counts.matrix.ncols();
         let row_sums = locus_counts.matrix.sum_axis(Axis(1)); // summation across the columns which means sum of all elements per row
@@ -163,23 +182,27 @@ impl Filter for VcfLine {
     /// Filter `VcfLine` by:
     /// - removing the entire locus if the locus is fixed, i.e. only 1 allele was found or retained after filterings
     /// Note that we are not removing alleles per locus if they fail the minimum allele frequency threshold, only if all alleles fail this threshold, i.e. when the locus is close to being fixed
-    fn filter(&mut self, filter_stats: &FilterStats) -> io::Result<&mut Self> {
+    fn filter(&mut self, filter_stats: &FilterStats) -> Result<&mut Self, ImputefError> {
         // All the pools needs be have been covered at least min_coverage times
         for i in 0..self.allele_depths.len() {
             let c = &self.allele_depths[i].iter().sum::<u64>();
             if c < &filter_stats.min_coverage {
-                return Err(Error::new(ErrorKind::Other, "Filtered out."));
+                return Err(ImputefError {
+                    code: 804,
+                    message: "Locus is filtered out: c < &filter_stats.min_coverage".to_owned(),
+                });
             }
         }
         // Filter by minimum allele frequency,
         //// First convert the counts per pool into frequencies
         let allele_frequencies = match self.to_frequencies() {
             Ok(x) => x,
-            Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Cannot convert vcf line into allele frequencies.",
-                ))
+            Err(e) => {
+                return Err(ImputefError{
+                    code: 805,
+                    message: "Error: cannot convert vcf line into allele frequencies within the filter() method for VcfLine struct | ".to_owned() +
+                    &e.message
+                })
             }
         };
         // println!("allele_frequencies={:?}", &allele_frequencies);
@@ -206,8 +229,11 @@ impl Filter for VcfLine {
         }
         // Filter the whole locus depending on whether or not we have retained at least 2 alleles
         if m < 2 {
-            return Err(Error::new(ErrorKind::Other, "Filtered out."));
-        }
+            return Err(ImputefError {
+                code: 806,
+                message: "Locus is filtered out: m < 2".to_owned(),
+            });
+        };
         Ok(self)
     }
 }
@@ -273,7 +299,7 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         outname_ndigits: &usize,
         filter_stats: &FilterStats,
         function: fn(&mut VcfLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, ImputefError> {
         let fname = self.filename.clone();
         // Add leading zeros in front of the start file position so that we can sort the output files per chuck or thread properly
         let mut start_string = start.to_string();
@@ -288,28 +314,70 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         // Output temp file for the chunk
         let fname_out = fname.to_owned() + "-" + &start_string + "-" + &end_string + ".sync.tmp";
         let out = fname_out.clone();
-        let error_writing_file = "Unable to create file: ".to_owned() + &fname_out;
-        let error_writing_line = "Unable to write line into file: ".to_owned() + &fname_out;
-        let file_out = File::create(fname_out).expect(&error_writing_file);
+        let file_out = match File::create(fname_out) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 807,
+                    message: "Unable to create file: ".to_owned() + &out,
+                })
+            }
+        };
         let mut file_out = BufWriter::new(file_out);
         // Input file chunk
-        let file = File::open(fname.clone()).expect(
-            "Error opening the input vcf file within the per_chuck() method for FileVcf struct.",
-        );
+        let file = match File::open(fname.clone()) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 808,
+                    message: "Error opening the input vcf file: ".to_owned()
+                        + &fname
+                        + " within the per_chuck() method for FileVcf struct.",
+                })
+            }
+        };
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).expect(
-            "Error navigating the input vcf file within the per_chuck() method for FileVcf struct.",
-        );
+        match reader.seek(SeekFrom::Start(*start)) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 809,
+                    message: "Error navigating the input vcf file: ".to_owned()
+                        + &fname
+                        + " within the per_chuck() method for FileVcf struct.",
+                })
+            }
+        };
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically movesthe cursor position to the next line
-            let _ = reader.read_line(&mut line).expect("Error reading the input vcf file within the per_chuck() method for FileVcf struct.");
+            let _ = match reader.read_line(&mut line) {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 810,
+                        message: "Error reading the input vcf file: ".to_owned()
+                            + &fname
+                            + " within the per_chuck() method for FileVcf struct.",
+                    })
+                }
+            };
             // Find the new cursor position
-            i = reader.stream_position().expect("Error navigating the input vcf file within the per_chuck() method for FileVcf struct.");
+            i = match reader.stream_position() {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 811,
+                        message: "Error navigating the input vcf file: ".to_owned()
+                            + &fname
+                            + " within the per_chuck() method for FileVcf struct.",
+                    })
+                }
+            };
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -331,7 +399,17 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             );
             // Write the line
             match function(&mut vcf_line, filter_stats) {
-                Some(x) => file_out.write_all(x.as_bytes()).expect(&error_writing_line),
+                Some(x) => match file_out.write_all(x.as_bytes()) {
+                    Ok(x) => x,
+                    Err(_) => {
+                        return Err(ImputefError {
+                            code: 812,
+                            message: "Unable to write line into file: ".to_owned()
+                                + &out
+                                + " within the per_chuck() method for FileVcf struct.",
+                        })
+                    }
+                },
                 None => continue,
             };
         }
@@ -346,15 +424,21 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         out: &str,
         n_threads: &usize,
         function: fn(&mut VcfLine, &FilterStats) -> Option<String>,
-    ) -> io::Result<String> {
+    ) -> Result<String, ImputefError> {
         // Unpack vcf and pool names filenames
         let fname = self.filename.clone();
         // Output filename
         let mut out = out.to_owned();
         if out == *"" {
-            let time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Error extracting time in UNIX_EPOCH within read_analyse_write() method for FileVcf struct.")
+            let time = match SystemTime::now()
+                .duration_since(UNIX_EPOCH) {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 813,
+                        message: "Error extracting time in UNIX_EPOCH within read_analyse_write() method for FileVcf struct. File: ".to_owned() +
+                        &fname
+                    })
+                }
                 .as_secs_f64();
             let bname = fname.split('.').rev().collect::<Vec<&str>>()[1..]
                 .iter()
@@ -365,20 +449,48 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
             out = bname.to_owned() + "-" + &time.to_string() + ".sync";
         }
         // Instantiate output file
-        let error_writing_file = "Unable to create file: ".to_owned() + &out;
-        // let mut file_out = File::create(&out).expect(&error_writing_file);
-        let mut file_out = OpenOptions::new()
+        let mut file_out = match OpenOptions::new()
             .create_new(true)
             .write(true)
             .append(false)
             .open(&out)
-            .expect(&error_writing_file);
+        {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 814,
+                    message: "Unable to create file: ".to_owned()
+                        + &out
+                        + " within read_analyse_write() method for FileVcf struct.",
+                })
+            }
+        };
         // Find the pool names from the last header line of the vcf file
-        let file = File::open(fname.clone()).expect("Error opening the input vcf file within the read_analyse_write() method for FileVcf struct.");
+        let file = match File::open(fname.clone()) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 815,
+                    message: "Error opening the input vcf file: ".to_owned()
+                        + &fname
+                        + " within the read_analyse_write() method for FileVcf struct.",
+                })
+            }
+        };
         let reader = BufReader::new(file);
         let mut pool_names: Vec<String> = vec![];
         for line in reader.lines() {
-            let line = line.expect("Error reading the input vcf file within the read_analyse_write() method for FileVcf struct.");
+            let line = match line {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 816,
+                        message: "Error reading the input vcf file: ".to_owned()
+                            + &fname
+                            + " within the read_analyse_write() method for FileVcf struct.",
+                    })
+                }
+            };
             if line.len() < 6 {
                 continue;
             }
@@ -394,7 +506,12 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         let names = if !pool_names.is_empty() {
             pool_names.join("\t")
         } else {
-            return Err(Error::new(ErrorKind::Other, "Pool names not found, please check the header line of the vcf file. Make sure `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT...` header exists.".to_owned()));
+            return Err(ImputefError{
+                code: 817,
+                message: "Pool names not found, please check the header line of the vcf file: ".to_owned() + 
+                &fname +
+                ". Make sure `#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT...` header exists."
+            });
         };
         // Find the positions where to split the file into n_threads pieces
         let chunks = find_file_splits(&fname, n_threads).expect("Error calling find_file_splits() within the read_analyse_write() method for FileVcf struct.");
@@ -429,11 +546,25 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            thread.join().expect("Unknown thread error occurred.");
+            match thread.join() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 818,
+                    message: "Unknown thread error occurred with the read_analyse_write() method of FileVcf struct.".to_owned()
+                })
+            };
         }
-        file_out
-            .write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes())
-            .expect("Error writing the header line of the output file within the read_analyse_write() method for FileVcf struct.");
+        match file_out.write_all(("#chr\tpos\tref\t".to_owned() + &names + "\n").as_bytes()) {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 819,
+                    message: "Error writing the header line of the output file: ".to_owned()
+                        + &out
+                        + " within the read_analyse_write() method for FileVcf struct.",
+                })
+            }
+        };
         // Extract output filenames from each thread into a vector and sort them
         let mut fnames_out: Vec<String> = Vec::new();
         for f in thread_ouputs.lock().expect("Error unlocking the threads after multi-threaded execution of per_chunk() within the read_analyse_write() method for FileVcf struct.").iter() {
@@ -443,13 +574,38 @@ impl ChunkyReadAnalyseWrite<VcfLine, fn(&mut VcfLine, &FilterStats) -> Option<St
         fnames_out.sort();
         // Iterate across output files from each thread, and concatenate non-empty files
         for f in fnames_out {
-            let mut file: File = File::open(&f).expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.");
+            let mut file: File = match File::open(&f) {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 820,
+                        message: "Error opening output file per thread: ".to_owned()
+                            + &f
+                            + " within the read_analyse_write() method for FileVcf struct.",
+                    })
+                }
+            };
             if file.metadata().expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.").len() > 0 {
-                io::copy(&mut file, &mut file_out).expect("Error opening output file per thread within the read_analyse_write() method for FileVcf struct.");
+                match io::copy(&mut file, &mut file_out) {
+                    Ok(x) => x,
+                    Err(_) => return Err(ImputefError{
+                        code: 821,
+                        message: "Error opening output file per thread: ".to_owned() + &f + " within the read_analyse_write() method for FileVcf struct."
+                    })
+                };
             }
             // Clean-up: remove temporary output files from each thread
-            let error_deleting_file = "Unable to remove file: ".to_owned() + &f;
-            std::fs::remove_file(f).expect(&error_deleting_file);
+            match std::fs::remove_file(&f) {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 822,
+                        message: "Unable to remove temporary file: ".to_owned()
+                            + &f
+                            + " within the read_analyse_write() method for FileVcf struct.",
+                    })
+                }
+            };
         }
         Ok(out)
     }
@@ -461,13 +617,33 @@ pub fn load_vcf<'a, 'b>(
     fname_out_prefix: &'a str,
     rand_id: &'a str,
     n_threads: &'a usize,
-) -> io::Result<(GenotypesAndPhenotypes, &'b FilterStats)> {
+) -> Result<(GenotypesAndPhenotypes, &'b FilterStats), ImputefError> {
     // Extract pool names from the vcf file
     let mut pool_names: Vec<String> = vec![];
-    let file = File::open(fname).expect("Error opening the input vcf file.");
+    let file = match File::open(fname) {
+        Ok(x) => x,
+        Err(_) => {
+            return Err(ImputefError {
+                code: 823,
+                message: "Error opening the input vcf file: ".to_owned()
+                    + &fname
+                    + " in load_vcf() function.",
+            })
+        }
+    };
     let reader = BufReader::new(file);
     for l in reader.lines() {
-        let mut line = l.expect("Error reading the input vcf file.");
+        let mut line = match l {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 824,
+                    message: "Error reading the input vcf file: ".to_owned()
+                        + &fname
+                        + " in load_vcf() function.",
+                })
+            }
+        };
         // Remove trailing newline character in Unix-like (\n) and Windows (\r)
         if line.ends_with('\n') {
             line.pop();
@@ -489,11 +665,18 @@ pub fn load_vcf<'a, 'b>(
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
     }
-    assert_eq!(
-        filter_stats.pool_sizes.len(),
-        n,
-        "Error: the number of pools and the pool sizes do not match."
-    );
+    match filter_stats.pool_sizes.len() == n {
+        true => (),
+        false => {
+            return Err(ImputefError {
+                code: 825,
+                message: "Error: the number of pools and the pool sizes do not match in file: "
+                    .to_owned()
+                    + &fname
+                    + " in load_vcf() function.",
+            })
+        }
+    };
     // Convert vcf into sync
     let file_vcf = FileVcf {
         filename: fname.to_owned(),
@@ -503,11 +686,14 @@ pub fn load_vcf<'a, 'b>(
     } else {
         fname_out_prefix.to_owned() + "-" + rand_id + ".sync"
     };
-    let _ = file_vcf
-        .read_analyse_write(filter_stats, &fname_sync_out, n_threads, vcf_to_sync)
-        .expect(
-            "Error converting the vcf into sync via read_analyse_write() method within impute().",
-        );
+    let _ = match file_vcf
+        .read_analyse_write(filter_stats, &fname_sync_out, n_threads, vcf_to_sync) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 826,
+                message: "Error converting the vcf into sync via read_analyse_write() method within impute().".to_owned()
+            })
+        };
     // Initialise dummy phen struct (for other poolgen analyses)
     let file_sync_phen = FileSyncPhen {
         filename_sync: fname_sync_out.to_owned(),
@@ -516,10 +702,17 @@ pub fn load_vcf<'a, 'b>(
         phen_matrix: Array2::from_elem((n, 1), f64::NAN),
         test: "".to_owned(),
     };
-    Ok((file_sync_phen
-        .convert_into_genotypes_and_phenotypes(filter_stats, false, n_threads)
-        .expect("Error parsing the input genotype (converted from vcf into sync) and dummy phenotype data via convert_into_genotypes_and_phenotypes() method within impute()."),
-        filter_stats))
+    let genotypes_and_phenotypes = match file_sync_phen
+    .convert_into_genotypes_and_phenotypes(filter_stats, false, n_threads) {
+        Ok(x) => x,
+        Err(_e) => return Err(ImputefError{
+            code: 827,
+            message: "Error parsing the input genotype (converted from vcf into sync): ".to_owned() + 
+            &fname +
+            " and dummy phenotype data via convert_into_genotypes_and_phenotypes() method within impute()."
+        })
+    };
+    Ok((genotypes_and_phenotypes, filter_stats))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

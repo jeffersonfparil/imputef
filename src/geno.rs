@@ -1,6 +1,6 @@
 use ndarray::prelude::*;
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
+use std::io::{self, prelude::*, BufReader, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 
@@ -8,10 +8,13 @@ use crate::helpers::*;
 use crate::structs_and_traits::*;
 
 impl Parse<LocusFrequencies> for String {
-    fn lparse(&self) -> io::Result<Box<LocusFrequencies>> {
+    fn lparse(&self) -> Result<Box<LocusFrequencies>, ImputefError> {
         // Ignore commented-out lines (i.e. '#' => 35)
         if self.as_bytes()[0] == 35_u8 {
-            return Err(Error::new(ErrorKind::Other, "Commented out line"));
+            return Err(ImputefError {
+                code: 301,
+                message: "Commented out line: ".to_owned() + &self,
+            });
         }
         let vec_line: Vec<&str> = self.split('\t').collect();
         let vec_line: Vec<&str> = if vec_line.len() == 1 {
@@ -31,10 +34,12 @@ impl Parse<LocusFrequencies> for String {
         let position = match vec_line[1].parse::<u64>() {
             Ok(x) => x,
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "Please check format of the file: position is not and integer.",
-                ))
+                return Err(ImputefError {
+                    code: 302,
+                    message: "Please check format of the file: position is not and integer: "
+                        .to_owned()
+                        + &self,
+                })
             }
         };
         let alleles_vector: Vec<String> = if vec_line[2].is_empty() {
@@ -42,7 +47,7 @@ impl Parse<LocusFrequencies> for String {
         } else {
             vec![vec_line[2].to_owned()]
         };
-        let matrix: Array2<f64> = Array2::from_shape_vec(
+        let matrix: Array2<f64> = match Array2::from_shape_vec(
             (n, 1),
             vec_line[3..l]
                 .iter()
@@ -53,8 +58,14 @@ impl Parse<LocusFrequencies> for String {
                     }
                 })
                 .collect::<Vec<f64>>(),
-        )
-        .expect("Error parsing the allele frequency table text file within the lparse() method for parsing String into LocusFrequencies struct.");
+        ) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 303,
+                message: "Error parsing the allele frequency table text file within the lparse() method for parsing String into LocusFrequencies struct: ".to_owned() +
+                &self
+            })
+        };
         let freq_line = LocusFrequencies {
             chromosome,
             position,
@@ -73,26 +84,54 @@ impl LoadAll for FileGeno {
         end: &u64,
         _filter_stats: &FilterStats,
         _keep_p_minus_1: bool,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError> {
         // Input syn file
         let fname = self.filename.clone();
         // Prepare output vectors
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let cnts: Vec<LocusCounts> = Vec::new(); // Empty and will remain empty as each line corresponds to just an allele of a locus
                                                  // Input file chunk
-        let file = File::open(fname.clone()).expect("Error opening the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
+        let file = match File::open(fname.clone()) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 304,
+                message: "Error opening the allele frequency table text file within the per_chunk_load() method for FileGeno struct: ".to_owned() +
+                &fname
+            })
+        };
         let mut reader = BufReader::new(file);
         // Navigate to the start of the chunk
         let mut i: u64 = *start;
-        reader.seek(SeekFrom::Start(*start)).expect("Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
+        match reader.seek(SeekFrom::Start(*start)) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 305,
+                message: "Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct: ".to_owned() +
+                &fname
+            })
+        };
         // Read and parse until the end of the chunk
         while i < *end {
             // Instantiate the line
             let mut line = String::new();
             // Read the line which automatically moves the cursor position to the next line
-            let _ = reader.read_line(&mut line).expect("Error reading the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
+            let _ = match reader.read_line(&mut line) {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError{
+                    code: 306,
+                    message: "Error reading the allele frequency table text file within the per_chunk_load() method for FileGeno struct: ".to_owned() +
+                    &fname
+                })
+            };
             // Find the new cursor position
-            i = reader.stream_position().expect("Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct.");
+            i = match reader.stream_position() {
+                Ok(x) => x,
+                Err(_) => return Err(ImputefError {
+                    code: 307,
+                    message: "Error navigating across the allele frequency table text file within the per_chunk_load() method for FileGeno struct: ".to_owned() +
+                    &fname
+                })
+            };
             // Remove trailing newline character in Unix-like (\n) and Windows (\r)
             if line.ends_with('\n') {
                 line.pop();
@@ -103,19 +142,7 @@ impl LoadAll for FileGeno {
             // Parse the geno line
             let allele_freqs: LocusFrequencies = match line.lparse() {
                 Ok(x) => *x,
-                Err(x) => match x.kind() {
-                    ErrorKind::Other => continue,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorKind::Other,
-                            "T_T Input sync file error, i.e. '".to_owned()
-                                + &fname
-                                + "' at line with the first 20 characters as: "
-                                + &line[0..20]
-                                + ".",
-                        ))
-                    }
-                },
+                Err(_x) => continue,
             };
             freq.push(allele_freqs);
         }
@@ -127,10 +154,17 @@ impl LoadAll for FileGeno {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<(Vec<LocusFrequencies>, Vec<LocusCounts>)> {
+    ) -> Result<(Vec<LocusFrequencies>, Vec<LocusCounts>), ImputefError> {
         let fname = self.filename.clone();
         // Find the positions whereto split the file into n_threads pieces
-        let chunks = find_file_splits(&fname, n_threads).expect("Error splitting the allele frequency table file format given the number of threads suppplied within load() method for FileGeno struct.");
+        let chunks = match find_file_splits(&fname, n_threads) {
+            Ok(x) => x,
+            Err(e) => return Err(ImputefError {
+                code: 309,
+                message: "Error splitting the allele frequency table file format given the number of threads suppplied within load() method for FileGeno struct | ".to_owned() +
+                &e.message
+            })
+        };
         let n_threads = chunks.len() - 1;
         println!("Chunks: {:?}", chunks);
         // Tuple arguments of pileup2sync_chunks
@@ -168,12 +202,30 @@ impl LoadAll for FileGeno {
         }
         // Waiting for all threads to finish
         for thread in thread_objects {
-            thread.join().expect("Unknown thread error occured.");
+            match thread.join() {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(ImputefError {
+                        code: 310,
+                        message:
+                            "Unknown thread error occured in load() method for FileGeno struct: "
+                                .to_owned()
+                                + &fname,
+                    })
+                }
+            };
         }
         // Extract output filenames from each thread into a vector and sort them
         let mut freq: Vec<LocusFrequencies> = Vec::new();
         let cnts: Vec<LocusCounts> = Vec::new(); // Empty and will remain empty as each line corresponds to just an allele of a locus
-        for x in thread_ouputs_freq.lock().expect("Error unlocking the threads after multi-threaded execution of per_chunk_load() within load() method for FileGeno struct.").iter() {
+        for x in match thread_ouputs_freq.lock(){
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 311,
+                message: "Error unlocking the threads after multi-threaded execution of per_chunk_load() within load() method for FileGeno struct: ".to_owned() +
+                &fname
+            })
+        }.iter() {
             freq.push(x.clone());
         }
         freq.sort_by(|a, b| {
@@ -189,14 +241,32 @@ impl LoadAll for FileGeno {
         filter_stats: &FilterStats,
         keep_p_minus_1: bool,
         n_threads: &usize,
-    ) -> io::Result<GenotypesAndPhenotypes> {
+    ) -> Result<GenotypesAndPhenotypes, ImputefError> {
         // No filtering! Just loading the allele frequency data
         // Extract pool names
-        let file: File = File::open(self.filename.clone()).expect("Error opening the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.");
+        let file: File = match File::open(self.filename.clone()) {
+            Ok(x) => x,
+            Err(_) => return Err(ImputefError{
+                code: 312,
+                message: "Error opening the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct: ".to_owned() +
+                &self.filename
+            })
+        };
         let reader = io::BufReader::new(file);
         let mut header: String = match reader.lines().next() {
-            Some(x) => x.expect("Error reading the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct."),
-            None => return Err(Error::new(ErrorKind::Other, "No header line found.")),
+            Some(x) => match x {
+                Ok(y) => y,
+                Err(_) => return Err(ImputefError{
+                    code: 313,
+                    message: "Error reading the header of the allele frequency table text file within the convert_into_genotypes_and_phenotypes() method for FileGeno struct: ".to_owned() +
+                    &self.filename
+                })
+            },
+            None => return Err(ImputefError {
+                code: 314,
+                message: "No header line found in file: .".to_owned() + 
+                &self.filename
+            }),
         };
         if header.ends_with('\n') {
             header.pop();
@@ -223,11 +293,14 @@ impl LoadAll for FileGeno {
         // Load allele frequencies
         let (freqs, _cnts) = self.load(filter_stats, keep_p_minus_1, n_threads).expect("Error calling load() within the convert_into_genotypes_and_phenotypes() method for FileGeno struct.");
         let n = freqs[0].matrix.nrows();
-        assert_eq!(
-            n,
-            pool_names.len(),
-            "Header names and allele frequency data does not have the same number of samples."
-        );
+        match n == pool_names.len() {
+            true => (),
+            false => return Err(ImputefError {
+                code: 315,
+                message: "Header names and allele frequency data does not have the same number of samples in the file: .".to_owned() +
+                &self.filename
+            })
+        };
         let mut p = freqs.len(); // total number of alleles across all loci
         p += 1; // include the intercept
         let mut chromosome: Vec<String> = Vec::with_capacity(p);
@@ -341,15 +414,29 @@ pub fn load_geno<'a, 'b>(
     _fname_out_prefix: &'a str,
     _rand_id: &'a str,
     n_threads: &'a usize,
-) -> io::Result<(GenotypesAndPhenotypes, &'b FilterStats)> {
+) -> Result<(GenotypesAndPhenotypes, &'b FilterStats), ImputefError> {
     // Extract pool names from the txt file
     let file: File = File::open(fname).expect("Error reading the allele frequency table file.");
     let reader = io::BufReader::new(file);
-    let mut header: String = reader
-        .lines()
-        .next()
-        .expect("Error reading the allele frequency table file.")
-        .expect("Please check the format of the allele frequency table text file.");
+    let mut header: String = match reader.lines().next() {
+        Some(x) => match x {
+            Ok(y) => y,
+            Err(_) => {
+                return Err(ImputefError {
+                    code: 316,
+                    message: "Error reading the allele frequency table file: ".to_owned() + &fname,
+                })
+            }
+        },
+        None => {
+            return Err(ImputefError {
+                code: 317,
+                message: "Please check the format of the allele frequency table text file: "
+                    .to_owned()
+                    + &fname,
+            })
+        }
+    };
     if header.ends_with('\n') {
         header.pop();
         if header.ends_with('\r') {
@@ -367,7 +454,13 @@ pub fn load_geno<'a, 'b>(
     } else {
         vec_header
     };
-    assert!(vec_header.len() > 3, "Error unable to properly parse the header line. Please make sure the allele frequency table file is separated by tabs, commas, or semi-colons.");
+    match vec_header.len() > 3 {
+        true => (),
+        false => return Err(ImputefError{
+            code: 318,
+            message: "Error unable to properly parse the header line. Please make sure the allele frequency table file: ".to_owned() + &fname +" is separated by tabs, commas, or semi-colons."
+        })
+    };
     let pool_names: Vec<String> = vec_header[3..vec_header.len()]
         .iter()
         .map(|&x| x.to_owned())
@@ -377,18 +470,35 @@ pub fn load_geno<'a, 'b>(
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
     }
-    assert_eq!(
-        filter_stats.pool_sizes.len(),
-        n,
-        "Error: the number of pools and the pool sizes do not match."
-    );
+    match filter_stats.pool_sizes.len() == n {
+        true => (),
+        false => return Err(ImputefError {
+            code: 319,
+            message:
+                "Error in the number of pools and the pool sizes do not match in the input file: "
+                    .to_owned()
+                    + &fname,
+        }),
+    };
     let file_geno = FileGeno {
         filename: fname.to_owned(),
     };
-    Ok((file_geno
-        .convert_into_genotypes_and_phenotypes(filter_stats, false, n_threads)
-        .expect("Error parsing the genotype data (extracted from allele frequency table text file) via convert_into_genotypes_and_phenotypes() method within impute()."), 
-        filter_stats))
+    let genotypes_and_phenotypes = match file_geno.convert_into_genotypes_and_phenotypes(
+        filter_stats,
+        false,
+        n_threads,
+    ) {
+        Ok(x) => x,
+        Err(_e) => return Err(ImputefError {
+            code: 320,
+            message:
+                "Error parsing the genotype data (extracted from allele frequency table text file: "
+                    .to_owned()
+                    + &fname
+                    + ") via convert_into_genotypes_and_phenotypes() method within impute().",
+        }),
+    };
+    Ok((genotypes_and_phenotypes, filter_stats))
 }
 
 #[cfg(test)]
