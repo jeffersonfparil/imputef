@@ -51,31 +51,15 @@ impl GenotypesAndPhenotypes {
     }
 
     pub fn missing_rate(&mut self) -> Result<f64, ImputefError> {
-        let (n, p) = self.intercept_and_allele_frequencies.dim();
+        let (n, _p) = self.intercept_and_allele_frequencies.dim();
         let (_n, l) = self.coverages.dim();
-        // Count missing data based on coverages
-        let sum_cov: f64 = self.coverages.fold(0.00, |sum, &x| {
+        let sum: f64 = self.coverages.fold(0.00, |sum, &x| {
             if (x.is_nan()) || (x == 0.0) {
                 sum + 1.00
             } else {
                 sum
             }
         });
-        // Count missing data based on missing frequencies
-        let mut sum_freq: f64 = self.intercept_and_allele_frequencies.fold(0.00, |sum, &x| {
-            if x.is_nan() {
-                sum + 1.00
-            } else {
-                sum
-            }
-        });
-        sum_freq = sum_freq / (p as f64 / l as f64); // correct by the number of alleles per locus
-        // Use the larger and more precise missing count
-        let sum: f64 = if sum_cov > sum_freq {
-            sum_cov
-        } else {
-            sum_freq
-        };
         sensible_round(sum * 100.0 / ((n * l) as f64), 5)
     }
 

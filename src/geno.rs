@@ -347,11 +347,13 @@ impl LoadAll for FileGeno {
                     coverages[(i, j)] = f64::NAN;
                 }
                 if mat.slice(s![i, idx_ini..idx_fin]).sum() < 1.0 {
-                    freq_sum_less_than_one = true;
-                    break;
+                    freq_sum_less_than_one = if !freq_sum_less_than_one {
+                        true
+                    } else {
+                        freq_sum_less_than_one
+                    };
                 }
             }
-            // if (n_alleles == 1) || freq_sum_less_than_one {
             if freq_sum_less_than_one {
                 p += 1;
             }
