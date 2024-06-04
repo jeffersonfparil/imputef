@@ -186,7 +186,7 @@ fn main() {
             &rand_id,
             &args.n_threads,
         )
-        .expect("Error loading sync.")
+        .expect("Error loading tsv.")
     };
     // Define missing data
     let start = std::time::SystemTime::now();
