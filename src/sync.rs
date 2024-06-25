@@ -1262,7 +1262,7 @@ pub fn load_sync<'a, 'b>(
         Err(_) => {
             return Err(ImputefError {
                 code: 763,
-                message: "Error reading the input vcf file: ".to_owned() + &fname,
+                message: "Error reading the input vcf file: ".to_owned() + fname,
             })
         }
     };
@@ -1273,7 +1273,7 @@ pub fn load_sync<'a, 'b>(
             Err(_) => {
                 return Err(ImputefError {
                     code: 764,
-                    message: "Error reading the input sync file: ".to_owned() + &fname,
+                    message: "Error reading the input sync file: ".to_owned() + fname,
                 })
             }
         };
@@ -1300,11 +1300,33 @@ pub fn load_sync<'a, 'b>(
             return Err(ImputefError {
                 code: 765,
                 message: "Error reading the header line of the sync file: ".to_owned()
-                    + &fname
+                    + fname
                     + ". Please make sure the header line starts with '#chr'.",
             })
         }
     };
+    // Check for duplicated pool names
+    let mut unique_pool_names: Vec<String> = vec![];
+    for name_source in pool_names.iter() {
+        let mut duplicated = false;
+        for name_destination in unique_pool_names.iter() {
+            if name_source == name_destination {
+                duplicated = true;
+                break;
+            }
+        }
+        if !duplicated {
+            unique_pool_names.push(name_source.to_string())
+        }
+    }
+    if n > unique_pool_names.len() {
+        return Err(ImputefError {
+            code: 766,
+            message: "Error: there are duplicated pool names in file: ".to_owned()
+                + fname
+                + " in load_sync() function.",
+        });
+    }
     // If a single pool size was supplied then we are assuming the same sizes across all pools
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
@@ -1313,11 +1335,11 @@ pub fn load_sync<'a, 'b>(
         true => (),
         false => {
             return Err(ImputefError {
-                code: 766,
+                code: 767,
                 message:
                     "Error: the number of pools and the pool sizes do not match in the sync file: "
                         .to_owned()
-                        + &fname,
+                        + fname,
             })
         }
     };

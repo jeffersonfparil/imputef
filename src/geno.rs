@@ -426,7 +426,7 @@ pub fn load_geno<'a, 'b>(
             Err(_) => {
                 return Err(ImputefError {
                     code: 316,
-                    message: "Error reading the allele frequency table file: ".to_owned() + &fname,
+                    message: "Error reading the allele frequency table file: ".to_owned() + fname,
                 })
             }
         },
@@ -435,7 +435,7 @@ pub fn load_geno<'a, 'b>(
                 code: 317,
                 message: "Please check the format of the allele frequency table text file: "
                     .to_owned()
-                    + &fname,
+                    + fname,
             })
         }
     };
@@ -460,7 +460,7 @@ pub fn load_geno<'a, 'b>(
         true => (),
         false => return Err(ImputefError{
             code: 318,
-            message: "Error unable to properly parse the header line. Please make sure the allele frequency table file: ".to_owned() + &fname +" is separated by tabs, commas, or semi-colons."
+            message: "Error unable to properly parse the header line. Please make sure the allele frequency table file: ".to_owned() + fname +" is separated by tabs, commas, or semi-colons."
         })
     };
     let pool_names: Vec<String> = vec_header[3..vec_header.len()]
@@ -468,6 +468,28 @@ pub fn load_geno<'a, 'b>(
         .map(|&x| x.to_owned())
         .collect();
     let n = pool_names.len();
+    // Check for duplicated pool names
+    let mut unique_pool_names: Vec<String> = vec![];
+    for name_source in pool_names.iter() {
+        let mut duplicated = false;
+        for name_destination in unique_pool_names.iter() {
+            if name_source == name_destination {
+                duplicated = true;
+                break;
+            }
+        }
+        if !duplicated {
+            unique_pool_names.push(name_source.to_string())
+        }
+    }
+    if n > unique_pool_names.len() {
+        return Err(ImputefError {
+            code: 139,
+            message: "Error: there are duplicated pool names in file: ".to_owned()
+                + fname
+                + " in load_geno() function.",
+        });
+    }
     // If a single pool size was supplied then we are assuming the same sizes across all pools
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
@@ -475,11 +497,11 @@ pub fn load_geno<'a, 'b>(
     match filter_stats.pool_sizes.len() == n {
         true => (),
         false => return Err(ImputefError {
-            code: 319,
+            code: 320,
             message:
                 "Error in the number of pools and the pool sizes do not match in the input file: "
                     .to_owned()
-                    + &fname,
+                    + fname,
         }),
     };
     let file_geno = FileGeno {
@@ -492,11 +514,11 @@ pub fn load_geno<'a, 'b>(
     ) {
         Ok(x) => x,
         Err(_e) => return Err(ImputefError {
-            code: 320,
+            code: 321,
             message:
                 "Error parsing the genotype data (extracted from allele frequency table text file: "
                     .to_owned()
-                    + &fname
+                    + fname
                     + ") via convert_into_genotypes_and_phenotypes() method within impute().",
         }),
     };

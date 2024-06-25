@@ -1013,7 +1013,7 @@ pub fn impute_aldknni(
             Ok(x) => x,
             Err(_) => return Err(ImputefError{
                 code: 129,
-                message: "Error writing the output file using the write_tsv() method within impute_aldknni(): ".to_owned() + &out
+                message: "Error writing the output file using the write_tsv() method within impute_aldknni(): ".to_owned() + out
             })
         };
     Ok(out)

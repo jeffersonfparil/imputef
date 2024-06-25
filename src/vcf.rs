@@ -626,7 +626,7 @@ pub fn load_vcf<'a, 'b>(
             return Err(ImputefError {
                 code: 823,
                 message: "Error opening the input vcf file: ".to_owned()
-                    + &fname
+                    + fname
                     + " in load_vcf() function.",
             })
         }
@@ -639,7 +639,7 @@ pub fn load_vcf<'a, 'b>(
                 return Err(ImputefError {
                     code: 824,
                     message: "Error reading the input vcf file: ".to_owned()
-                        + &fname
+                        + fname
                         + " in load_vcf() function.",
                 })
             }
@@ -661,6 +661,28 @@ pub fn load_vcf<'a, 'b>(
         }
     }
     let n = pool_names.len();
+    // Check for duplicated pool names
+    let mut unique_pool_names: Vec<String> = vec![];
+    for name_source in pool_names.iter() {
+        let mut duplicated = false;
+        for name_destination in unique_pool_names.iter() {
+            if name_source == name_destination {
+                duplicated = true;
+                break;
+            }
+        }
+        if !duplicated {
+            unique_pool_names.push(name_source.to_string())
+        }
+    }
+    if n > unique_pool_names.len() {
+        return Err(ImputefError {
+            code: 825,
+            message: "Error: there are duplicated pool names in file: ".to_owned()
+                + fname
+                + " in load_vcf() function.",
+        });
+    }
     // If a single pool size was supplied then we are assuming the same sizes across all pools
     if filter_stats.pool_sizes.len() == 1 {
         filter_stats.pool_sizes = vec![filter_stats.pool_sizes[0]; n];
@@ -669,10 +691,10 @@ pub fn load_vcf<'a, 'b>(
         true => (),
         false => {
             return Err(ImputefError {
-                code: 825,
+                code: 826,
                 message: "Error: the number of pools and the pool sizes do not match in file: "
                     .to_owned()
-                    + &fname
+                    + fname
                     + " in load_vcf() function.",
             })
         }
@@ -690,7 +712,7 @@ pub fn load_vcf<'a, 'b>(
         .read_analyse_write(filter_stats, &fname_sync_out, n_threads, vcf_to_sync) {
             Ok(x) => x,
             Err(_) => return Err(ImputefError{
-                code: 826,
+                code: 827,
                 message: "Error converting the vcf into sync via read_analyse_write() method within impute().".to_owned()
             })
         };
@@ -706,9 +728,9 @@ pub fn load_vcf<'a, 'b>(
     .convert_into_genotypes_and_phenotypes(filter_stats, false, n_threads) {
         Ok(x) => x,
         Err(_e) => return Err(ImputefError{
-            code: 827,
+            code: 828,
             message: "Error parsing the input genotype (converted from vcf into sync): ".to_owned() + 
-            &fname +
+            fname +
             " and dummy phenotype data via convert_into_genotypes_and_phenotypes() method within impute()."
         })
     };
