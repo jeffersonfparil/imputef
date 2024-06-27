@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use rand::Rng;
+use std::env;
 
 mod aldknni;
 mod filter_missing;
@@ -104,6 +105,7 @@ struct Args {
 /// The first two parameters (minimum loci correlation and maximum genetic distance thresholds) can be optimised per locus requiring imputation using non-missing samples as replicates simulating missing data to minimum the mean absolute error in imputation.
 /// This library can also perform simple genotype data filtering prior to imputation.
 fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
     let args = Args::parse();
     // Identify the format of the input file
     // 1) vcf - richest (*.vcf)

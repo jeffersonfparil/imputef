@@ -341,6 +341,7 @@ impl LoadAll for FileGeno {
         for j in 0..l {
             let idx_ini = loci_idx[j];
             let idx_fin = loci_idx[j + 1];
+            let n_alleles = idx_fin - idx_ini;
             let mut freq_sum_less_than_one = false;
             for i in 0..n {
                 if mat[(i, idx_ini)].is_nan() {
@@ -354,7 +355,7 @@ impl LoadAll for FileGeno {
                     };
                 }
             }
-            if freq_sum_less_than_one {
+            if (n_alleles == 1) || freq_sum_less_than_one {
                 p += 1;
             }
         }
