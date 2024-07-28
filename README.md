@@ -23,8 +23,8 @@ Impute allele frequencies to reduce sparsity of genotype data from polyploids, p
 
 1. Download the appropriate executable binary compatible with your system
 
-- [GNU/Linux (x86 64-bit)](https://github.com/jeffersonfparil/imputef/releases/download/v1.0.0/imputef-x86_64-linux)
-- [Windows 10 (x86 64-bit)](https://github.com/jeffersonfparil/imputef/releases/download/v1.0.0/imputef-x86_64-windows.exe)
+- [GNU/Linux (x86 64-bit)](https://github.com/jeffersonfparil/imputef/releases/download/v1.0.1/imputef-x86_64-linux)
+- [Windows 10 (x86 64-bit)](https://github.com/jeffersonfparil/imputef/releases/download/v1.0.1/imputef-x86_64-windows.exe)
 - ~~[macOS Catalina (x86 64-bit)](https://github.com/jeffersonfparil/imputef/releases/download/v1.0.0/DOESNOTEXIST)~~ (macOS binary pending)
 
 2. Configure and execute
