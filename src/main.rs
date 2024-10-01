@@ -261,9 +261,9 @@ fn main() {
         )
         .expect("Error performing mean value imputation via impute_mean() within impute().")
     } else {
-        println!("###################################################################################################");
-        println!("aldknni: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data");
-        println!("###################################################################################################");
+        println!("##########################################################################################");
+        println!("aldknni: allele frequency linkage disequilibrium (LD)-based k-nearest neighbour imputation");
+        println!("##########################################################################################");
         // Optimise for the minimum loci correlation and maximum genetic distance thresholds if user input is less than zero
         let min_loci_corr = if args.min_loci_corr < 0.0 {
             f64::NAN

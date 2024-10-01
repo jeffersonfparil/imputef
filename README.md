@@ -92,7 +92,7 @@ imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define s
 | Argument or flag | Description |
 | :--------------- | :---------- |
 | **--fname** | Filename of the genotype file to be imputed in uncompressed [vcf](#variant-call-format-vcf), [sync](#synchronised-pileup-sync), or [allele frequency table](#allele-frequency-table-tsv). Details on these genotype formats are available below. |
-| **--method** | Imputation method. Use "mean" for mean value imputation or "aldknni" for adaptive LD-kNN imputation. [Default = "aldknni"] |
+| **--method** | Imputation method. Use "mean" for mean value imputation or "aldknni" for allele frequency LD-kNN imputation. [Default = "aldknni"] |
 | **--min-coverage** | Minimum coverage per locus, i.e. if at a locus, a pool falls below this value (does not skip missing data, i.e. missing locus has a depth of zero), then the whole locus is omitted. Set this to zero if the vcf has been filtered and contains missing values, i.e. `./.` or `.|.`. [Default = 0] |
 | **--min-allele-frequency** | Minimum allele frequency per locus, i.e. if at a locus, a pool has all its alleles below this value and/or above the additive complement of this value (skipping missing data), then the entire locus is omitted. [Default = 0.0001] |
 | **--max-missingness-rate-per-locus** | Maximum fraction of pools missing per locus, i.e. if at a locus, there were more pools missing than the coverage dictated by this threshold, then the locus is omitted. [Default = 1.00] |
@@ -170,7 +170,7 @@ where:
 - $m$ is the number of samples which are missing data at the $j^{\text {th}}$ locus, and
 - $q_{i,j}$ is the known allele frequency of the $i^{\text {th}}$ sample at the $j^{\text {th}}$ locus.
 
-### `--method="aldknni"`: adaptive linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data
+### `--method="aldknni"`: allele frequency linkage disequilibrium (LD)-based k-nearest neighbour imputation of genotype data
 
 This is an extension of the [LD-kNNi method of Money et al, 2015, i.e. LinkImpute](https://doi.org/10.1534/g3.115.021667), which was an extension of the [kNN imputation of Troyanskaya et al, 2001](https://doi.org/10.1093/bioinformatics/17.6.520). Similar to LD-kNNi, linkage disequilibrium (LD) is estimated using Pearson's product moment correlation per pair of loci, which is computed per chromosome by default, but can be computed across the entire genome. We use the mean absolute difference/error (MAE) between allele frequencies among linked loci as an estimate of genetic distance between samples. Fixed values for the minimum correlation threshold to identify loci used in distance estimation, and maximum genetic distance threshold to select the k-nearest neighbours can be defined. Additionally, minimum number of loci to include in distance estimation, and minimum number of nearest neighbours can be set. Moreover, the minimum correlation and maximum genetic distance can be optimised per locus by minimising the MAE between predicted and expected allele frequencies using simulated missing or masked data. The number of masked data is controlled by the number of replications (`--n-reps`) and the total number of samples non-missing at the locus requiring imputation.
 
