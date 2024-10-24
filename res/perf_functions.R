@@ -212,7 +212,11 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
     n_missing = length(list_sim_missing$vec_missing_loci)
     ### Load imputed (and lightly filtered ;-P) genotype data
     df = read.delim(fname_imputed, header=TRUE, sep="\t")
-    imputed_loci_names = paste(df$X.chr, df$pos, df$allele, sep="_")
+    if (is.null(df$X.chr[1])) {
+        imputed_loci_names = paste(df[, grep("chr$", colnames(df))], df$pos, df$allele, sep="_")        
+    } else {
+        imputed_loci_names = paste(df$X.chr, df$pos, df$allele, sep="_")        
+    }
     imputed_pool_names = colnames(df)
     imputed_pool_names = gsub("-", ".", imputed_pool_names)
     print(paste0("Identifying the imputed data points in: ", fname_imputed, "..."))
@@ -322,9 +326,105 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
     ))
 }
 
+### PolyRAD
+vec_polyrad_required_packages = c("polyRAD")
+vec_polyrad_required_packages = vec_polyrad_required_packages[!(vec_polyrad_required_packages %in% installed.packages()[,"Package"])]
+if (length(vec_polyrad_required_packages) > 0) {
+    if (!require("BiocManager", quietly = TRUE)) {
+        install.packages("BiocManager", repos="https://cloud.r-project.org")
+    }
+    BiocManager::install("pcaMethods", update=FALSE, ask=FALSE)
+    BiocManager::install("GenomeInfoDb", update=FALSE, ask=FALSE)
+    BiocManager::install("GenomicRanges", update=FALSE, ask=FALSE)
+    BiocManager::install("Biostrings", update=FALSE, ask=FALSE)
+    BiocManager::install("Rsamtools", update=FALSE, ask=FALSE)
+    BiocManager::install("VariantAnnotation", update=FALSE, ask=FALSE)
+    install.packages(vec_polyrad_required_packages, repos="https://cloud.r-project.org")
+}
+library(polyRAD)
+library(VariantAnnotation)
+fn_polyRAD = function(fname_vcf, ploidy=2, read_length_less_barcode=64) {
+    ##############################
+    ### TEST
+    # vcf = vcfR::read.vcfR("../misc/grape.vcf")
+    # vcf = vcfR::read.vcfR("../misc/soybean.vcf")
+    # vcf = vcfR::read.vcfR("../misc/cocksfoot.vcf")
+    # list_genotypes = fn_extract_allele_frequencies(vcf)
+    # mat_genotypes = list_genotypes$mat_genotypes
+    # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
+    # maf = 0.01
+    # missing_rate = 0.1
+    # list_sim_missing = fn_simulate_missing_data(vcf=vcf,
+    #                                             mat_genotypes=mat_genotypes,
+    #                                             maf=maf,
+    #                                             missing_rate=missing_rate)
+    # fname_vcf = list_sim_missing$fname_vcf
+    # ploidy = 4
+    # read_length_less_barcode = 64
+    ##############################
+    ### Adapted from: https://pmc.ncbi.nlm.nih.gov/articles/PMC6404598/
+    # prepare the VCF file for import
+    myvcf = fname_vcf
+    myvcfbz = Rsamtools::bgzip(myvcf)
+    Rsamtools::indexTabix(myvcfbz, format = "vcf")
+    # import VCF into a RADdata object
+    ### Need to confirm tagsize which is the read length minus the indexes etc, and 
+    myRAD = polyRAD::VCF2RADdata(myvcfbz,
+        tagsize = read_length_less_barcode,
+        min.ind.with.reads = 1,
+        min.ind.with.minor.allele = 1,
+        possiblePloidies = list(ploidy)
+    )
+    # # estimate contamination rate
+    # myRAD = SetBlankTaxa(myRAD, c(“blank1”, “blank2”))
+    # myRAD = EstimateContaminationRate(myRAD)
+    # ### Use the recommended typical contamination rate
+    # myRAD = 1/1000
+    # # genotype estimation with pop. structure pipeline
+    # myRAD = IteratePopStructLD(myRAD, LDdist = 5e4)
+    list_out = polyRAD::IterateHWE(myRAD)
+    G = GetWeightedMeanGenotypes(list_out)
+    dim(G)
+    vec_q = sample(G, size=1000, replace=FALSE)
+    vec_q = c(vec_q, 1-vec_q)
+    txtplot::txtdensity(vec_q)
+
+    list_strsplit_loci_names = strsplit(vec_loci_names, ":")
+    vec_chromosome_names = unlist(lapply(list_strsplit_loci_names, FUN=function(x){x[1]}))
+    vec_positions = unlist(lapply(list_strsplit_loci_names, FUN=function(x){as.numeric(unlist(strsplit(x[2], "_"))[1])}))
+    vec_alleles = unlist(lapply(list_strsplit_loci_names, FUN=function(x){unlist(strsplit(x[2], "_"))[3]}))
+    # vec_alleles = unlist(lapply(list_strsplit_loci_names, FUN=function(x){unlist(strsplit(unlist(strsplit(x[2], "_"))[2], "/"))[1]}))
+    vec_ids = rownames(G)
+    df_out = data.frame(
+        chr=vec_chromosome_names,
+        pos=vec_positions,
+        allele=vec_alleles,
+        t(G),
+        check.names=FALSE
+    )
+    str(df_out)
+    fname_out = paste0("POLYRAD-IMPUTED-", round(runif(min=1e10, max=(1e11)-1, n=1)), ".tsv")
+    write.table(x=df_out, file=fname_out, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+    # # free up memory (removes the alleleFreq)
+    # list_out = StripDown(list_out)
+    # str(list_out)
+    # list_out$alleleFreq
+    # export for GAPIT
+    # myGM_GD = ExportGAPIT(list_out)
+    ### Test imputation accuracy metrics:
+    # metrics = fn_imputation_accuracy(fname_imputed=fname_out,
+    #     list_sim_missing=list_sim_missing,
+    #     mat_idx_high_conf_data=mat_idx_high_conf_data,
+    #     ploidy=ploidy,
+    #     strict_boundaries=strict_boundaries,
+    #     mat_genotypes=mat_genotypes,
+    #     n_threads=n_threads)
+    return(fname_out)
+}
+
 ### Performance assessment function
 fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, restrict_linked_loci_per_chromosome=FALSE, n_threads=10) {
-    # vcf = vcfR::read.vcfR(file.path(dir_src, "res/grape.vcf"))
+    # vcf = vcfR::read.vcfR("../misc/grape.vcf")
     # list_genotypes = fn_extract_allele_frequencies(vcf)
     # mat_genotypes = list_genotypes$mat_genotypes
     # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
