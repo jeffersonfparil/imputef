@@ -357,145 +357,139 @@ fn_imputation_accuracy = function(fname_imputed, list_sim_missing, mat_idx_high_
     ))
 }
 
-# ### PolyRAD
-# ### 2024-10-25
-# ### PERFORMS SPECTACULARYLY POORLY USING THE AD FIELDS AS FREQUENCIES PER SE (~3X worse than imputef for cocksfoot at 0.01 maf ant 10% missing)!!!
-# ### WILL NEED TO TEST USING ITS OWN CALLS TO SIMULATE MISSING DATA (I.E. AS EXPECTED ALLELE FREQUENCIES).
-# ### WELP! NOPE STILL WORSE THAN imputef EVEN WHEN USING ITS OWN CALLED GENOTYPE FREQUENCIES AS EXPECTED DATA!!!
-# ### THEREFORE NO NEED TO SHOW RE-RUN WITH POLYRAD FOR NOW AS WE NEED NOT COMPARE WITH SOMETHING WORSE AT THE MOMENT.
-# vec_polyrad_required_packages = c("polyRAD")
-# vec_polyrad_required_packages = vec_polyrad_required_packages[!(vec_polyrad_required_packages %in% installed.packages()[,"Package"])]
-# if (length(vec_polyrad_required_packages) > 0) {
-#     if (!require("BiocManager", quietly = TRUE)) {
-#         install.packages("BiocManager", repos="https://cloud.r-project.org")
-#     }
-#     BiocManager::install("pcaMethods", update=FALSE, ask=FALSE)
-#     BiocManager::install("GenomeInfoDb", update=FALSE, ask=FALSE)
-#     BiocManager::install("GenomicRanges", update=FALSE, ask=FALSE)
-#     BiocManager::install("Biostrings", update=FALSE, ask=FALSE)
-#     BiocManager::install("Rsamtools", update=FALSE, ask=FALSE)
-#     BiocManager::install("VariantAnnotation", update=FALSE, ask=FALSE)
-#     install.packages(vec_polyrad_required_packages, repos="https://cloud.r-project.org")
-# }
-# library(polyRAD)
-# library(VariantAnnotation)
-# fn_polyRAD = function(fname_vcf, ploidy=2, read_length_less_barcode=64, output_format=c("tsv", "vcf")[1], verbose=FALSE) {
-#     ##############################
-#     ### TEST
-#     # vcf = vcfR::read.vcfR("../misc/grape.vcf")
-#     # vcf = vcfR::read.vcfR("../misc/soybean.vcf")
-#     # vcf = vcfR::read.vcfR("../misc/cocksfoot.vcf")
-#     # vcf = vcfR::read.vcfR("../misc/cocksfoot-POLYRAD_CALLs-84416892530.vcf")
-#     # list_genotypes = fn_extract_allele_frequencies(vcf)
-#     # mat_genotypes = list_genotypes$mat_genotypes
-#     # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
-#     # maf = 0.01
-#     # missing_rate = 0.1
-#     # list_sim_missing = fn_simulate_missing_data(vcf=vcf,
-#     #                                             mat_genotypes=mat_genotypes,
-#     #                                             maf=maf,
-#     #                                             missing_rate=missing_rate)
-#     # fname_vcf = list_sim_missing$fname_vcf
-#     # ploidy = 4
-#     # read_length_less_barcode = 64
-#     # output_format=c("tsv", "vcf")[1]
-#     # verbose = FALSE
-#     #
-#     # ### Create the expected set of allele frequencies using PolyRAD
-#     # fname_vcf = "../misc/cocksfoot.vcf"
-#     # ploidy = 4
-#     # read_length_less_barcode = 64
-#     # output_format=c("tsv", "vcf")[2]
-#     # verbose = FALSE
-#     ##############################
-#     ### Adapted from: https://pmc.ncbi.nlm.nih.gov/articles/PMC6404598/
-#     # prepare the VCF file for import
-#     myvcf = fname_vcf
-#     # myvcf = "../misc/cocksfoot-POLYRAD_CALLs-84416892530.vcf"
-#     myvcfbz = Rsamtools::bgzip(myvcf, overwrite=TRUE)
-#     Rsamtools::indexTabix(myvcfbz, format = "vcf")
-#     # import VCF into a RADdata object
-#     ### Need to confirm tagsize which is the read length minus the indexes etc, and 
-#     myRAD = polyRAD::VCF2RADdata(
-#         myvcfbz,
-#         tagsize = read_length_less_barcode,
-#         min.ind.with.reads = 1,
-#         min.ind.with.minor.allele = 1,
-#         possiblePloidies = list(ploidy)
-#     )
-#     # # estimate contamination rate
-#     # myRAD = SetBlankTaxa(myRAD, c(“blank1”, “blank2”))
-#     # myRAD = EstimateContaminationRate(myRAD)
-#     # # genotype estimation with pop. structure pipeline
-#     # myRAD = IteratePopStructLD(myRAD, LDdist = 5e4)
-#     list_out = polyRAD::IterateHWE(myRAD)
-#     G = GetWeightedMeanGenotypes(list_out)
-#     if (verbose) {
-#         vec_q = sample(G, size=1000, replace=FALSE)
-#         vec_q = c(vec_q, 1-vec_q)
-#         txtplot::txtdensity(vec_q)
-#     }
-#     ### Use the reference allele frequencies (G=1-G) and reformat the loci names to be compatible with gp
-#     list_strsplit_loci_names = strsplit(colnames(G), ":")
-#     if (length(list_strsplit_loci_names[[1]]) > 1) {
-#         vec_chromosome_names = unlist(lapply(list_strsplit_loci_names, FUN=function(x){x[1]}))
-#         vec_positions = unlist(lapply(list_strsplit_loci_names, FUN=function(x){as.numeric(unlist(strsplit(x[2], "_"))[1])}))
-#         # vec_alleles = unlist(lapply(list_strsplit_loci_names, FUN=function(x){unlist(strsplit(x[2], "_"))[3]})) ### alternative alleles
-#         vec_alleles = unlist(lapply(list_strsplit_loci_names, FUN=function(x){unlist(strsplit(unlist(strsplit(x[2], "_"))[2], "/"))[1]}))
-#     } else {
-#         list_strsplit_loci_names = strsplit(colnames(G), "_")
-#         vec_chromosome_names = unlist(lapply(list_strsplit_loci_names, FUN=function(x){paste(x[1:(length(x)-2)], collapse="_")}))
-#         vec_positions = unlist(lapply(list_strsplit_loci_names, FUN=function(x){x[length(x)-1]}))
-#         vec_alleles = unlist(lapply(list_strsplit_loci_names, FUN=function(x){x[length(x)]}))
-#     }
-#     vec_ids = rownames(G)
-#     G = 1 - G
-#     colnames(G) = paste0(vec_chromosome_names, "\t", vec_positions, "\t", vec_alleles)
-#     ### Remove duplicates, i.e. force biallelic loci
-#     # sum(duplicated(colnames(G)))
-#     vec_idx_non_duplicates = which(!duplicated(colnames(G)))
-#     # which(duplicated(paste0(vec_chromosome_names, "\t", vec_positions))) == which(duplicated(paste0(vec_chromosome_names, "\t", vec_positions, "\t", vec_alleles)))
-#     G = G[, vec_idx_non_duplicates, drop=FALSE]
-#     # dim(G)
-#     # G[1:5,1:5]
-#     ### Save
-#     if (output_format == "vcf") {
-#         fname_out_gz = paste0(gsub(".vcf", "", fname_vcf), "-POLYRAD_CALLs-", round(runif(min=1e10, max=(1e11)-1, n=1)), ".vcf.gz")
-#         vcf = gp::fn_G_to_vcf(G=G, min_depth=100, max_depth=1000, verbose=FALSE)
-#         # str(vcf)
-#         # head(vcf)
-#         vcfR::write.vcf(vcf, file=fname_out_gz)
-#         system(paste0("gunzip -f ", fname_out_gz))
-#         fname_out = gsub(".gz$", "", fname_out_gz)
-#     } else {
-#         fname_out = paste0("POLYRAD-IMPUTED-", round(runif(min=1e10, max=(1e11)-1, n=1)), ".tsv")
-#         gp::fn_save_genotype(G, fname=fname_out, file_type=c("RDS", "TSV")[2], verbose=FALSE)
-#     }
-#     return(fname_out)
-#     ### Test with PolyRAD called initial vcf
-
-#     ### Test imputation accuracy metrics:
-#     # metrics = fn_imputation_accuracy(fname_imputed=fname_out,
-#     #     list_sim_missing=list_sim_missing,
-#     #     mat_idx_high_conf_data=mat_idx_high_conf_data,
-#     #     ploidy=ploidy,
-#     #     strict_boundaries=FALSE,
-#     #     mat_genotypes=mat_genotypes,
-#     #     n_threads=2)
-#     # # free up memory (removes the alleleFreq)
-#     # list_out = StripDown(list_out)
-#     # str(list_out)
-#     # list_out$alleleFreq
-#     # export for GAPIT
-#     # myGM_GD = ExportGAPIT(list_out)
-# }
-
-### Performance assessment function
-fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, restrict_linked_loci_per_chromosome=FALSE, n_threads=10) {
+### PolyRAD
+### 2024-10-25
+### PERFORMS SPECTACULARYLY POORLY USING THE AD FIELDS AS FREQUENCIES PER SE (~3X worse than imputef for cocksfoot at 0.01 maf ant 10% missing)!!!
+### WILL NEED TO TEST USING ITS OWN CALLS TO SIMULATE MISSING DATA (I.E. AS EXPECTED ALLELE FREQUENCIES).
+### WELP! NOPE STILL WORSE THAN imputef EVEN WHEN USING ITS OWN CALLED GENOTYPE FREQUENCIES AS EXPECTED DATA!!!
+### THEREFORE NO NEED TO SHOW RE-RUN WITH POLYRAD FOR NOW AS WE NEED NOT COMPARE WITH SOMETHING WORSE AT THE MOMENT.
+vec_polyrad_required_packages = c("polyRAD")
+vec_polyrad_required_packages = vec_polyrad_required_packages[!(vec_polyrad_required_packages %in% installed.packages()[,"Package"])]
+if (length(vec_polyrad_required_packages) > 0) {
+    if (!require("BiocManager", quietly = TRUE)) {
+        install.packages("BiocManager", repos="https://cloud.r-project.org")
+    }
+    BiocManager::install("pcaMethods", update=FALSE, ask=FALSE)
+    BiocManager::install("GenomeInfoDb", update=FALSE, ask=FALSE)
+    BiocManager::install("GenomicRanges", update=FALSE, ask=FALSE)
+    BiocManager::install("Biostrings", update=FALSE, ask=FALSE)
+    BiocManager::install("Rsamtools", update=FALSE, ask=FALSE)
+    BiocManager::install("VariantAnnotation", update=FALSE, ask=FALSE)
+    install.packages(vec_polyrad_required_packages, repos="https://cloud.r-project.org")
+}
+library(polyRAD)
+library(VariantAnnotation)
+fn_polyRAD = function(fname_vcf, ploidy=2, read_length_less_barcode=64, output_format=c("tsv", "vcf")[1], verbose=FALSE) {
+    ##############################
+    ### TEST
     # vcf = vcfR::read.vcfR("../misc/grape.vcf")
+    # vcf = vcfR::read.vcfR("../misc/soybean.vcf")
+    # vcf = vcfR::read.vcfR("../misc/cocksfoot.vcf")
+    # vcf = vcfR::read.vcfR("../misc/cocksfoot-POLYRAD_CALLs-63828815373.vcf")
     # list_genotypes = fn_extract_allele_frequencies(vcf)
     # mat_genotypes = list_genotypes$mat_genotypes
     # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
+    # maf = 0.01
+    # missing_rate = 0.1
+    # list_sim_missing = fn_simulate_missing_data(vcf=vcf,
+    #                                             mat_genotypes=mat_genotypes,
+    #                                             maf=maf,
+    #                                             missing_rate=missing_rate)
+    # fname_vcf = list_sim_missing$fname_vcf
+    # ploidy = 4
+    # read_length_less_barcode = 64
+    # output_format=c("tsv", "vcf")[1]
+    # verbose = FALSE
+    #
+    # ### Create the expected set of allele frequencies using PolyRAD
+    # fname_vcf = "../misc/cocksfoot.vcf"
+    # ploidy = 4
+    # read_length_less_barcode = 64
+    # output_format=c("tsv", "vcf")[2]
+    # verbose = FALSE
+    ##############################
+    ### Adapted from: https://pmc.ncbi.nlm.nih.gov/articles/PMC6404598/
+    # prepare the VCF file for import
+    myvcf = fname_vcf
+    # myvcf = "../misc/cocksfoot-POLYRAD_CALLs-63828815373.vcf"
+    myvcfbz = Rsamtools::bgzip(myvcf, overwrite=TRUE)
+    Rsamtools::indexTabix(myvcfbz, format = "vcf")
+    # import VCF into a RADdata object
+    ### Need to confirm tagsize which is the read length minus the indexes etc, and 
+    myRAD = polyRAD::VCF2RADdata(
+        myvcfbz,
+        tagsize = read_length_less_barcode,
+        min.ind.with.reads = 1,
+        min.ind.with.minor.allele = 1,
+        possiblePloidies = list(ploidy)
+    )
+    # # estimate contamination rate
+    # myRAD = SetBlankTaxa(myRAD, c(“blank1”, “blank2”))
+    # myRAD = EstimateContaminationRate(myRAD)
+    # # genotype estimation with pop. structure pipeline
+    # myRAD = IteratePopStructLD(myRAD, LDdist = 5e4)
+    list_out = polyRAD::IterateHWE(myRAD)
+    G = GetWeightedMeanGenotypes(list_out)
+    if (verbose) {
+        vec_q = sample(G, size=1000, replace=FALSE)
+        vec_q = c(vec_q, 1-vec_q)
+        txtplot::txtdensity(vec_q)
+    }
+    ### Use the reference allele frequencies (G=1-G) and reformat the loci names to be compatible with gp
+    # dim(myRAD$locTable)
+    vec_chromosome_names = myRAD$locTable$Chr
+    vec_positions = myRAD$locTable$Pos
+    vec_alleles = myRAD$locTable$Ref
+    vec_ids = rownames(G)
+    G = 1 - G
+    colnames(G) = paste0(vec_chromosome_names, "\t", vec_positions, "\t", vec_alleles)
+    ### Remove duplicates, i.e. force biallelic loci
+    # sum(duplicated(colnames(G)))
+    vec_idx_non_duplicates = which(!duplicated(colnames(G)))
+    # which(duplicated(paste0(vec_chromosome_names, "\t", vec_positions))) == which(duplicated(paste0(vec_chromosome_names, "\t", vec_positions, "\t", vec_alleles)))
+    G = G[, vec_idx_non_duplicates, drop=FALSE]
+    # dim(G)
+    # G[1:5,1:5]
+    ### Save
+    if (output_format == "vcf") {
+        fname_out_gz = paste0(gsub(".vcf", "", fname_vcf), "-POLYRAD_CALLs-", round(runif(min=1e10, max=(1e11)-1, n=1)), ".vcf.gz")
+        vcf = gp::fn_G_to_vcf(G=G, min_depth=100, max_depth=1000, verbose=FALSE)
+        # str(vcf)
+        # head(vcf)
+        vcfR::write.vcf(vcf, file=fname_out_gz)
+        system(paste0("gunzip -f ", fname_out_gz))
+        fname_out = gsub(".gz$", "", fname_out_gz)
+    } else {
+        fname_out = paste0("POLYRAD-IMPUTED-", round(runif(min=1e10, max=(1e11)-1, n=1)), ".tsv")
+        gp::fn_save_genotype(G, fname=fname_out, file_type=c("RDS", "TSV")[2], verbose=FALSE)
+    }
+    return(fname_out)
+    ### Test with PolyRAD called initial vcf
+
+    ### Test imputation accuracy metrics:
+    # metrics = fn_imputation_accuracy(fname_imputed=fname_out,
+    #     list_sim_missing=list_sim_missing,
+    #     mat_idx_high_conf_data=mat_idx_high_conf_data,
+    #     ploidy=ploidy,
+    #     strict_boundaries=FALSE,
+    #     mat_genotypes=mat_genotypes,
+    #     n_threads=2)
+    # print(metrics)
+    # free up memory (removes the alleleFreq)
+    # list_out = StripDown(list_out)
+    # str(list_out)
+    # list_out$alleleFreq
+    # export for GAPIT
+    # myGM_GD = ExportGAPIT(list_out)
+}
+
+### Performance assessment function
+fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy=4, maf=0.25, missing_rate=0.5, strict_boundaries=FALSE, restrict_linked_loci_per_chromosome=FALSE, n_threads=10) {
+    # vcf = vcfR::read.vcfR("../misc/cocksfoot.vcf")
+    # list_genotypes = fn_extract_allele_frequencies(vcf)
+    # mat_genotypes = list_genotypes$mat_genotypes
+    # mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data
+    # ploidy=4
     # maf = 0.01
     # missing_rate = 0.1
     # strict_boundaries = FALSE
@@ -554,6 +548,31 @@ fn_test_imputation = function(vcf, mat_genotypes, mat_idx_high_conf_data, ploidy
         colnames(df_linkimputed)[1] = "#chr"
         write.table(df_linkimputed, file=fname_out_linkimpute, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
     }
+
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    ### PolyRAD
+    fname_old_gz = paste0("vcf_old_temp-", sample.int(1e9, 1), ".vcf.gz")
+    vcfR::write.vcf(vcf, file=fname_old_gz)
+    system(paste0("gunzip -f ", fname_old_gz))
+    fname_old_vcf = gsub(".gz$", "", fname_old_gz)
+    fname_new_vcf = fn_polyRAD(fname_vcf=fname_old_vcf, ploidy=ploidy, read_length_less_barcode=64, output_format=c("tsv", "vcf")[2], verbose=FALSE)
+    vcf_new =  vcfR::read.vcfR(fname_new_vcf)
+    list_sim_missing = fn_simulate_missing_data(vcf=vcf_new,
+                                                mat_genotypes=mat_genotypes,
+                                                maf=maf,
+                                                missing_rate=missing_rate)
+    list_genotypes = fn_extract_allele_frequencies(vcf_new)
+    mat_genotypes = list_genotypes$mat_genotypes
+    mat_idx_high_conf_data = list_genotypes$mat_idx_high_conf_data                          
+    n_missing = length(list_sim_missing$vec_missing_loci)
+    fname_out_polyrad = fn_polyRAD(fname_vcf=list_sim_missing$fname_vcf, ploidy=ploidy, read_length_less_barcode=64, output_format=c("tsv", "vcf")[1], verbose=FALSE)
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    
+    
+    
+    
+    
     ### Validating imputation
     metrics_mvi = fn_imputation_accuracy(fname_imputed=fname_out_mvi,
         list_sim_missing=list_sim_missing,
