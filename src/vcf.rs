@@ -48,8 +48,11 @@ impl Parse<VcfLine> for String {
             // Iterate across pools to extract the allele depths
             for i in 9..raw_locus_data.len() {
                 let geno_data = raw_locus_data[i].split(':').collect::<Vec<&str>>();
-                allele_depths.push(if (geno_data[0] == "./.") || (geno_data[0] == ".|.") {
+                allele_depths.push(if geno_data[0].chars().nth(0).unwrap() == '.' {
                     // Missing data, i.e. coded as "./." which we are coding here as 0 depth across all alleles
+                    vec![0; 1 + alternative_alleles.len()]
+                } else if geno_data[idx].chars().nth(0).unwrap() == '.' {
+                    // Missing AD field coded as '.'
                     vec![0; 1 + alternative_alleles.len()]
                 } else {
                     // Non-missing data

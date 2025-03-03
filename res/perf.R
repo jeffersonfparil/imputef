@@ -24,6 +24,8 @@ df_variables = df_variables[order(df_variables$dataset), ]
 ### Load input variables
 fname_vcf = paste0(dir_data, "/", df_variables$dataset[i], ".vcf")
 ploidy = df_variables$ploidy[i]
+# fname_vcf = paste0(dir_data, "/potato.vcf"); ploidy = 4
+# fname_vcf = paste0(dir_data, "/andropogon.vcf"); ploidy = 4
 maf = df_variables$maf[i]
 missing_rate = df_variables$missing_rate[i]
 strict_boundaries = FALSE

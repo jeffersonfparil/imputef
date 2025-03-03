@@ -351,7 +351,7 @@ impl GenotypesAndPhenotypes {
                         Ok(x) => x,
                         Err(_) => return Err(ImputefError{
                             code: 105,
-                            message: "Error calling find_l_linked_loci() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.".to_owned()
+                            message: "Error calling find_l_linked_loci() within grid_search_optimisation() method for GenotypesAndPhenotypes trait.".to_owned()
                         })
                     };
             // Across maximum pool distance thresholds
@@ -367,7 +367,7 @@ impl GenotypesAndPhenotypes {
                             Ok(x) => x,
                             Err(_) => return Err(ImputefError{
                                 code: 106,
-                                message: "Error calling calculate_genetic_distances_between_pools() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.".to_owned()
+                                message: "Error calling calculate_genetic_distances_between_pools() within grid_search_optimisation() method for GenotypesAndPhenotypes trait.".to_owned()
                             })
                         };
                     // Find the k-nearest neighbours given the maximum distance and/or minimum k-neighbours (shadowing the distances across all pools with distances across k-nearest neighbours)
@@ -381,11 +381,11 @@ impl GenotypesAndPhenotypes {
                             Ok(x) => x,
                             Err(_) => return Err(ImputefError{
                                 code: 107,
-                                message: "Error calling find_k_nearest_neighbours() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.".to_owned()
+                                message: "Error calling find_k_nearest_neighbours() within grid_search_optimisation() method for GenotypesAndPhenotypes trait.".to_owned()
                             })
                         };
                     // Impute and find the error
-                    mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within per_chunk_aldknni() method for GenotypesAndPhenotypes trait.")
+                    mae += (vec_q[*idx_i] - impute_allele_frequencies(&frequencies, &distances).expect("Error calling impute_allele_frequencies() within grid_search_optimisation() method for GenotypesAndPhenotypes trait.")
                     ).abs();
                 }
                 mae /= *n_reps as f64;
@@ -404,7 +404,7 @@ impl GenotypesAndPhenotypes {
         loci_arguments: (&usize, &usize, &[usize]),
         optimisation_arguments: (&[f64], &[f64], &usize, &usize, &usize),
         corr_matrix_arguments: (&[Vec<u8>], bool),
-    ) -> Result<(Array2<f64>, f64, f64), ImputefError> {
+    ) -> Result<(Array2<f64>, f64, f64, f64, f64), ImputefError> {
         // Parse arguments
         let idx_loci_idx_ini: &usize = loci_arguments.0;
         let idx_loci_idx_fin: &usize = loci_arguments.1;
@@ -459,14 +459,26 @@ impl GenotypesAndPhenotypes {
             timer.elapsed().as_secs_f64(),
             idx_loci_idx_ini
         );
-        // Mean MAE
-        let (mut sum_mae, mut n_missing) = (0.0, 0.0);
-        for x in vec_optimum_mae.iter() {
+        // Mean MAE, min_loci_corr, and max_pool_dist
+        let (mut sum_mae, mut n_non_missing) = (0.0, 0.0);
+        let mut sum_min_loci_corr = 0.0;
+        let mut sum_max_pool_dist = 0.0;
+        for i in 0..vec_optimum_mae.len() {
+            let x = vec_optimum_mae[i];
+            let y = vec_optimum_min_loci_corr[i];
+            let z = vec_optimum_max_pool_dist[i];
             if !x.is_nan() {
                 sum_mae += x;
-                n_missing += 1.0;
+                sum_min_loci_corr += y;
+                sum_max_pool_dist += z;
+                n_non_missing += 1.0;
             }
         }
+        println!(
+            "Mean optimum min_loci_corr: {:?}\nMean optimum max_pool_dist: {:?}",
+            sum_min_loci_corr / n_non_missing,
+            sum_max_pool_dist / n_non_missing
+        );
         // Impute across the entire data set in parallel (parallel computation with parallel computation just to make them CPU cores work hard)
         let timer = std::time::Instant::now();
         Zip::indexed(&mut allele_frequencies)
@@ -539,7 +551,7 @@ impl GenotypesAndPhenotypes {
                 }
             }
         }
-        Ok((allele_frequencies, sum_mae, n_missing))
+        Ok((allele_frequencies, sum_mae, n_non_missing, sum_min_loci_corr, sum_max_pool_dist))
     }
 
     pub fn adaptive_ld_knn_imputation(
@@ -549,7 +561,7 @@ impl GenotypesAndPhenotypes {
         corr_matrix_arguments: (&[Vec<u8>], bool),
         n_threads: &usize,
         prefix: &str,
-    ) -> Result<(String, f64), ImputefError> {
+    ) -> Result<(String, f64, f64, f64), ImputefError> {
         // We are assuming that all non-zero alleles across pools are kept, i.e. biallelic loci have 2 columns, triallelic have 3, and so on.
         //      - Input vcf file will have all alleles per locus extracted.
         //      - Similarly, input sync file will have all alleles per locus extracted.
@@ -605,13 +617,13 @@ impl GenotypesAndPhenotypes {
         };
         let n_chunks: usize = vec_idx_loci_idx_ini.len();
         // Instantiate vector of tuples containing the intermediate output file name, mae, and number of imputed data points
-        let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64)> = vec![];
+        let mut vec_fname_intermediate_files_and_mae: Vec<(String, f64, f64, f64, f64)> = vec![];
         // Impute iteratively per chunk where imputation per chunk is parallel across the data subset
         let timer = std::time::Instant::now();
         for i in 0..n_chunks {
             let idx_loci_idx_ini = vec_idx_loci_idx_ini[i];
             let idx_loci_idx_fin = vec_idx_loci_idx_fin[i];
-            let (allele_frequencies, sum_mae, n_missing) = match self.per_chunk_aldknni(
+            let (allele_frequencies, sum_mae, n_non_missing, sum_min_loci_corr, sum_max_pool_dist) = match self.per_chunk_aldknni(
                 (&idx_loci_idx_ini, &idx_loci_idx_fin, loci_idx),
                 (
                     &vec_min_loci_corr,
@@ -683,7 +695,7 @@ impl GenotypesAndPhenotypes {
                     })
                 };
             // Instantiate output file
-            let mae_intermediate = match sensible_round(sum_mae / n_missing, 4) {
+            let mae_intermediate = match sensible_round(sum_mae / n_non_missing, 4) {
                 Ok(x) => x,
                 Err(_e) => {
                     return Err(ImputefError {
@@ -754,7 +766,9 @@ impl GenotypesAndPhenotypes {
             vec_fname_intermediate_files_and_mae.push((
                 fname_intermediate_file,
                 sum_mae,
-                n_missing,
+                n_non_missing,
+                sum_min_loci_corr,
+                 sum_max_pool_dist
             ));
         }
         println!(
@@ -781,7 +795,9 @@ impl GenotypesAndPhenotypes {
             }
         };
         let mut sum_mae = vec_fname_intermediate_files_and_mae[0].1;
-        let mut n_missing = vec_fname_intermediate_files_and_mae[0].2;
+        let mut n_non_missing = vec_fname_intermediate_files_and_mae[0].2;
+        let mut sum_min_loci_corr = vec_fname_intermediate_files_and_mae[0].3;
+        let mut sum_max_pool_dist = vec_fname_intermediate_files_and_mae[0].4;
         for name_and_mae in vec_fname_intermediate_files_and_mae.iter().skip(1) {
             let mut file_1 = match OpenOptions::new().read(true).open(&name_and_mae.0) {
                 Ok(x) => x,
@@ -816,9 +832,11 @@ impl GenotypesAndPhenotypes {
                 }
             };
             sum_mae += name_and_mae.1;
-            n_missing += name_and_mae.2;
+            n_non_missing += name_and_mae.2;
+            sum_min_loci_corr += name_and_mae.3;
+            sum_max_pool_dist += name_and_mae.4;
         }
-        let mae = match sensible_round(sum_mae / n_missing, 4) {
+        let mae = match sensible_round(sum_mae / n_non_missing, 4) {
             Ok(x) => x,
             Err(e) => {
                 return Err(ImputefError {
@@ -828,7 +846,28 @@ impl GenotypesAndPhenotypes {
                 })
             }
         };
-        Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae))
+        let min_loci_corr = match sensible_round(sum_min_loci_corr / n_non_missing, 4) {
+            Ok(x) => x,
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 122,
+                    message: "Error in adaptive_ld_knn_imputation() method | ".to_owned()
+                        + &e.message,
+                })
+            }
+        };
+        let max_pool_dist = match sensible_round(sum_max_pool_dist / n_non_missing, 4) {
+            Ok(x) => x,
+            Err(e) => {
+                return Err(ImputefError {
+                    code: 122,
+                    message: "Error in adaptive_ld_knn_imputation() method | ".to_owned()
+                        + &e.message,
+                })
+            }
+        };
+
+        Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae, min_loci_corr, max_pool_dist))
     }
 }
 
@@ -913,7 +952,7 @@ pub fn impute_aldknni(
         println!("Estimating imputation accuracy.");
     }
     let start = std::time::SystemTime::now();
-    let (fname_imputed, mae) = match genotypes_and_phenotypes.adaptive_ld_knn_imputation(
+    let (fname_imputed, mae, min_loci_corr, max_pool_dist) = match genotypes_and_phenotypes.adaptive_ld_knn_imputation(
         &loci_idx,
         optimisation_arguments,
         (&corr, restrict_linked_loci_per_chromosome),
@@ -940,6 +979,14 @@ pub fn impute_aldknni(
     println!(
         "Expected imputation accuracy in terms of mean absolute error: {}",
         mae
+    );
+    println!(
+        "Minimum loci correlation: {}",
+        min_loci_corr
+    );
+    println!(
+        "maximum pool distance: {}",
+        max_pool_dist
     );
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let mut genotypes_and_phenotypes = match {
@@ -1164,7 +1211,7 @@ mod tests {
         let restrict_linked_loci_per_chromosome = false;
         let n_threads = 8;
 
-        let (_fname_imputed, mae) = frequencies_and_phenotypes
+        let (_fname_imputed, mae, min_loci_corr, max_pool_dist) = frequencies_and_phenotypes
             .adaptive_ld_knn_imputation(
                 &loci_idx,
                 (
