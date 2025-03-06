@@ -483,11 +483,20 @@ time Rscript perf_plot.R \
     ${DIR}/output
 ```
 
-## Take-home message
-
-The allele frequency LD-kNN imputation algorithm works well across the entire range of sparsity levels (0.1% to 90% missing data).
-
 # ASSESSMENT 2: 6 additional empirical datasets
+
+## Datasets
+
+1. alfalfa: [https://datadryad.org/downloads/file_stream/828](https://datadryad.org/downloads/file_stream/828)
+2. posidonia: [https://datadryad.org/downloads/file_stream/1514201](https://datadryad.org/downloads/file_stream/1514201)
+3. aspen: [https://datadryad.org/downloads/file_stream/4603](https://datadryad.org/downloads/file_stream/4603)
+4. iris: [https://datadryad.org/downloads/file_stream/2941452](https://datadryad.org/downloads/file_stream/2941452)
+5. potato: [https://figshare.com/ndownloader/files/24193742](https://figshare.com/ndownloader/files/24193742)
+6. urochloa: [https://datadryad.org/downloads/file_stream/107691](https://datadryad.org/downloads/file_stream/107691)
+
+## Execution
+
+Bash commands to run imputef and the non-built-in grid-search optimisation (please note that each imputef command was ran with Slurm but presented here as for-loops for simplicity):
 
 ```shell
 #####################################################
@@ -583,3 +592,39 @@ do
     done
     awk -F',' 'NR == 1 || $3 < min {min = $3; min_line = $0} END {print min_line}' grid_search_sample_${SAMPLE}.csv
 done
+# Merge output
+head -n1 grid_search_sample_1.csv > grid_search.csv
+for i in 1 2 3
+do
+    tail -n+2 grid_search_sample_${i}.csv >> grid_search.csv
+done
+```
+
+Find the optimal paramters:
+
+```R
+df = read.csv("grid_search.csv")
+df = aggregate(mae ~ corr + dist, data=df, FUN=mean)
+attach(df)
+txtplot::txtplot(mae)
+txtplot::txtplot(corr, mae)
+txtplot::txtplot(dist, mae)
+idx = which(mae == min(mae))
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+print(paste0("--min-loci-cor=", corr[idx], "; --max-pool-dist=", dist[idx], "; expected MAE=", min(mae)))
+print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+```
+
+For Urochloa, AFIXED using the non-built-in-grid-search optimisation optimal parameters:
+
+```shell
+#########################################################
+# AFIXED with LD estimated across and within chromosome #
+#########################################################
+time imputef \
+    -f urochloa.vcf \
+    --restrict-linked-loci-per-chromosome \
+    --min-loci-corr=0.4 \
+    --max-pool-dist=0.1 \
+    --n-threads=32
+```
