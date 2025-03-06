@@ -1,4 +1,4 @@
-# Assessing imputation accuracies
+# ASSESSMENT 1: Assessing imputation accuracies
 
 ## Variables
 
@@ -486,3 +486,100 @@ time Rscript perf_plot.R \
 ## Take-home message
 
 The allele frequency LD-kNN imputation algorithm works well across the entire range of sparsity levels (0.1% to 90% missing data).
+
+# ASSESSMENT 2: 6 additional empirical datasets
+
+```shell
+#####################################################
+# Divide Urochloa MockGenome into 40 mock chromomes #
+#####################################################
+L=$(grep -v "^#" urochloa.vcf | wc -l)
+S=$(echo "$L / 40" | bc)
+echo $L
+echo $S
+grep "^#" urochloa.vcf > urochloa_headers.tmp
+grep -v "^#" urochloa.vcf > urochloa_non_headers.tmp
+i=0
+for N in $(seq $S $S $L)
+do
+    i=$(echo "$i + 1" | bc)
+    N0=$(echo "($N - $S) + 1" | bc)
+    if [ $i -eq 40 ]
+    then
+        N=$L
+    fi
+    sed -n ${N0},${N}p urochloa_non_headers.tmp > urochloa-${i}.tmp
+    sed -i "s/^MockRefGenome/MockChr_${i}/g" urochloa-${i}.tmp
+done
+mv urochloa.vcf urochloa.vcf.bk
+cat urochloa_headers.tmp urochloa-*.tmp > urochloa.vcf
+
+#########################################################
+# AFIXED with LD estimated across and within chromosome #
+#########################################################
+for VCF in alfalfa.vcf posidonia.vcf aspen.vcf iris.vcf potato.vcf urochloa.vcf
+do
+    time imputef \
+        -f $VCF \
+        --n-threads=32
+    time imputef \
+        -f $VCF \
+        --restrict-linked-loci-per-chromosome \
+        --n-threads=32
+done
+
+###############################################
+# AOPTIM with LD estimated across chromosomes #
+###############################################
+for VCF in alfalfa.vcf posidonia.vcf aspen.vcf
+do
+    time imputef \
+        -f $VCF \
+        --n-threads=32
+done
+
+##############################################
+# AOPTIM with LD estimated within chromosome #
+##############################################
+for VCF in iris.vcf potato.vcf urochloa.vcf
+do
+    time imputef \
+        -f $VCF \
+        --restrict-linked-loci-per-chromosome \
+        --n-threads=32
+done
+
+###########################################
+# GRID-SEARCH OPTIMISATION (NON-BUILT-IN) #
+###########################################
+grep "^#" urochloa.vcf > urochloa_headers.tmp
+cp urochloa_headers.tmp urochloa_sample_1.vcf
+cp urochloa_headers.tmp urochloa_sample_2.vcf
+cp urochloa_headers.tmp urochloa_sample_3.vcf
+grep -v "^#" urochloa.vcf | shuf -n 10000 >> urochloa_sample_1.vcf
+grep -v "^#" urochloa.vcf | shuf -n 10000 >> urochloa_sample_2.vcf
+grep -v "^#" urochloa.vcf | shuf -n 10000 >> urochloa_sample_3.vcf
+### Find the optimal l-loci to use for minimum loci correlation, and maximum distance
+### i.e. the combination of these 2 parameters which minimises the mean absolute error between expected and predicted allele frequencies.
+for SAMPLE in 1 2 3
+do
+    echo 'corr,dist,mae' > grid_search_sample_${SAMPLE}.csv
+    for corr in 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.1
+    do
+        for dist in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+        do
+            echo "@@@@@@@@@@@@@@@@@@@@@@@@"
+            # corr=0.9; dist=0.1
+            echo ${corr},${dist}
+            time imputef \
+                -f urochloa_sample_${SAMPLE}.vcf \
+                --min-loci-corr=${corr} \
+                --max-pool-dist=${dist} > log_sample_${SAMPLE}.tmp
+            fname_out=$(tail -n1 log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
+            mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
+            echo ${corr},${dist},${mae} >> grid_search_sample_${SAMPLE}.csv
+            rm $fname_out log_sample_${SAMPLE}.tmp
+        done
+    done
+    awk -F',' 'NR == 1 || $3 < min {min = $3; min_line = $0} END {print min_line}' grid_search_sample_${SAMPLE}.csv
+done
