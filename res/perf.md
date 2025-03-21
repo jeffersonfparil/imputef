@@ -540,21 +540,25 @@ done
 ###############################################
 # AOPTIM with LD estimated across chromosomes #
 ###############################################
-for VCF in alfalfa.vcf posidonia.vcf aspen.vcf
+for VCF in alfalfa.vcf posidonia.vcf aspen.vcf iris.vcf
 do
     time imputef \
         -f $VCF \
+        --min-loci-corr=-1 \
+        --max-pool-dist=-1 \
         --n-threads=32
 done
 
 ##############################################
 # AOPTIM with LD estimated within chromosome #
 ##############################################
-for VCF in iris.vcf potato.vcf urochloa.vcf
+for VCF in alfalfa.vcf posidonia.vcf aspen.vcf iris.vcf potato.vcf urochloa.vcf
 do
     time imputef \
         -f $VCF \
         --restrict-linked-loci-per-chromosome \
+        --min-loci-corr=-1 \
+        --max-pool-dist=-1 \
         --n-threads=32
 done
 
@@ -572,31 +576,39 @@ grep -v "^#" urochloa.vcf | shuf -n 10000 >> urochloa_sample_3.vcf
 ### i.e. the combination of these 2 parameters which minimises the mean absolute error between expected and predicted allele frequencies.
 for SAMPLE in 1 2 3
 do
-    echo 'corr,dist,mae' > grid_search_sample_${SAMPLE}.csv
-    for corr in 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.1
+    echo 'l,k,corr,dist,mae' > grid_search_sample_${SAMPLE}.csv
+    for l in 10 20 30
     do
-        for dist in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+        for k in 2 5 10
         do
-            echo "@@@@@@@@@@@@@@@@@@@@@@@@"
-            # corr=0.9; dist=0.1
-            echo ${corr},${dist}
-            time imputef \
-                -f urochloa_sample_${SAMPLE}.vcf \
-                --min-loci-corr=${corr} \
-                --max-pool-dist=${dist} > log_sample_${SAMPLE}.tmp
-            fname_out=$(tail -n1 log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
-            mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
-            echo ${corr},${dist},${mae} >> grid_search_sample_${SAMPLE}.csv
-            rm $fname_out log_sample_${SAMPLE}.tmp
+            for corr in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+            do
+                for dist in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+                do
+                    echo "@@@@@@@@@@@@@@@@@@@@@@@@"
+                    echo ${l},${k},${corr},${dist}
+                    time imputef \
+                        -f urochloa_sample_${SAMPLE}.vcf \
+                        --min-l-loci=${l} \
+                        --min-k-neighbours=${k} \
+                        --min-loci-corr=${corr} \
+                        --max-pool-dist=${dist} \
+                        --n-threads=32 > log_sample_${SAMPLE}.tmp
+                    fname_out=$(tail -n1 log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
+                    mae=$(grep "Expected imputation accuracy in terms of mean absolute error:" log_sample_${SAMPLE}.tmp | cut -d':' -f2 | tr -d ' ')
+                    echo ${l},${k},${corr},${dist},${mae} >> grid_search_sample_${SAMPLE}.csv
+                    rm $fname_out log_sample_${SAMPLE}.tmp
+                done
+            done
         done
     done
-    awk -F',' 'NR == 1 || $3 < min {min = $3; min_line = $0} END {print min_line}' grid_search_sample_${SAMPLE}.csv
+    awk -F',' 'NR == 1 || $5 < min {min = $5; min_line = $0} END {print min_line}' grid_search_sample_${SAMPLE}.csv
 done
 # Merge output
 head -n1 grid_search_sample_1.csv > grid_search.csv
-for i in 1 2 3
+for SAMPLE in 1 2 3
 do
-    tail -n+2 grid_search_sample_${i}.csv >> grid_search.csv
+    tail -n+2 grid_search_sample_${SAMPLE}.csv >> grid_search.csv
 done
 ```
 
