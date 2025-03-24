@@ -616,14 +616,17 @@ Find the optimal paramters:
 
 ```R
 df = read.csv("grid_search.csv")
-df = aggregate(mae ~ corr + dist, data=df, FUN=mean)
+df = aggregate(mae ~ l + k + corr + dist, data=df, FUN=mean)
 attach(df)
 txtplot::txtplot(mae)
+txtplot::txtplot(l, mae)
+txtplot::txtplot(k, mae)
 txtplot::txtplot(corr, mae)
 txtplot::txtplot(dist, mae)
-idx = which(mae == min(mae))
+idx = which(mae == min(mae))[1]
+print(df[idx, ])
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-print(paste0("--min-loci-cor=", corr[idx], "; --max-pool-dist=", dist[idx], "; expected MAE=", min(mae)))
+print(paste0("--min-l-loci=", l[idx], " --min-k-neighbours=", k[idx], " --min-loci-cor=", corr[idx], "; --max-pool-dist=", dist[idx], "; expected MAE=", min(mae)))
 print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 ```
 
