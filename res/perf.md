@@ -722,3 +722,326 @@ for (trait in c("mae_afixed_across_scaf", "mae_afixed_within_scaf", "mae_aoptim_
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 }
 ```
+
+Output:
+
+```txt
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "Trait: mae_afixed_across_scaf"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "=========================================================="
+[1] "Trait: mae_afixed_across_scaf | Model: mod_14"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_afixed_across_scaf ~ 1
+Model 2: mae_afixed_across_scaf ~ n_loci + sparsity + n_scaffolds
+  Res.Df     RSS Df Sum of Sq      F  Pr(>F)  
+1      4 0.41946                              
+2      1 0.00005  3   0.41941 2567.1 0.01451 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_afixed_across_scaf
+            Df   Sum Sq  Mean Sq F value  Pr(>F)  
+n_loci       1 0.082150 0.082150  1508.5 0.01639 *
+sparsity     1 0.149060 0.149060  2737.1 0.01217 *
+n_scaffolds  1 0.188199 0.188199  3455.8 0.01083 *
+Residuals    1 0.000054 0.000054                  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_afixed_across_scaf ~ n_loci + sparsity + n_scaffolds, 
+    data = df)
+
+Residuals:
+         1          2          3          4          5 
+ 0.0001400  0.0048345 -0.0054044 -0.0007252  0.0011551 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -0.791897   0.013468  -58.80  0.01083 * 
+n_loci      -2.868531   0.035784  -80.16  0.00794 **
+sparsity     0.385626   0.006461   59.69  0.01066 * 
+n_scaffolds -0.228526   0.003887  -58.79  0.01083 * 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.00738 on 1 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:  0.9999,    Adjusted R-squared:  0.9995 
+F-statistic:  2567 on 3 and 1 DF,  p-value: 0.01451
+
+[1] "=========================================================="
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "Trait: mae_afixed_within_scaf"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "Trait: mae_aoptim_across_scaf"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "Trait: mae_aoptim_within_scaf"
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_3"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_entries
+  Res.Df       RSS Df Sum of Sq      F    Pr(>F)    
+1      5 0.0064718                                  
+2      4 0.0002893  1 0.0061824 85.478 0.0007609 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+          Df    Sum Sq   Mean Sq F value    Pr(>F)    
+n_entries  1 0.0061824 0.0061824  85.478 0.0007609 ***
+Residuals  4 0.0002893 0.0000723                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_entries, data = df)
+
+Residuals:
+         1          2          3          4          5          6 
+-0.0081247 -0.0064628  0.0113407 -0.0004869 -0.0029141  0.0066478 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.104067   0.003472  29.973 7.38e-06 ***
+n_entries   -0.035164   0.003803  -9.245 0.000761 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.008505 on 4 degrees of freedom
+Multiple R-squared:  0.9553,    Adjusted R-squared:  0.9441 
+F-statistic: 85.48 on 1 and 4 DF,  p-value: 0.0007609
+
+[1] "=========================================================="
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_6"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_loci + n_entries
+  Res.Df       RSS Df Sum of Sq      F   Pr(>F)   
+1      5 0.0064718                                
+2      3 0.0002274  2 0.0062443 41.185 0.006588 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+          Df    Sum Sq   Mean Sq F value   Pr(>F)   
+n_loci     1 0.0004172 0.0004172   5.503 0.100685   
+n_entries  1 0.0058272 0.0058272  76.867 0.003125 **
+Residuals  3 0.0002274 0.0000758                    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_loci + n_entries, data = df)
+
+Residuals:
+         1          2          3          4          5          6 
+-0.0060926 -0.0060075  0.0124138  0.0001024 -0.0001186 -0.0002976 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.104067   0.003555  29.277 8.75e-05 ***
+n_loci       0.003761   0.004162   0.904  0.43284    
+n_entries   -0.036493   0.004162  -8.767  0.00313 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.008707 on 3 degrees of freedom
+Multiple R-squared:  0.9649,    Adjusted R-squared:  0.9414 
+F-statistic: 41.19 on 2 and 3 DF,  p-value: 0.006588
+
+[1] "=========================================================="
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_9"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_entries + sparsity
+  Res.Df       RSS Df Sum of Sq     F   Pr(>F)   
+1      5 0.0064718                               
+2      3 0.0002819  2 0.0061898 32.93 0.009093 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+          Df    Sum Sq   Mean Sq F value   Pr(>F)   
+n_entries  1 0.0061824 0.0061824 65.7825 0.003918 **
+sparsity   1 0.0000074 0.0000074  0.0784 0.797734   
+Residuals  3 0.0002819 0.0000940                    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_entries + sparsity, data = df)
+
+Residuals:
+        1         2         3         4         5         6 
+-0.007993 -0.005662  0.012483 -0.001641 -0.002025  0.004837 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.104067   0.003958   26.29 0.000121 ***
+n_entries   -0.036246   0.005809   -6.24 0.008303 ** 
+sparsity     0.001626   0.005809    0.28 0.797734    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.009694 on 3 degrees of freedom
+Multiple R-squared:  0.9564,    Adjusted R-squared:  0.9274 
+F-statistic: 32.93 on 2 and 3 DF,  p-value: 0.009093
+
+[1] "=========================================================="
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_10"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_entries + n_scaffolds
+  Res.Df       RSS Df Sum of Sq      F  Pr(>F)   
+1      5 0.0064718                               
+2      3 0.0002870  2 0.0061847 32.321 0.00934 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+            Df    Sum Sq   Mean Sq F value  Pr(>F)   
+n_entries    1 0.0061824 0.0061824 64.6178 0.00402 **
+n_scaffolds  1 0.0000023 0.0000023  0.0239 0.88707   
+Residuals    3 0.0002870 0.0000957                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_entries + n_scaffolds, 
+    data = df)
+
+Residuals:
+         1          2          3          4          5          6 
+-0.0086363 -0.0067619  0.0110321  0.0007219 -0.0025284  0.0061726 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.1040667  0.0039933  26.061 0.000124 ***
+n_entries   -0.0358925  0.0064347  -5.578 0.011375 *  
+n_scaffolds -0.0009938  0.0064347  -0.154 0.887068    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.009781 on 3 degrees of freedom
+Multiple R-squared:  0.9556,    Adjusted R-squared:  0.9261 
+F-statistic: 32.32 on 2 and 3 DF,  p-value: 0.00934
+
+[1] "=========================================================="
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_12"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_loci + n_entries + sparsity
+  Res.Df       RSS Df Sum of Sq     F  Pr(>F)  
+1      5 0.0064718                             
+2      2 0.0002020  3 0.0062697 20.69 0.04646 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+          Df    Sum Sq   Mean Sq F value Pr(>F)  
+n_loci     1 0.0004172 0.0004172  4.1299 0.1792  
+n_entries  1 0.0058272 0.0058272 57.6878 0.0169 *
+sparsity   1 0.0000254 0.0000254  0.2515 0.6658  
+Residuals  2 0.0002020 0.0001010                 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_loci + n_entries + sparsity, 
+    data = df)
+
+Residuals:
+         1          2          3          4          5          6 
+-0.0049438 -0.0079576  0.0099517  0.0038462 -0.0005649 -0.0003317 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)   
+(Intercept)  0.104067   0.004103  25.363  0.00155 **
+n_loci       0.006585   0.007403   0.890  0.46758   
+n_entries   -0.034394   0.006372  -5.397  0.03265 * 
+sparsity    -0.004653   0.009279  -0.501  0.66580   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.01005 on 2 degrees of freedom
+Multiple R-squared:  0.9688,    Adjusted R-squared:  0.922 
+F-statistic: 20.69 on 3 and 2 DF,  p-value: 0.04646
+
+[1] "=========================================================="
+[1] "=========================================================="
+[1] "Trait: mae_aoptim_within_scaf | Model: mod_17"
+[1] "=========================================================="
+Analysis of Variance Table
+
+Model 1: mae_aoptim_within_scaf ~ 1
+Model 2: mae_aoptim_within_scaf ~ n_loci * n_entries
+  Res.Df       RSS Df Sum of Sq      F Pr(>F)  
+1      5 0.0064718                             
+2      2 0.0002088  3  0.006263 19.997  0.048 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Analysis of Variance Table
+
+Response: mae_aoptim_within_scaf
+                 Df    Sum Sq   Mean Sq F value  Pr(>F)  
+n_loci            1 0.0004172 0.0004172  3.9961 0.18364  
+n_entries         1 0.0058272 0.0058272 55.8180 0.01745 *
+n_loci:n_entries  1 0.0000186 0.0000186  0.1785 0.71376  
+Residuals         2 0.0002088 0.0001044                  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Call:
+lm(formula = mae_aoptim_within_scaf ~ n_loci * n_entries, data = df)
+
+Residuals:
+         1          2          3          4          5          6 
+-0.0081041 -0.0028661  0.0114677 -0.0013151  0.0012239 -0.0004063 
+
+Coefficients:
+                 Estimate Std. Error t value Pr(>|t|)  
+(Intercept)       0.11080    0.01648   6.723   0.0214 *
+n_loci            0.01368    0.02399   0.570   0.6259  
+n_entries        -0.04382    0.01802  -2.431   0.1356  
+n_loci:n_entries -0.02287    0.05414  -0.422   0.7138  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.01022 on 2 degrees of freedom
+Multiple R-squared:  0.9677,    Adjusted R-squared:  0.9193 
+F-statistic:    20 on 3 and 2 DF,  p-value: 0.048
+
+[1] "=========================================================="
+[1] "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+```
