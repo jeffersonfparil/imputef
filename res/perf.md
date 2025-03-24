@@ -643,3 +643,82 @@ time imputef \
     --max-pool-dist=0.1 \
     --n-threads=32
 ```
+
+## Analysis
+
+Find significant relationships between imputef performance and dataset properties
+
+```R
+df = data.frame(
+    mae_afixed_across_scaf = c(0.797, 0.0893, 0.0927, 0.0635, 0.0504, NA),
+    mae_afixed_within_scaf = c(0.7038, 0.1416, 0.1491, 0.1442, 0.0992, 0.0797),
+    mae_aoptim_across_scaf = c(0.0558, 0.0748, 0.0681, 0.032, NA, NA),
+    mae_aoptim_within_scaf = c(0.0931, 0.1364, 0.1316, 0.1281, 0.042, 0.0932),
+    n_loci = scale(c(17514, 18021, 55474, 82237, 233627, 1526917), center=TRUE, scale=TRUE),
+    n_entries = scale(c(238, 133, 190, 169, 380, 275), center=TRUE, scale=TRUE),
+    sparsity = scale(c(0.28, 0.06, 0.1, 0.33, 0.39, 0.55), center=TRUE, scale=TRUE),
+    n_scaffolds = scale(c(3623, 18018, 11620, 34238, 12, 40), center=TRUE, scale=TRUE)
+)
+for (trait in c("mae_afixed_across_scaf", "mae_afixed_within_scaf", "mae_aoptim_across_scaf", "mae_aoptim_within_scaf")) {
+    # trait = "mae_afixed_across_scaf"
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    print(paste0("Trait: ", trait))
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    models = list(
+        mod_1 = eval(parse(text=paste0("lm(", trait, " ~ 1, data=df)"))),
+        mod_2 = eval(parse(text=paste0("lm(", trait, " ~ n_loci, data=df)"))),
+        mod_3 = eval(parse(text=paste0("lm(", trait, " ~ n_entries, data=df)"))),
+        mod_4 = eval(parse(text=paste0("lm(", trait, " ~ sparsity, data=df)"))),
+        mod_5 = eval(parse(text=paste0("lm(", trait, " ~ n_scaffolds, data=df)"))),
+        mod_6 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + n_entries, data=df)"))),
+        mod_7 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + sparsity, data=df)"))),
+        mod_8 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + n_scaffolds, data=df)"))),
+        mod_9 = eval(parse(text=paste0("lm(", trait, " ~ n_entries + sparsity, data=df)"))),
+        mod_10 = eval(parse(text=paste0("lm(", trait, " ~ n_entries + n_scaffolds, data=df)"))),
+        mod_11 = eval(parse(text=paste0("lm(", trait, " ~ sparsity + n_scaffolds, data=df)"))),
+        mod_12 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + n_entries + sparsity, data=df)"))),
+        mod_13 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + n_entries + n_scaffolds, data=df)"))),
+        mod_14 = eval(parse(text=paste0("lm(", trait, " ~ n_loci + sparsity + n_scaffolds, data=df)"))),
+        mod_15 = eval(parse(text=paste0("lm(", trait, " ~ n_entries + sparsity + n_scaffolds, data=df)"))),
+        mod_16 = eval(parse(text=paste0("lm(", trait, " ~ n_entries + n_loci + sparsity + n_scaffolds, data=df)"))),
+        mod_17 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * n_entries, data=df)"))),
+        mod_18 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * sparsity, data=df)"))),
+        mod_19 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * n_scaffolds, data=df)"))),
+        mod_20 = eval(parse(text=paste0("lm(", trait, " ~ n_entries * sparsity, data=df)"))),
+        mod_21 = eval(parse(text=paste0("lm(", trait, " ~ n_entries * n_scaffolds, data=df)"))),
+        mod_22 = eval(parse(text=paste0("lm(", trait, " ~ sparsity * n_scaffolds, data=df)"))),
+        mod_23 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * n_entries * sparsity, data=df)"))),
+        mod_24 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * n_entries * n_scaffolds, data=df)"))),
+        mod_25 = eval(parse(text=paste0("lm(", trait, " ~ n_loci * sparsity * n_scaffolds, data=df)"))),
+        mod_26 = eval(parse(text=paste0("lm(", trait, " ~ n_entries * sparsity * n_scaffolds, data=df)"))),
+        mod_27 = eval(parse(text=paste0("lm(", trait, " ~ n_entries * n_loci * sparsity * n_scaffolds, data=df)"))),
+        mod_28 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:n_entries, data=df)"))),
+        mod_29 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:sparsity, data=df)"))),
+        mod_30 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:n_scaffolds, data=df)"))),
+        mod_31 = eval(parse(text=paste0("lm(", trait, " ~ n_entries:sparsity, data=df)"))),
+        mod_32 = eval(parse(text=paste0("lm(", trait, " ~ n_entries:n_scaffolds, data=df)"))),
+        mod_33 = eval(parse(text=paste0("lm(", trait, " ~ sparsity:n_scaffolds, data=df)"))),
+        mod_34 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:n_entries:sparsity, data=df)"))),
+        mod_35 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:n_entries:n_scaffolds, data=df)"))),
+        mod_36 = eval(parse(text=paste0("lm(", trait, " ~ n_loci:sparsity:n_scaffolds, data=df)"))),
+        mod_37 = eval(parse(text=paste0("lm(", trait, " ~ n_entries:sparsity:n_scaffolds, data=df)"))),
+        mod_38 = eval(parse(text=paste0("lm(", trait, " ~ n_entries:n_loci:sparsity:n_scaffolds, data=df)")))
+    )
+    mod_null = models[[1]]
+    for (i in 2:length(models)) {
+        # i = 17
+        mod_x = models[[i]]
+        A = anova(mod_null, mod_x)
+        if (!is.na(A$Pr[2]) & (A$Pr[2] < 0.05)) {
+            print("==========================================================")
+            print(paste0("Trait: ", trait, " | ", "Model: ", names(models)[i]))
+            print("==========================================================")
+            print(A)
+            print(anova(mod_x))
+            print(summary(mod_x))
+            print("==========================================================")
+        }
+    }
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+}
+```
