@@ -551,7 +551,13 @@ impl GenotypesAndPhenotypes {
                 }
             }
         }
-        Ok((allele_frequencies, sum_mae, n_non_missing, sum_min_loci_corr, sum_max_pool_dist))
+        Ok((
+            allele_frequencies,
+            sum_mae,
+            n_non_missing,
+            sum_min_loci_corr,
+            sum_max_pool_dist,
+        ))
     }
 
     pub fn adaptive_ld_knn_imputation(
@@ -623,26 +629,27 @@ impl GenotypesAndPhenotypes {
         for i in 0..n_chunks {
             let idx_loci_idx_ini = vec_idx_loci_idx_ini[i];
             let idx_loci_idx_fin = vec_idx_loci_idx_fin[i];
-            let (allele_frequencies, sum_mae, n_non_missing, sum_min_loci_corr, sum_max_pool_dist) = match self.per_chunk_aldknni(
-                (&idx_loci_idx_ini, &idx_loci_idx_fin, loci_idx),
-                (
-                    &vec_min_loci_corr,
-                    &vec_max_pool_dist,
-                    &min_l_loci,
-                    &min_k_neighbours,
-                    n_reps,
-                ),
-                (corr, restrict_linked_loci_per_chromosome),
-            ) {
-                Ok(x) => x,
-                Err(_) => {
-                    return Err(ImputefError {
-                        code: 110,
-                        message: "Error executing per_chunk_aldknni() method on self_clone."
-                            .to_owned(),
-                    })
-                }
-            };
+            let (allele_frequencies, sum_mae, n_non_missing, sum_min_loci_corr, sum_max_pool_dist) =
+                match self.per_chunk_aldknni(
+                    (&idx_loci_idx_ini, &idx_loci_idx_fin, loci_idx),
+                    (
+                        &vec_min_loci_corr,
+                        &vec_max_pool_dist,
+                        &min_l_loci,
+                        &min_k_neighbours,
+                        n_reps,
+                    ),
+                    (corr, restrict_linked_loci_per_chromosome),
+                ) {
+                    Ok(x) => x,
+                    Err(_) => {
+                        return Err(ImputefError {
+                            code: 110,
+                            message: "Error executing per_chunk_aldknni() method on self_clone."
+                                .to_owned(),
+                        })
+                    }
+                };
             // Write-out intermediate file
             let idx_ini = loci_idx[idx_loci_idx_ini];
             let idx_fin = loci_idx[idx_loci_idx_fin];
@@ -768,7 +775,7 @@ impl GenotypesAndPhenotypes {
                 sum_mae,
                 n_non_missing,
                 sum_min_loci_corr,
-                 sum_max_pool_dist
+                sum_max_pool_dist,
             ));
         }
         println!(
@@ -867,7 +874,12 @@ impl GenotypesAndPhenotypes {
             }
         };
 
-        Ok((vec_fname_intermediate_files_and_mae[0].0.to_owned(), mae, min_loci_corr, max_pool_dist))
+        Ok((
+            vec_fname_intermediate_files_and_mae[0].0.to_owned(),
+            mae,
+            min_loci_corr,
+            max_pool_dist,
+        ))
     }
 }
 
@@ -952,13 +964,14 @@ pub fn impute_aldknni(
         println!("Estimating imputation accuracy.");
     }
     let start = std::time::SystemTime::now();
-    let (fname_imputed, mae, min_loci_corr, max_pool_dist) = match genotypes_and_phenotypes.adaptive_ld_knn_imputation(
-        &loci_idx,
-        optimisation_arguments,
-        (&corr, restrict_linked_loci_per_chromosome),
-        n_threads,
-        &(out.replace(".tsv", "")),
-    ) {
+    let (fname_imputed, mae, min_loci_corr, max_pool_dist) = match genotypes_and_phenotypes
+        .adaptive_ld_knn_imputation(
+            &loci_idx,
+            optimisation_arguments,
+            (&corr, restrict_linked_loci_per_chromosome),
+            n_threads,
+            &(out.replace(".tsv", "")),
+        ) {
         Ok(x) => x,
         Err(e) => {
             return Err(ImputefError {
@@ -980,14 +993,8 @@ pub fn impute_aldknni(
         "Expected imputation accuracy in terms of mean absolute error: {}",
         mae
     );
-    println!(
-        "Minimum loci correlation: {}",
-        min_loci_corr
-    );
-    println!(
-        "maximum pool distance: {}",
-        max_pool_dist
-    );
+    println!("Minimum loci correlation: {}", min_loci_corr);
+    println!("maximum pool distance: {}", max_pool_dist);
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     let mut genotypes_and_phenotypes = match {
         FileGeno {

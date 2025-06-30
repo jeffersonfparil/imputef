@@ -51,9 +51,6 @@ impl Parse<VcfLine> for String {
                 allele_depths.push(if geno_data[0].chars().nth(0).unwrap() == '.' {
                     // Missing data, i.e. coded as "./." which we are coding here as 0 depth across all alleles
                     vec![0; 1 + alternative_alleles.len()]
-                } else if geno_data[idx].chars().nth(0).unwrap() == '.' {
-                    // Missing AD field coded as '.'
-                    vec![0; 1 + alternative_alleles.len()]
                 } else {
                     // Non-missing data
                     // Initially set zero counts for all alleles including excluded alternative alleles
@@ -63,14 +60,18 @@ impl Parse<VcfLine> for String {
                         .collect::<Vec<&str>>()
                         .into_iter()
                         .enumerate() {
-                            d[j] = match x.parse::<u64>() {
+                        d[j] = if x == "." {
+                            0_u64
+                        } else {
+                            match x.parse::<u64>() {
                                 Ok(x) => x,
                                 Err(_) => return Err(ImputefError{
                                     code: 802,
                                     message: "Error parsing allele depths from the AD field in the input vcf file within the lparse() method for String to generate VcfLline struct on line: ".to_owned() +
                                     &self
                                 })
-                            };
+                            }
+                        };
                     }
                     d
                 });
