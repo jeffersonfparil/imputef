@@ -281,6 +281,9 @@ fn impute_allele_frequencies(
     for i in 0..n {
         imputed_freqs += weights[i] * frequencies[i];
     }
+    if imputed_freqs < 0.0 {
+        println!("frequencies={}", frequencies);
+    }
     if imputed_freqs.is_nan() {
         println!("frequencies={:?}", frequencies);
         println!("distances={:?}", distances);

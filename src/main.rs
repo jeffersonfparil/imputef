@@ -190,6 +190,24 @@ fn main() {
         )
         .expect("Error loading tsv.")
     };
+
+    let n: usize = genotypes_and_phenotypes.intercept_and_allele_frequencies.nrows();
+    let p: usize = genotypes_and_phenotypes.intercept_and_allele_frequencies.ncols();
+    for i in 0..n {
+        for j in 0..p {
+            let q = genotypes_and_phenotypes.intercept_and_allele_frequencies[(i, j)];
+            if (q < 0.0) | (q > 1.0) {
+                let pool = genotypes_and_phenotypes.pool_names[i].to_owned();
+                let chrom = genotypes_and_phenotypes.chromosome[j].to_owned();
+                let pos = genotypes_and_phenotypes.position[j].to_owned();
+                let allele = genotypes_and_phenotypes.allele[j].to_owned();
+                println!("Inconsistent allele frequencies. Please make sure the allele frequencies sum up to one per locus.");
+                println!("pool: {}; chrom: {}; pos: {}; allele: {}; q = {}", pool, chrom, pos, allele, q);
+                panic!()
+            }
+        }
+    }
+
     // Define missing data
     let start = std::time::SystemTime::now();
     genotypes_and_phenotypes
