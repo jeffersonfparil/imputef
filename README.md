@@ -82,9 +82,11 @@ imputef -f tests/test.csv   # allele frequency table as input (comma-separated)
 imputef -f tests/test.ssv   # allele frequency table as input (semi-colon-separated)
 imputef -f tests/test.sync  # synchronised pileup file as input
 imputef -f tests/test.vcf   # variant call format as input without missing data
-imputef -f tests/test_2.vcf   # variant call format as input
 imputef -f tests/test_2.vcf --method mean # use mean value imputation
 imputef -f tests/test_2.vcf --min-loci-corr=0.75 --max-pool-dist=0.25 # define some minimum loci correlation and maximum genetic distance thresholds
+# More practical examples:
+imputef -f tests/test.tsv --n-threads 32
+imputef -f tests/test.tsv --n-threads 32 --restrict-linked-loci-per-chromosome
 ```
 
 ### Arguments
