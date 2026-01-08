@@ -201,7 +201,7 @@ fn main() {
                 let chrom = genotypes_and_phenotypes.chromosome[j].to_owned();
                 let pos = genotypes_and_phenotypes.position[j].to_owned();
                 let allele = genotypes_and_phenotypes.allele[j].to_owned();
-                println!("Inconsistent allele frequencies. Please make sure the allele frequencies sum up to one per locus.");
+                println!("Inconsistent allele frequencies. Possibly duplicated loci or alleles. Please make sure the allele frequencies sum up to one per locus.");
                 println!("pool: {}; chrom: {}; pos: {}; allele: {}; q = {}", pool, chrom, pos, allele, q);
                 panic!()
             }
