@@ -18,4 +18,6 @@
 /res/*.vcf*
 /res/*BK*
 /res/tmp_*
-/.vscode/
+/.vscode/# pixi environments
+.pixi/*
+!.pixi/config.toml

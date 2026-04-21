@@ -116,7 +116,7 @@ impl GenotypesAndPhenotypes {
         // Define the number of loci to mask
         let n_masked = (((n * l) as f64) * max_sparsity).floor() as usize;
         // Sample random loci
-        // let mut rng = rand::thread_rng();
+        // let mut rng = rand::rng();
         let mut rng = StdRng::seed_from_u64(*rep as u64);
         let mut vec_masked_loci_idx_tmp = (0..(n * l)).choose_multiple(&mut rng, n_masked);
         vec_masked_loci_idx_tmp.sort();

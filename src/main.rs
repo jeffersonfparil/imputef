@@ -148,8 +148,8 @@ fn main() {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Error extracting time in UNIX_EPOCH within impute().")
         .as_secs_f64();
-    let mut rng = rand::thread_rng();
-    let num = rng.gen::<u32>();
+    let mut rng = rand::rng();
+    let num = rng.random::<u32>();
     let rand_id = time.to_string() + "." + &num.to_string();
     println!("rand_id={:?}", rand_id);
     // Prepare filtering variables
