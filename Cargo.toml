@@ -1,6 +1,6 @@
 [package]
 name = 'imputef'
-version = '1.0.3'
+version = '1.1.2'
 edition = '2021'
 
 [dependencies]
