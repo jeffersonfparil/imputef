@@ -46,12 +46,11 @@ chmod +x imputef
 git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.git main
 ```
 
-2. Load the Rust development environment via Conda (please see [Conda installation instructions](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) if you do not have Conda pre-installed)
+2. Load the Rust development environment via [Pixi](https://pixi.prefix.dev/latest/):
 
 ```shell
 cd imputef/
-conda env create --file res/rustenv.yml
-conda activate rustenv
+pixi shell
 ```
 
 3. Compile and optionally create an alias or a symbolic link or add to $PATH
