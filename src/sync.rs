@@ -4,6 +4,7 @@ use std::io::{prelude::*, BufReader, SeekFrom};
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+use rand::prelude::Distribution;
 
 use crate::helpers::*;
 use crate::structs_and_traits::*;
@@ -1364,6 +1365,7 @@ mod tests {
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use rand::Rng;
     #[test]
     fn test_sync_check() {
         // (01) CheckStruct: LocusCounts
@@ -1419,8 +1421,12 @@ mod tests {
         // No error
         assert_eq!((), locus_counts_and_phenotypes.check().unwrap());
         // (04) CheckStruct: GenotypesAndPhenotypes
-        let rng = rand::thread_rng();
-        let dist_gaus = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        let mut rng = rand::rng();
+        // let dist_gaus = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        let mut tmp: Vec<f64> = Vec::with_capacity(5*2);
+        for _ in 0..(5*2) {
+            tmp.push(rng.random());
+        }
         let mut genotypes_and_phenotypes = GenotypesAndPhenotypes {
             chromosome: [
                 "intercept",
@@ -1452,7 +1458,7 @@ mod tests {
             .unwrap(),
             phenotypes: Array2::from_shape_vec(
                 (5, 2),
-                dist_gaus.sample_iter(rng.clone()).take(5 * 2).collect(),
+                tmp,
             )
             .unwrap(),
             pool_names: (0..4)
@@ -1474,8 +1480,12 @@ mod tests {
 
     #[test]
     fn test_sync_count() {
-        let rng = rand::thread_rng();
-        let dist_gaus = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        let mut rng = rand::rng();
+        // let dist_gaus = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        let mut tmp: Vec<f64> = Vec::with_capacity(5*2);
+        for _ in 0..(5*2) {
+            tmp.push(rng.random());
+        }
         let genotypes_and_phenotypes = GenotypesAndPhenotypes {
             chromosome: [
                 "intercept",
@@ -1507,7 +1517,7 @@ mod tests {
             .unwrap(),
             phenotypes: Array2::from_shape_vec(
                 (5, 2),
-                dist_gaus.sample_iter(rng.clone()).take(5 * 2).collect(),
+                tmp,
             )
             .unwrap(),
             pool_names: (0..4)

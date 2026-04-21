@@ -664,8 +664,8 @@ impl GenotypesAndPhenotypes {
                             message: "Error extracting time in UNIX_EPOCH within write_tsv() method for GenotypesAndPhenotypes struct.".to_owned()
                         })
                     };
-            let mut rng = rand::thread_rng();
-            let random_number = rng.gen_range(1_000_000..10_000_000);
+            let mut rng = rand::rng();
+            let random_number = rng.random_range(1_000_000..10_000_000);
             let n_digits: usize = match loci_idx.last() {
                 Some(x) => x.to_owned().to_string().len(),
                 None => {
