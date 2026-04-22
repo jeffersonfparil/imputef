@@ -50,6 +50,7 @@ git clone https://jeffersonfparil:<API_KEY>@github.com/jeffersonfparil/imputef.g
 
 ```shell
 cd imputef/
+pixi install # to install the Rust development environment using pixi.toml
 pixi shell
 ```
 
